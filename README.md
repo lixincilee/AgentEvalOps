@@ -36,7 +36,7 @@ AgentEvalOps/
 │   ├── smoke_llm.py                   # LLM 连通性烟囱测试（--save 可落盘证据）
 │   ├── compare_planners.py            # v1 规则版 vs v2 模型版 对比运行器
 │   └── gen_case_matrix.py             # 用例矩阵生成器（先跑 Agent 校验期望值）
-├── reports/                           # 实测证据（JSON，可展示、可当 CI 工件）
+├── reports/                           # 运行产物（已 gitignore）：评测报告 JSON，可当 CI 工件
 ├── eval_cases/
 │   ├── support_cases.jsonl            # 阶段一场景集（19 条，v1 亲和的基线集）
 │   ├── v1_gaps_cases.jsonl            # v1 已知漏判集（8 条，用来检验评测集区分度）
@@ -315,12 +315,31 @@ AGENTEVALOPS_PRICING_JSON={"deepseek-flash": {"input_per_1m_usd": 0.1, "output_p
 输入价支持分开声明缓存命中价：`"cache_hit_input_per_1m_usd": 0.02`。
 一旦设置了 `AGENTEVALOPS_BUDGET_USD`，未定价模型会直接报错，而不是安静地记 0 成本。
 
+### 7. 版本锚定与运行产物
+
+「版本对比」要成立，报告的 `code_version` 必须是**一个能重新检出、且工作区干净**的提交，
+否则它会带 `-dirty` 后缀，`is_reproducible=false`，数字就没有意义。两条规矩：
+
+1. **跑评测前先提交**。`compare_planners.py` 会在花钱调用模型之前检查并告警。
+2. **`reports/` 不入库**。报告每次运行都会重写（含时间戳），入库会让工作区永远是脏的。
+   结论与数字留在 `docs/`，原始报告交给 CI 当工件上传。
+
+```bash
+git status --short                 # 应为空
+git describe --tags --dirty        # v0.1.0
+python scripts/compare_planners.py --cases eval_cases/case_matrix_v2.jsonl --save reports/r.json
+```
+
+> ⚠️ 干净工作区只保证**输入**可复现。同一个 `manifest_id` 跑两次，模型分数仍可能有
+> ±1 条用例的抖动（实测 96.4% / 95.8% / 96.4%）。所以判定「退化」必须重复执行，
+> 不能拿单次结果下结论。详见 `docs/stage2-evidence.md` 第 7 节。
+
 ## 后续路线图
 
 | 阶段 | 目标 | 关键产出 |
 | --- | --- | --- |
 | **阶段一（已完成）** | 确定性 Agent + 工具契约 + 测试基线 + JSONL 场景表 | `AuditRecord` 契约、138 个测试项、19 条场景 |
-| **阶段二（进行中）** | 接入 DeepSeek；建立版本 / 运行 / 指标数据模型；替换 `classify_intent` 与槽位抽取（**保持契约不变**） | `VersionManifest`、`Run`/`RunMetrics`、成本核算与预算熔断、v1 vs v2 对比报告 |
+| **阶段二（进行中）** | 接入 DeepSeek；建立版本 / 运行 / 指标数据模型；用 `LLMPlanner` 替换 `classify_intent` 与槽位抽取（**保持 `AuditRecord` 契约不变**） | `VersionManifest`、`Run`/`RunMetrics`、成本核算与预算熔断、**192 条用例集**、**v1 vs v2 真实对比报告**（`docs/stage2-evidence.md`）、tag `v0.1.0` |
 | 阶段三：LangGraph 编排 | 显式状态机：意图节点 → 工具节点 → 人工中断节点 | 图式编排替代 if/else；节点级可观测 trace |
 | 阶段四：RAG | 新增知识库检索工具（第 4 个工具），回答政策类问题 | 检索质量指标（命中率、引用正确率）与幻觉检测 |
 | 阶段五：评测框架与看板 | 批量跑场景、算指标、存历史、卡 CI 门禁 | 回归看板、基线对比、失败样本归档 |

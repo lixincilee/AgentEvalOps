@@ -1,8 +1,13 @@
 # 阶段二实测证据（M1 / M2）
 
-所有数字都来自本机真实调用，原始 JSON 在 `reports/` 下，可随时复现。
-**注意**：`code_version` 目前是 `nogit`（仓库还没 `git init`），所以 `is_reproducible=false` --
-版本指纹的其余字段（模型、prompt hash、用例集 hash）都是有效的。
+所有数字都来自本机真实调用。原始 JSON 由脚本写入 `reports/`（已被 `.gitignore` 忽略，
+它是运行产物），随时可以重跑生成。
+
+**版本锚定**：仓库已 `git init`，本文件里的每次运行都发生在**干净工作区**上：
+`code_version = 31433a7`、`is_reproducible = true`、`git describe --tags --dirty = v0.1.0`。
+
+> `is_reproducible=true` 只保证**输入**可复现（代码版本 + prompt + 模型 + 用例集全部钉死），
+> **不保证输出可复现**——同一个 manifest 的两次真实运行分数就不一样，见第 7 节。
 
 ## 0. 端点事实（先搞清楚的坑）
 
@@ -23,9 +28,9 @@ python scripts/smoke_llm.py --save reports/m1-smoke-real.json
 | --- | --- |
 | 请求 / 返回模型 | `deepseek-chat` / `deepseek-flash` |
 | 用量 | prompt 21 / completion 34 / total 55 tokens（cache_hit 0） |
-| 延迟 | 3060.6 ms |
+| 延迟 | 2518.7 ms |
 | 花费 | `$0.000000`，`cost_is_complete=false`（`deepseek-flash` 无价目） |
-| manifest_id | `d1bd37a81c4b` |
+| manifest_id | `e3c9aba3366d` |
 
 **结论**：链路通、用量可读、成本口径诚实（未定价就明确说「只能算下限」，绝不假装 0 成本）。
 
@@ -43,8 +48,8 @@ python scripts/compare_planners.py --save reports/v1-vs-v2-real-19.json
 | 参数准确率 | 100.0% | 100.0% | +0.0% |
 | 任务成功率 | 36.8% | 36.8% | +0.0% |
 
-用量：prompt 2106 / completion 305 tokens；平均延迟 **909.7 ms**；规划来源 19/19 来自模型；
-行为变化 0 条；manifest_id `4779ebb89104`。
+用量：prompt 2106 / completion 307 tokens；平均延迟 **1120.4 ms**；规划来源 19/19 来自模型；
+行为变化 0 条；manifest_id `8aaec0cd0d90`。
 
 **结论（重要）**：这 19 条是**为 v1 量身定做的**，v1 满分 ⇒ 这套用例**没有区分度**，
 既不能证明 v2 更差、也不能证明 v2 更好。评测集的第一个质量标准不是「条数多」，而是
@@ -73,10 +78,10 @@ python scripts/compare_planners.py --cases eval_cases/v1_gaps_cases.jsonl --save
 | 参数准确率 | 0.0% | **100.0%** | +100.0% |
 | 任务成功率 | 0.0% | **100.0%** | +100.0% |
 
-用量：prompt 884 / completion 141 tokens；平均延迟 **1557.3 ms**；8/8 用例行为发生变化；
-manifest_id `73f5adbe7e5a`。
+用量：prompt 884 / completion 141 tokens；平均延迟 **1372.2 ms**；8/8 用例行为发生变化；
+manifest_id `f6ca6a5004bd`。
 
-**结论**：v2 用 1.56 s/条的代价，把 v1 在口语化表达上的系统性漏判补齐；
+**结论**：v2 用 1.37 s/条的代价，把 v1 在口语化表达上的系统性漏判补齐；
 `AuditRecord` 契约未变，说明这次替换是**可回归、可对比**的。
 
 ## 4. 成本口径（不要跳过的坑）
@@ -88,7 +93,7 @@ manifest_id `73f5adbe7e5a`。
 | 只有 `AGENTEVALOPS_PRICING_JSON` 未声明该模型 | 记 0 成本，`cost_is_complete=false`，报告里声明「成本是下限」 |
 | 设置了 `AGENTEVALOPS_BUDGET_USD` | **直接报错**（`UnknownModelPriceError`），因为无价目时预算上限形同虚设 |
 
-所以：**在有真实价格之前，任何「单次成功任务成本」都只能mark为下限**，不能写进简历数字里。
+所以：**在有真实价格之前，任何「单次成功任务成本」都只能标记为下限**，不能写进简历数字里。
 
 ## 5. 复现步骤（从零到以上三份证据）
 
@@ -116,8 +121,8 @@ python scripts/compare_planners.py --cases eval_cases/case_matrix_v2.jsonl --sav
 | 参数准确率 | 100.0% | 98.8% | -1.2% |
 | 任务成功率 | 48.5% | **50.3%** | **+1.8%** |
 
-用量：prompt 20235 / completion 2427 tokens；平均延迟 **917.2 ms**；165/165 来自模型；
-行为变化 9 条；manifest_id `13ba753e02f4`。
+用量：prompt 20235 / completion 2427 tokens；平均延迟 **723.2 ms**；165/165 来自模型；
+行为变化 9 条；manifest_id `4d598346aff3`。
 
 **9 条差异全部落在规格灰区，没有一条是「模型明确犯错」**：
 
@@ -134,13 +139,56 @@ python scripts/compare_planners.py --cases eval_cases/case_matrix_v2.jsonl --sav
 「与基线的差异」，不是「正确性」。下一步必须先**冻结规格**，再重跑对比；
 在此之前任何 v1/v2 分数都不能解读为「谁更正确」。
 
-## 7. 尚未完成（挡住简历数字的部分）
+## 7. 版本锚定与运行方差（三次采样）
+
+### 7.1 锚定结果
+
+| 项 | 值 |
+| --- | --- |
+| 提交 | `31433a7` |
+| tag | `v0.1.0` |
+| `git describe --tags --dirty` | `v0.1.0`（**没有 `-dirty` 后缀**） |
+| `VersionManifest.code_version` | `31433a7` |
+| `VersionManifest.is_reproducible` | `true` |
+| 报告里的被测版本身份 | `extra = {"baseline_planner": "rules-v1", "candidate_planner": "llm-v2"}` |
+
+为了让「干净」这个状态能维持住，做了两件必要的事：
+
+1. **`reports/` 改成 `.gitignore`。** 报告每次运行都会重写（含时间戳），一旦入库，
+   工作区就永远是脏的，于是下一次运行的 `code_version` 会带 `-dirty`、
+   `is_reproducible` 恒为 `false`——版本对比永远锚不住。结论留在 `docs/`，原始报告交给 CI 当工件。
+2. **跑对比前先检查工作区。** `compare_planners.py` 在花钱调用模型**之前**就会告警：
+   非 git 仓库（`nogit`）或脏树（`xxx-dirty`）都意味着本次结果不能当锚点。
+
+### 7.2 同一个版本跑三次，分数不一样
+
+同一个 `manifest_id`（`4d598346aff3`）、同一份 prompt、`temperature=0`，165 条用例跑了三次：
+
+| 采样 | 意图准确率 | 与 v1 的差异条数 | 平均延迟 | completion tokens |
+| --- | --- | --- | --- | --- |
+| run1（锚定前） | 96.4% | 9 | 917.2 ms | 2427 |
+| run2 | 95.8% | **10** | 704.6 ms | 2445 |
+| run3 | 96.4% | 9 | 723.2 ms | 2427 |
+
+多出来的那一条是 `v2_err_unsupported_04`（「订单 ORD-1001 多少钱」）：run2 里 v2 判成
+`order_status` 跑去查单，run1/run3 判 `unknown` 拒绝。也就是 **9 条稳定差异 + 1 条偶发差异**。
+这是**供应商侧的采样随机性，不是我们代码的**。
+
+**结论（最容易踩的坑）**：
+
+- `manifest_id` 标识的是**版本**，不是**输出**。两次运行 manifest 完全相同，分数却差了 0.6 个百分点。
+  所以版本对比**必须报告重复执行的方差**，否则会把模型抖动当成版本退化去查半天。
+- 单次 165 条的噪声水平约为 ±1 条用例。要判断「v2 是否真的退化」，
+  每个版本必须重复跑 N 次取均值/多数票（已列入待办）。
+
+## 8. 尚未完成（挡住简历数字的部分）
 
 | 待办 | 卡在哪 |
 | --- | --- |
-| `git init` + 打 v1 基线 tag | 未执行；导致 `code_version=nogit`、`is_reproducible=false`，3 个版本回归对比无法锚定 |
+| ~~`git init` + 打基线 tag~~ | **已完成**：`31433a7` / tag `v0.1.0` / `is_reproducible=true` |
 | `deepseek-flash` / `deepseek-v4-pro` 真实单价 | 未知；不确认就只能报「成本下限」 |
 | 240 条用例矩阵 / 35 条安全样本 | 已有 **192 条**（normal 69 / boundary 48 / safety 38 / error 37），安全样本 38 条已达标；距 240 还差约 48 条 |
 | 规格冻结（`docs/agent-spec.md`） | **未做**：期望值目前来自 v1 实现，导致 9 条争议用例无法判定谁对 |
+| 重复执行 N 次取稳定值 | **未做**：单次运行有 ±1 条用例的采样噪声（见 7.2），需要 `--repeat N` 支持 |
 | Langfuse trace | 本机无 Docker，只能走 Cloud 或先退化为本地 JSON trace |
 | 并发压测（Locust/k6） | 未开始，需先决定 A 档（mock 压编排层）/ B 档（真模型） |
