@@ -94,7 +94,13 @@ def main() -> int:
     parser.add_argument("--limit", type=int, default=None, help="只跑前 N 条（控成本）")
     parser.add_argument("--cases", type=Path, nargs="+", default=DEFAULT_CASES)
     parser.add_argument("--save", type=Path, default=None, help="把完整报告写成 JSON")
-    parser.add_argument("--budget-usd", type=float, default=None, help="本次运行花费上限")
+    parser.add_argument("--budget", type=float, default=None, help="本次运行花费上限")
+    parser.add_argument(
+        "--period",
+        choices=("peak", "off_peak"),
+        default=None,
+        help="把计费时段钉死（默认按调用时刻的北京时间自动判定）",
+    )
     args = parser.parse_args()
 
     cases = load_cases(args.cases)
@@ -116,20 +122,22 @@ def main() -> int:
         )
 
     settings = load_settings(env_file=REPO_ROOT / ".env")
-    budget = args.budget_usd if args.budget_usd is not None else settings.budget_usd
+    budget = args.budget if args.budget is not None else settings.budget
     if not args.offline and not settings.llm_configured:
         print("未配置 DEEPSEEK_API_KEY：请写入项目根目录 .env，或加 --offline。")
         return 2
 
     ledger = UsageLedger(
-        limit_usd=budget,
+        limit=budget,
         pricing=build_pricing(settings.model_pricing()),
+        currency=settings.currency,
+        off_peak=None if args.period is None else args.period == "off_peak",
     )
     if budget is not None and resolve_price(settings.model, ledger.pricing) is None:
         print(
             f"无法启用预算熔断：模型 {settings.model!r} 没有价目，"
             "未计价的花费会让上限形同虚设。请在 .env 里用 AGENTEVALOPS_PRICING_JSON "
-            "声明单价，或去掉 --budget-usd 并接受成本只算下限。"
+            "声明单价，或去掉 --budget 并接受成本只算下限。"
         )
         return 2
     client = build_client(
@@ -186,6 +194,8 @@ def main() -> int:
             }
         )
 
+    v2_successes = sum(1 for row in rows if row["v2"]["task_success"])
+
     summary = {
         "cases": len(rows),
         "v1": {
@@ -198,7 +208,12 @@ def main() -> int:
         },
         "source_breakdown": sources,
         "avg_latency_ms": sum(latencies) / len(latencies),
-        "cost_usd": ledger.cost_usd,
+        "cost": ledger.cost,
+        "currency": ledger.currency,
+        "peak_calls": ledger.peak_calls,
+        "off_peak_calls": ledger.off_peak_calls,
+        "v2_successes": v2_successes,
+        "cost_per_success": (ledger.cost / v2_successes) if v2_successes else None,
         "cost_is_complete": ledger.cost_is_complete,
         "unpriced_models": sorted(ledger.unpriced_models),
         "tokens": {
@@ -241,7 +256,17 @@ def main() -> int:
             f"| {summary['deltas'][name]:+.1%} |"
         )
     print(f"| 平均延迟 | — | {summary['avg_latency_ms']:.0f} ms | — |")
-    print(f"| 花费 | $0 | ${summary['cost_usd']:.6f} | — |")
+    currency = summary["currency"]
+    print(f"| 花费 | {currency} 0 | {currency} {summary['cost']:.6f} | — |")
+    if summary["cost_per_success"] is not None:
+        print(
+            f"| 单次成功任务成本 | — | {currency} "
+            f"{summary['cost_per_success']:.6f} | — |"
+        )
+    print(
+        f"计费时段: 高峰 {summary['peak_calls']} 次 / "
+        f"空闲 {summary['off_peak_calls']} 次"
+    )
     print("规划来源:", summary["source_breakdown"])
     if summary["changed_cases"]:
         print(f"行为发生变化的用例（{len(summary['changed_cases'])}）:", ", ".join(summary["changed_cases"]))

@@ -272,8 +272,9 @@ python scripts/smoke_llm.py --save reports/smoke.json   # 顺带把证据落盘�
 | `AGENTEVALOPS_MAX_TOKENS` | `1024` | 单次最大输出 |
 | `AGENTEVALOPS_REQUEST_TIMEOUT_S` | `60` | 单次请求超时 |
 | `AGENTEVALOPS_MAX_RETRIES` | `2` | SDK 重试次数 |
-| `AGENTEVALOPS_BUDGET_USD` | 无 | 单次运行花费上限，达到或超过即熔断 |
-| `AGENTEVALOPS_PRICING_JSON` | 无 | 用单行 JSON 给本端点独有的模型 id 定价（见 6） |
+| `AGENTEVALOPS_BUDGET` | 无 | 单次运行花费上限（达到或超过即熔断）；单位与价目表货币一致 |
+| `AGENTEVALOPS_CURRENCY` | `CNY` | 价目表货币；内置价目是人民币元 |
+| `AGENTEVALOPS_PRICING_JSON` | 无 | 用单行 JSON 给**其它**模型定价（见 6） |
 
 ### 4. 模型客户端
 
@@ -301,19 +302,31 @@ v2 的三道护栏（全在 `planner.py`）：
 2. `order_id` 必须在用户原文里逐字出现，模型编造或格式非法 → 丢弃，改用正则抽取；
 3. 模型不可用 / 输出不是 JSON 对象 → 回退 v1，永远不会把脏数据交给工具层。
 
-### 6. 成本口径（重要）
+### 6. 成本口径（单位：人民币元）
 
-本端点会把 `deepseek-chat` 解析成 `deepseek-flash` 返回（别名），而该 id 的价格**未知**。
-项目不做价格猜测：未定价的模型按 0 记账但会被标记，报告里的成本一律是**下限**
-（`cost_is_complete=false`）。要拿到真实成本，先在 `.env` 里声明单价：
+内置价目来自供应商官方价目页，单位是**人民币元 / 百万 tokens**，以免把「元」当「美元」
+（那是 7 倍量级的错误）：
+
+| 模型 | 缓存未命中输入 | 缓存命中输入 | 输出 |
+| --- | --- | --- | --- |
+| `deepseek-flash` | 2 元 | 0.04 元 | 8 元 |
+| `deepseek-v4-pro` | 9 元 | 0.30 元 | 27 元 |
+
+上表是**高峰价**；空闲时段是高峰价的一半，由 `off_peak_multiplier` 自动换算
+（高峰 = 周一至周五 9:00-12:00 / 14:00-18:00，北京时间）。法定节假日日历没有建模，
+所以节假日会按高峰价计费 —— 误差方向是**多算**，成本报告不会因此虚低。
+
+`deepseek-chat` 会被本端点按别名解析成 `deepseek-flash` 计费，所以**默认表里没有它**；
+给未定价模型算钱会得到 `cost_is_complete=false`，报告里明确标注成本只算**下限**。
+设置 `AGENTEVALOPS_BUDGET` 后，未定价模型会直接报错，而不是安静地记 0 成本。
 
 ```bash
-# 必须写成单行 JSON；数字换成本端点的真实单价
-AGENTEVALOPS_PRICING_JSON={"deepseek-flash": {"input_per_1m_usd": 0.1, "output_per_1m_usd": 0.4}}
+# 只有接入别的模型时才需要（必须写成单行 JSON）
+AGENTEVALOPS_PRICING_JSON={"some-other-model": {"input_per_1m": 1.0, "output_per_1m": 2.0}}
 ```
 
-输入价支持分开声明缓存命中价：`"cache_hit_input_per_1m_usd": 0.02`。
-一旦设置了 `AGENTEVALOPS_BUDGET_USD`，未定价模型会直接报错，而不是安静地记 0 成本。
+价目表把货币写进每个条目（`"currency"`），账本遇到货币不一致会当场报错：
+元与美元混着加总出来的总额没有任何意义。
 
 ### 7. 版本锚定与运行产物
 

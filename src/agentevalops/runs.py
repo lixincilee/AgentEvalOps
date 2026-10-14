@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from .llm.costing import DEFAULT_CURRENCY
 from .versioning import VersionManifest
 
 # L1 rules / L2 retrieval / L3 ragas / L4 judge / L5 red-team / L6 performance
@@ -33,7 +34,7 @@ class CaseResult:
     category: str = "normal"
     failures: tuple[str, ...] = ()
     latency_ms: float = 0.0
-    cost_usd: float = 0.0
+    cost: float = 0.0
     total_tokens: int = 0
     trace_id: str | None = None
 
@@ -45,7 +46,7 @@ class CaseResult:
             "category": self.category,
             "failures": list(self.failures),
             "latency_ms": self.latency_ms,
-            "cost_usd": self.cost_usd,
+            "cost": self.cost,
             "total_tokens": self.total_tokens,
             "trace_id": self.trace_id,
         }
@@ -59,7 +60,7 @@ class CaseResult:
             category=payload.get("category", "normal"),
             failures=tuple(payload.get("failures", ())),
             latency_ms=float(payload.get("latency_ms", 0.0)),
-            cost_usd=float(payload.get("cost_usd", 0.0)),
+            cost=float(payload.get("cost", 0.0)),
             total_tokens=int(payload.get("total_tokens", 0)),
             trace_id=payload.get("trace_id"),
         )
@@ -80,28 +81,32 @@ class RunMetrics:
     passed: int
     failed: int
     pass_rate: float
-    cost_usd: float
+    cost: float
     total_tokens: int
-    cost_per_success_usd: float | None
+    cost_per_success: float | None
     by_layer: dict[str, float]
     by_category: dict[str, float]
+    currency: str = DEFAULT_CURRENCY
 
     @classmethod
-    def from_results(cls, results: Iterable[CaseResult]) -> "RunMetrics":
+    def from_results(
+        cls, results: Iterable[CaseResult], *, currency: str = DEFAULT_CURRENCY
+    ) -> "RunMetrics":
         materialised = list(results)
         total = len(materialised)
         passed = sum(1 for result in materialised if result.passed)
-        cost = sum(result.cost_usd for result in materialised)
+        cost = sum(result.cost for result in materialised)
         return cls(
             total=total,
             passed=passed,
             failed=total - passed,
             pass_rate=(passed / total) if total else 0.0,
-            cost_usd=cost,
+            cost=cost,
             total_tokens=sum(result.total_tokens for result in materialised),
-            cost_per_success_usd=(cost / passed) if passed else None,
+            cost_per_success=(cost / passed) if passed else None,
             by_layer=_pass_rate_by(materialised, "layer"),
             by_category=_pass_rate_by(materialised, "category"),
+            currency=currency,
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -110,9 +115,10 @@ class RunMetrics:
             "passed": self.passed,
             "failed": self.failed,
             "pass_rate": self.pass_rate,
-            "cost_usd": self.cost_usd,
+            "cost": self.cost,
             "total_tokens": self.total_tokens,
-            "cost_per_success_usd": self.cost_per_success_usd,
+            "cost_per_success": self.cost_per_success,
+            "currency": self.currency,
             "by_layer": dict(self.by_layer),
             "by_category": dict(self.by_category),
         }

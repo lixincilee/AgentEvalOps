@@ -18,10 +18,12 @@ from .base import (
     approx_tokens,
 )
 from .costing import (
+    DEFAULT_CURRENCY,
     DEFAULT_PRICING,
     MeteredLLMClient,
     ModelPrice,
     UsageLedger,
+    billing_period,
     build_pricing,
     estimate_cost,
     pricing_from_json,
@@ -32,6 +34,7 @@ from .fake import ScriptExhaustedError, ScriptedLLMClient
 __all__ = [
     "BudgetExceededError",
     "ChatMessage",
+    "DEFAULT_CURRENCY",
     "DEFAULT_PRICING",
     "LLMClient",
     "LLMError",
@@ -46,6 +49,7 @@ __all__ = [
     "Usage",
     "UsageLedger",
     "approx_tokens",
+    "billing_period",
     "build_client",
     "build_pricing",
     "estimate_cost",
@@ -87,8 +91,10 @@ def build_client(
             max_retries=resolved.max_retries,
         )
     overrides = resolved.model_pricing()
-    if ledger is None and (resolved.budget_usd is not None or overrides):
+    if ledger is None and (resolved.budget is not None or overrides):
         ledger = UsageLedger(
-            limit_usd=resolved.budget_usd, pricing=build_pricing(overrides)
+            limit=resolved.budget,
+            pricing=build_pricing(overrides),
+            currency=resolved.currency,
         )
     return MeteredLLMClient(base, ledger) if ledger is not None else base

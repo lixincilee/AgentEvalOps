@@ -49,8 +49,9 @@ def main() -> int:
             return 2
         print(f"model={settings.model}  base_url={settings.base_url}")
         ledger = UsageLedger(
-            limit_usd=settings.budget_usd,
+            limit=settings.budget,
             pricing=build_pricing(settings.model_pricing()),
+            currency=settings.currency,
         )
         client = build_client(settings, ledger=ledger)
 

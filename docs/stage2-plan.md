@@ -52,8 +52,8 @@ is_reproducible 明确回答「这次结果可不可复现」——脏树或非 
 ### 3.3 运行数据模型
 
 Run = run_id + 版本清单 + 起止时间 + 逐条 CaseResult，聚合出 RunMetrics：
-pass_rate、by_layer、by_category、total_tokens、cost_usd、
-cost_per_success_usd（单次成功任务成本）。Run.save/load 落盘为 UTF-8 JSON。
+pass_rate、by_layer、by_category、total_tokens、cost、
+cost_per_success（单次成功任务成本）。Run.save/load 落盘为 UTF-8 JSON。
 
 ## 4. 判分分层
 
@@ -104,7 +104,7 @@ cost_per_success_usd（单次成功任务成本）。Run.save/load 落盘为 UTF
 直接压测接真 LLM 的 Agent，量到的主要是**供应商限流**，不是你的代码。分两档：
 
 - A 档（编排层）：mock 掉模型与检索，高并发压你的路由/状态机 —— 这是能优化的 P95。
-- B 档（真实端到端）：5~10 VU 真模型，只报真实延迟与 cost_per_success_usd。
+- B 档（真实端到端）：5~10 VU 真模型，只报真实延迟与 cost_per_success。
 
 报告中必须写明 P95 属于哪一档，否则经不起追问。
 
@@ -112,7 +112,7 @@ cost_per_success_usd（单次成功任务成本）。Run.save/load 落盘为 UTF
 
 - L1 / L2 硬断言：要求 **100% 通过**，否则阻断。
 - L3 / L4 软指标：用**通过率阈值**（如不低于 90%）+ 重复 N 次取多数，不追求满分。
-- 单次运行设 token 预算上限（UsageLedger.limit_usd），超限直接失败。
+- 单次运行设花费预算上限（UsageLedger.limit），超限直接失败。
 - PR 只跑 50 条 golden set；全量 240 条 nightly 跑。
 
 ## 9. 里程碑
@@ -136,14 +136,19 @@ cost_per_success_usd（单次成功任务成本）。Run.save/load 落盘为 UTF
 
 ## 11. 已知限制
 
-- 价目表 DEFAULT_PRICING 是**占位值**，只覆盖 `deepseek-chat` / `deepseek-reasoner`；本端点实际返回的
-  `deepseek-flash` / `deepseek-v4-pro` 价格**未知**，不得臆造，需用 `AGENTEVALOPS_PRICING_JSON` 显式声明。
-- 输入价**已区分缓存命中**（`cache_hit_input_per_1m_usd`），未声明该字段时回落为普通输入价；
+- 价目表 DEFAULT_PRICING 是**真实价目**（人民币元 / 百万 tokens，高峰价）：`deepseek-flash`
+  未命中输入 2 元 / 命中输入 0.04 元 / 输出 8 元，`deepseek-v4-pro` 为 9 / 0.30 / 27 元；
+  空闲时段为高峰价的一半，由 `off_peak_multiplier` 换算（高峰 = 周一至周五 9-12 点、14-18 点）。
+- 单位是**元**而不是美元：字段名一律不带 `_usd`，货币由 `ModelPrice.currency` 声明，
+  账本遇到货币不一致会直接报错（元与美元混着加总出来的总额没有意义）。
+- 输入价**已区分缓存命中**（`cache_hit_input_per_1m`），未声明该字段时回落为普通输入价；
   且上报的命中 token 数会被截断到不超过 `prompt_tokens`，避免「缓存命中比输入还多」造成的负计费。
+- 法定节假日日历**没有建模**：节假日会按高峰价计费，误差方向是「多算」而不是「少算」，
+  成本报告不会因此虚低。
 - 未配置价目的模型默认记 0 成本但**会被标记**（`unpriced_models` 非空 ⇒ `cost_is_complete=False`），
-  报告里这类成本只能算**下限**；一旦设置了预算上限（`limit_usd`）或 `strict_pricing=True`，
+  报告里这类成本只能算**下限**；一旦设置了预算上限（`limit`）或 `strict_pricing=True`，
   则改为直接抛 UnknownModelPriceError，避免上限形同虚设。
 - 预算熔断是**事后**检查（调用完成后才知道花费），因此可能略微超出上限；判定为「达到或超过上限」即熔断。
-- 模型名先按最长前缀匹配已知价目（`deepseek-chat-v3-0324` 会命中 `deepseek-chat`）。
+- 模型名先按最长前缀匹配已知价目（`deepseek-flash-v4-1` 会命中 `deepseek-flash`）。
 - ScriptedLLMClient 的 token 数是估算值（约 4 字符 1 token），只能用于离线跑通链路，不能当作真实用量。
 - 尚未接入真实检索，retrieval_config_hash 目前多为 None。

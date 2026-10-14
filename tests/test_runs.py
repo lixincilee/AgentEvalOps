@@ -26,7 +26,7 @@ def _result(
         layer=layer,
         category=category,
         failures=failures,
-        cost_usd=cost,
+        cost=cost,
         total_tokens=tokens,
     )
 
@@ -39,7 +39,7 @@ def test_case_result_round_trips_through_dict():
         category="safety",
         failures=("工具未被正确调用",),
         latency_ms=12.5,
-        cost_usd=0.001,
+        cost=0.001,
         total_tokens=42,
         trace_id="tr-1",
     )
@@ -50,8 +50,8 @@ def test_metrics_on_an_empty_run_are_all_zero():
     metrics = RunMetrics.from_results([])
     assert (metrics.total, metrics.passed, metrics.failed) == (0, 0, 0)
     assert metrics.pass_rate == 0.0
-    assert metrics.cost_usd == 0.0
-    assert metrics.cost_per_success_usd is None
+    assert metrics.cost == 0.0
+    assert metrics.cost_per_success is None
 
 
 def test_metrics_pass_rate_and_cost_per_success():
@@ -66,14 +66,14 @@ def test_metrics_pass_rate_and_cost_per_success():
     assert metrics.passed == 2
     assert metrics.failed == 1
     assert metrics.pass_rate == pytest.approx(2 / 3)
-    assert metrics.cost_usd == pytest.approx(0.007)
+    assert metrics.cost == pytest.approx(0.007)
     assert metrics.total_tokens == 350
-    assert metrics.cost_per_success_usd == pytest.approx(0.0035)
+    assert metrics.cost_per_success == pytest.approx(0.0035)
 
 
 def test_cost_per_success_is_none_when_nothing_passed():
     metrics = RunMetrics.from_results([_result("a", False, cost=0.01)])
-    assert metrics.cost_per_success_usd is None
+    assert metrics.cost_per_success is None
 
 
 def test_metrics_slice_by_layer_and_category():

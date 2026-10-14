@@ -79,7 +79,7 @@ def main() -> int:
     print(f"model      : {settings.model}")
     print(f"base_url   : {settings.base_url}")
     print(f"temperature: {settings.temperature}")
-    print(f"budget_usd : {settings.budget_usd}")
+    print(f"budget     : {settings.budget} {settings.currency}")
     print(f"可真实调用  : {settings.llm_configured}")
     print("-" * 60)
 

@@ -14,7 +14,7 @@
 | 事实 | 观测值 | 影响 |
 | --- | --- | --- |
 | 请求模型 vs 实际返回 | 请求 `deepseek-chat` → 返回 `deepseek-flash` | 供应商会做别名解析，所以 trace 必须同时记 `requested_model` 与 `model` |
-| 可用模型名 | `deepseek-flash`、`deepseek-v4-pro` | **不在** DeepSeek 官方价目表里，价格未知，禁止臆造 |
+| 可用模型名 | `deepseek-flash`、`deepseek-v4-pro` | 官方价目页已确认：以**人民币元**计价，空闲时段为高峰价的一半 |
 | 首次调用延迟 | 13.4 s（冷启动） | 压测前必须预热，否则 P95 全是冷启动噪声 |
 | 稳定调用延迟 | 0.9 ~ 3.1 s（单条，串行） | 这就是 B 档真模型压测的基线量级 |
 
@@ -90,8 +90,10 @@ manifest_id `f6ca6a5004bd`。
 
 | 场景 | 行为 |
 | --- | --- |
-| 只有 `AGENTEVALOPS_PRICING_JSON` 未声明该模型 | 记 0 成本，`cost_is_complete=false`，报告里声明「成本是下限」 |
-| 设置了 `AGENTEVALOPS_BUDGET_USD` | **直接报错**（`UnknownModelPriceError`），因为无价目时预算上限形同虚设 |
+| 模型有内置价目（`deepseek-flash` / `deepseek-v4-pro`） | 直接算出**真实成本**，`cost_is_complete=true` |
+| 模型无价目 | 记 0 成本但标记 `cost_is_complete=false`，报告里声明「成本只算下限」 |
+| 设置了 `AGENTEVALOPS_BUDGET` | 无价目时**直接报错**（`UnknownModelPriceError`），因为上限形同虚设 |
+| 价目表里混了美元条目 | 账本直接报错，拒绝把元和美元加总 |
 
 所以：**在有真实价格之前，任何「单次成功任务成本」都只能标记为下限**，不能写进简历数字里。
 

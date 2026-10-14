@@ -22,7 +22,7 @@ def test_defaults_when_nothing_is_configured(tmp_path):
     assert settings.model == DEFAULT_MODEL
     assert settings.temperature == 0.0
     assert settings.max_tokens == 1024
-    assert settings.budget_usd is None
+    assert settings.budget is None
     assert settings.llm_configured is False
 
 
@@ -77,14 +77,14 @@ def test_numeric_settings_are_parsed(tmp_path):
             "AGENTEVALOPS_MAX_TOKENS": "512",
             "AGENTEVALOPS_REQUEST_TIMEOUT_S": "30",
             "AGENTEVALOPS_MAX_RETRIES": "0",
-            "AGENTEVALOPS_BUDGET_USD": "1.5",
+            "AGENTEVALOPS_BUDGET": "1.5",
         },
     )
     assert settings.temperature == 0.3
     assert settings.max_tokens == 512
     assert settings.request_timeout_s == 30.0
     assert settings.max_retries == 0
-    assert settings.budget_usd == 1.5
+    assert settings.budget == 1.5
 
 
 @pytest.mark.parametrize("value", ["abc", "0.1.2", "1,5"])
@@ -147,8 +147,8 @@ def test_pricing_json_is_read_from_the_environment():
         env_file=None,
         environ={
             "AGENTEVALOPS_PRICING_JSON": (
-                '{"deepseek-flash": {"input_per_1m_usd": 0.1,'
-                ' "output_per_1m_usd": 0.4}}'
+                '{"deepseek-flash": {"input_per_1m": 0.1,'
+                ' "output_per_1m": 0.4}}'
             )
         },
     )

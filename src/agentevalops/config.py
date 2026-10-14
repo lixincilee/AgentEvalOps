@@ -12,7 +12,7 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 
 from .llm.base import MissingCredentialError
-from .llm.costing import ModelPrice, pricing_from_json
+from .llm.costing import DEFAULT_CURRENCY, ModelPrice, pricing_from_json
 
 DEFAULT_ENV_FILE = Path(".env")
 DEFAULT_BASE_URL = "https://api.deepseek.com"
@@ -89,7 +89,8 @@ class Settings:
     max_tokens: int = 1024
     request_timeout_s: float = 60.0
     max_retries: int = 2
-    budget_usd: float | None = None
+    budget: float | None = None
+    currency: str = DEFAULT_CURRENCY
     pricing_json: str | None = None
 
     @property
@@ -112,7 +113,9 @@ class Settings:
         if not self.pricing_json:
             return {}
         try:
-            return pricing_from_json(self.pricing_json)
+            return pricing_from_json(
+                self.pricing_json, default_currency=self.currency
+            )
         except ValueError as exc:
             raise ConfigurationError(str(exc)) from exc
 
@@ -138,7 +141,7 @@ def load_settings(
         "AGENTEVALOPS_REQUEST_TIMEOUT_S", lookup("AGENTEVALOPS_REQUEST_TIMEOUT_S")
     )
     retries = _as_int("AGENTEVALOPS_MAX_RETRIES", lookup("AGENTEVALOPS_MAX_RETRIES"))
-    budget = _as_float("AGENTEVALOPS_BUDGET_USD", lookup("AGENTEVALOPS_BUDGET_USD"))
+    budget = _as_float("AGENTEVALOPS_BUDGET", lookup("AGENTEVALOPS_BUDGET"))
 
     return replace(
         defaults,
@@ -149,6 +152,7 @@ def load_settings(
         max_tokens=defaults.max_tokens if max_tokens is None else max_tokens,
         request_timeout_s=defaults.request_timeout_s if timeout is None else timeout,
         max_retries=defaults.max_retries if retries is None else retries,
-        budget_usd=budget,
+        budget=budget,
+        currency=lookup("AGENTEVALOPS_CURRENCY") or defaults.currency,
         pricing_json=lookup("AGENTEVALOPS_PRICING_JSON"),
     )
