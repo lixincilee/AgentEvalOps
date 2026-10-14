@@ -29,7 +29,7 @@ from agentevalops.llm import (  # noqa: E402
     resolve_price,
 )
 from agentevalops.planner import PROMPT_VERSION, SYSTEM_PROMPT, LLMPlanner, RulePlanner  # noqa: E402
-from agentevalops.versioning import build_manifest, hash_cases  # noqa: E402
+from agentevalops.versioning import build_manifest, git_code_version, hash_cases  # noqa: E402
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CASES = [REPO_ROOT / "eval_cases" / "support_cases.jsonl"]
@@ -103,6 +103,17 @@ def main() -> int:
     if not cases:
         print("没有用例可跑。")
         return 2
+
+    # A dirty or missing revision makes the report unreproducible: the numbers would be
+    # attached to a code state that nobody can check out again. Say so before spending money.
+    code_version = git_code_version(REPO_ROOT)
+    if code_version == "nogit":
+        print("警告: 当前目录不是 git 仓库，报告里的 code_version=nogit、is_reproducible=false。")
+    elif code_version.endswith("-dirty"):
+        print(
+            f"警告: 工作区有未提交改动（code_version={code_version}），"
+            "本次结果 is_reproducible=false，不能作为版本对比的锚点。"
+        )
 
     settings = load_settings(env_file=REPO_ROOT / ".env")
     budget = args.budget_usd if args.budget_usd is not None else settings.budget_usd
