@@ -1,0 +1,27 @@
+[
+  {
+    "order_id": "ORD-1001",
+    "customer_id": "CUST-001",
+    "status": "shipped",
+    "tracking_number": "SF1234567890"
+  },
+  {
+    "order_id": "ORD-1002",
+    "customer_id": "CUST-001",
+    "status": "delivered",
+    "tracking_number": "YT9876543210"
+  },
+  {
+    "order_id": "ORD-1003",
+    "customer_id": "CUST-001",
+    "status": "cancelled",
+    "tracking_number": null
+  },
+  {
+    "order_id": "ORD-2001",
+    "customer_id": "CUST-002",
+    "status": "processing",
+    "tracking_number": null
+  }
+]
+

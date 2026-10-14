@@ -1,0 +1,5 @@
+# 跨平台换行统一：仓库内存 LF，CI（Linux）与本地（Windows）行为一致。
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.ico binary
