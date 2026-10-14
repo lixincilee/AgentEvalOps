@@ -1,6 +1,10 @@
 __pycache__/
 .env
 runs/
+# 评测报告是运行产物：每次跑都会重新生成（内容含时间戳），入库必然弄脏工作区，
+# 使下一次运行的 VersionManifest 变成 -dirty、is_reproducible=false。
+# 结论与数字汇总在 docs/ 下，原始报告交给 CI 当工件上传。
+reports/
 *.py[cod]
 *.egg-info/
 .pytest_cache/
