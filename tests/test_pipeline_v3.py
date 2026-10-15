@@ -448,6 +448,31 @@ def test_the_llm_arm_falls_back_to_the_rules_without_changing_the_shape():
     assert agent.last_plan.source == SOURCE_FALLBACK
 
 
+def test_the_v3_fallback_speaks_the_v3_vocabulary():
+    """降级路径也是版本行为的一部分：它必须能表达 policy_qa。
+
+    v0.5.0 的真实三方对比抓到的真 bug：v3 当时用 v1 的 RulePlanner 兜底，而那条
+    路径的意图词表里没有 policy_qa。于是「模型答不出 JSON」这一个故障就变成了
+    「政策问答被判成退款动作」，还去调了写操作 apply_refund（VALIDATION_ERROR）。
+    主矩阵上没有政策用例，所以它是靠检索/多轮那一批才暴露的。
+    """
+    planner = scripted(**{POLICY_QUESTION: "抱歉，我不太确定"})
+    assert isinstance(planner.fallback, RulePlannerV3)
+    agent = V3Agent(OrderStore(), planner=planner)
+
+    response = agent.handle(POLICY_QUESTION, customer_id="CUST-001")
+
+    assert agent.last_plan.source == SOURCE_FALLBACK
+    assert response.intent is Intent.POLICY_QA
+    assert response.state is AgentState.TOOL_COMPLETED
+    assert response.audit.tool_name == TOOL_SEARCH
+    assert response.audit.arguments == {
+        "query": POLICY_QUESTION,
+        "top_k": DEFAULT_TOP_K,
+    }
+    assert agent.last_nodes == list(V3Agent.NODE_ORDER)
+
+
 def test_the_session_hint_appears_only_after_a_slot_exists():
     planner = scripted(
         **{

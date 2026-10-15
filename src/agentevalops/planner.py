@@ -230,20 +230,24 @@ def ground_order_id(value: Any, message: str) -> tuple[str | None, str | None]:
 class LLMPlanner:
     """v2: ask the model, but never let a bad answer reach the tools."""
 
-    #: 这三个类属性就是版本对比里「Prompt」这一列的全部内容。子类只许覆写它们。
+    #: 这四个类属性就是版本对比里「Prompt + 降级」这一列的全部内容。子类只许覆写它们。
     prompt_version = PROMPT_VERSION
     system_prompt_template = SYSTEM_PROMPT
     intent_aliases: dict[str, Intent] = INTENT_ALIASES
+    #: 模型输出不可用时的兜底规划器。它必须能表达**本版本自己的**意图词表：
+    #: 用 v1 的 RulePlanner 给 v3 兜底，等于「模型答不出 JSON」直接变成
+    #: 「政策问答被判成退款动作」并去调 apply_refund——v0.5.0 的真实对比正是这么暴露的。
+    fallback_planner: type[Planner] = RulePlanner
 
     def __init__(
         self,
         client: LLMClient,
         *,
-        fallback: RulePlanner | None = None,
+        fallback: Planner | None = None,
         max_tokens: int = 128,
     ) -> None:
         self.client = client
-        self.fallback = fallback or RulePlanner()
+        self.fallback = fallback if fallback is not None else self.fallback_planner()
         self.max_tokens = max_tokens
         self.last_response: LLMResponse | None = None
 
@@ -292,10 +296,16 @@ class LLMPlanner:
 class GroundedLLMPlanner(LLMPlanner):
     """v3: v2 的行为，加一个能表达 policy_qa 的 prompt。
 
-    只覆写三个类属性。兜底、槽位接地、审计字段、失败降级全部沿用 v2——这样
-    v2 与 v3 的分差只可能来自「多了一个意图」加「检索链路」，而不是实现漂移。
+    覆写四个类属性：prompt、别名表，以及兜底规划器。槽位接地、审计字段、
+    失败降级路径全部沿用 v2——这样 v2 与 v3 的分差只可能来自「多了一个意图」
+    加「检索链路」，而不是实现漂移。
+
+    兜底必须换成 RulePlannerV3，这一点曾经是错的：v1 的规则臂词表里没有
+    policy_qa，于是模型一答不出 JSON，政策问答就退化成退款动作。降级路径也是
+    版本行为的一部分，它得说同一个版本的语言。
     """
 
     prompt_version = PROMPT_VERSION_V3
     system_prompt_template = SYSTEM_PROMPT_V3
     intent_aliases = INTENT_ALIASES_V3
+    fallback_planner = RulePlannerV3
