@@ -10,6 +10,22 @@ from .planner import Plan, Planner, RulePlanner, classify_intent, extract_order_
 from .tools import HumanTicketTool, OrderStatusTool, RefundTool
 
 
+def pre_plan_rejection(message: Any, customer_id: Any) -> str | None:
+    """Return why a request never reaches the planner, or ``None`` when it does.
+
+    A blank message or a missing customer id is *request* validation: there is no intent
+    to infer and no order to look up, so spending a model call on it is pure waste.
+    The comparison harness calls this same function to keep its scripted answers aligned
+    with the calls the agent actually makes; if the two ever disagree, every later
+    scripted answer shifts by one and the zero-cost self-check starts reporting fiction.
+    """
+    if not isinstance(message, str) or not message.strip():
+        return "message is required"
+    if not isinstance(customer_id, str) or not customer_id.strip():
+        return "customer_id is required"
+    return None
+
+
 class EcommerceSupportAgent:
     """Validates the request, plans it, then dispatches exactly one tool.
 
@@ -38,12 +54,13 @@ class EcommerceSupportAgent:
         return extract_order_id(message)
 
     def handle(self, message: str, *, customer_id: str) -> AgentResponse:
-        if not isinstance(message, str) or not message.strip():
-            return self._validation_error(Intent.UNKNOWN, None, {}, "message is required")
-        if not isinstance(customer_id, str) or not customer_id.strip():
-            return self._validation_error(
-                Intent.UNKNOWN, None, {}, "customer_id is required"
-            )
+        # Clear the previous plan first. A request rejected before planning must never be
+        # attributed to the previous call's decision: that silently mislabels traces and
+        # made the 165-case report claim source=llm for cases that made no model call.
+        self.last_plan = None
+        rejection = pre_plan_rejection(message, customer_id)
+        if rejection is not None:
+            return self._validation_error(Intent.UNKNOWN, None, {}, rejection)
 
         plan = self.planner.plan(message)
         self.last_plan = plan

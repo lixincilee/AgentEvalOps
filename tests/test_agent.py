@@ -6,7 +6,7 @@ import json
 
 import pytest
 
-from agentevalops.agent import EcommerceSupportAgent
+from agentevalops.agent import EcommerceSupportAgent, pre_plan_rejection
 from agentevalops.models import AgentState, ErrorCode, Intent
 
 
@@ -186,3 +186,39 @@ class TestIntentClassification:
     )
     def test_extract_order_id(self, message, expected):
         assert EcommerceSupportAgent.extract_order_id(message) == expected
+
+
+class TestRejectedRequests:
+    """请求级校验发生在规划之前，因此不能被记成上一轮的规划结果。"""
+
+    @pytest.mark.parametrize(
+        ("message", "customer_id", "expected_reason"),
+        [
+            ("   ", "CUST-001", "message is required"),
+            ("\t\t", "CUST-001", "message is required"),
+            ("订单 ORD-1001 状态", "", "customer_id is required"),
+        ],
+    )
+    def test_pre_plan_rejection_names_the_missing_field(
+        self, message, customer_id, expected_reason
+    ):
+        assert pre_plan_rejection(message, customer_id) == expected_reason
+
+    def test_a_plannable_request_is_not_rejected(self):
+        assert pre_plan_rejection("订单 ORD-1001 状态", "CUST-001") is None
+
+    def test_a_rejected_request_never_reuses_the_previous_plan(self, agent):
+        agent.handle("查询订单 ORD-1001 的状态", customer_id="CUST-001")
+        assert agent.last_plan is not None
+
+        response = agent.handle("      ", customer_id="CUST-001")
+
+        assert response.state is AgentState.VALIDATION_FAILED
+        assert response.audit.tool_name is None
+        assert agent.last_plan is None
+
+    def test_a_blank_customer_id_also_clears_the_plan(self, agent):
+        agent.handle("查询订单 ORD-1001 的状态", customer_id="CUST-001")
+        response = agent.handle("查询订单 ORD-1002 的状态", customer_id="  ")
+        assert response.audit.error["code"] == ErrorCode.VALIDATION_ERROR
+        assert agent.last_plan is None

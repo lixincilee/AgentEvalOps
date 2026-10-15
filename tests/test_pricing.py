@@ -150,3 +150,27 @@ def test_pricing_json_inherits_the_configured_currency():
         '{"m": {"input_per_1m": 1, "output_per_1m": 1}}', default_currency="USD"
     )
     assert table["m"].currency == "USD"
+
+
+@pytest.mark.parametrize("pinned_period", [None, True, False])
+def test_the_ledger_call_counters_always_reconcile(pinned_period):
+    """每次调用都恰好落进「高峰」或「空闲」中的一档，不会两边都不记。
+
+    这个不变式曾经对不上：报告里 165 条用例只统计出 159 次调用，原因是 6 条用例在
+    规划前就被拒绝、根本没发起调用，而报告没有说明这一点。
+    """
+    ledger = UsageLedger(pricing=build_pricing(), off_peak=pinned_period)
+    for _ in range(7):
+        ledger.record("deepseek-flash", Usage(1_000, 100))
+    assert ledger.calls == 7
+    assert ledger.peak_calls + ledger.off_peak_calls == ledger.calls
+
+
+def test_unpriced_calls_are_still_counted_as_calls():
+    """算不出成本不等于没发生：漏计调用会让「调用次数」这类口径直接失真。"""
+    ledger = UsageLedger(pricing={})
+    ledger.record("mystery-model", Usage(10, 5))
+    assert ledger.calls == 1
+    assert ledger.peak_calls + ledger.off_peak_calls == 1
+    assert ledger.cost == 0.0
+    assert ledger.cost_is_complete is False
