@@ -17,6 +17,10 @@ dependencies = ["langgraph>=1.0"]
 [project.optional-dependencies]
 dev = ["pytest>=8.0"]
 llm = ["openai>=1.0"]
+# M4 的压测链路：HTTP 服务（api）+ Locust 负载生成器（perf）。
+# 它们是可选依赖，因为单元测试与故障用例全都不需要它们：装不上也不该让主干测试变红。
+api = ["fastapi>=0.110", "uvicorn>=0.27"]
+perf = ["locust>=2.20"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

@@ -29,7 +29,7 @@ AgentEvalOps/
 ├── .gitignore
 ├── .env.example                       # API Key 等环境变量模板
 ├── docs/
-│   ├── agent-spec.md                  # 行为规格 v1.2（冻结）：意图粒度 / 槽位匹配 / 检索依据 / 多轮会话 / 判分口径
+│   ├── agent-spec.md                  # 行为规格 v1.3（冻结）：… / 多轮会话 / 判分口径 / 故障注入口径（§2.11 §7.3）
 │   ├── stage2-plan.md                 # 阶段二施工图与里程碑
 │   ├── stage2-evidence.md             # 阶段二实测证据与复现命令
 │   └── bad-cases-v2.md                # v2 的 9 处差异逐条归类与根因
@@ -38,14 +38,21 @@ AgentEvalOps/
 │   ├── smoke_llm.py                   # LLM 连通性烟囱测试（--save 可落盘证据）
 │   ├── compare_planners.py            # v1 规则版 vs v2 模型版 对比运行器（二元）
 │   ├── compare_versions.py            # v1 / v2 / v3 三方对比运行器（M3 新增）
-│   └── gen_case_matrix.py             # 用例矩阵脚手架（只报告偏差，不再定义期望值）
+│   ├── gen_case_matrix.py             # 用例矩阵脚手架（只报告偏差，不再定义期望值）
+│   ├── run_faults.py                  # M4：跑故障注入用例集并落盘报告
+│   └── load_test.py                   # M4：起服务 + Locust 压测 + P95/成本汇总 + CI 门禁
 ├── reports/                           # 运行产物（已 gitignore）：评测报告 JSON，可当 CI 工件
+├── perf/                              # M4：压测客户端（服务端本体在 src/agentevalops/service.py）
+│   ├── latency_client.py              # 建模用的假模型：只睡 60ms + 固定 token，不发网络请求
+│   ├── locustfile.py                  # Locust 用户画像与期望表（什么算「任务成功」的唯一来源）
+│   └── README.md                      # 压测口径与已知边界
 ├── eval_cases/
 │   ├── support_cases.jsonl            # 阶段一场景集（19 条，v1 亲和的基线集）
 │   ├── v1_gaps_cases.jsonl            # v1 已知漏判集（8 条，用来检验评测集区分度）
 │   ├── case_matrix_v2.jsonl           # 阶段二用例矩阵（213 条；主矩阵三份合计 240 条）
 │   ├── rag_cases.jsonl                # M3 检索层用例（字段契约见规格 §7.1）
-│   └── multiturn_cases.jsonl          # M3 多轮会话用例（字段契约见规格 §7.2）
+│   ├── multiturn_cases.jsonl          # M3 多轮会话用例（字段契约见规格 §7.2）
+│   └── fault_cases.jsonl              # M4 故障注入用例（25 条：超时 / 5xx / 空检索 / 限流）
 ├── src/
 │   └── agentevalops/                  # 生产代码（src-layout，强制安装后再运行）
 │       ├── __init__.py                # 对外公开的 API 汇总
@@ -61,6 +68,8 @@ AgentEvalOps/
 │       ├── versioning.py              # 阶段二：VersionManifest 版本指纹
 │       ├── runs.py                    # 阶段二：Run / CaseResult / RunMetrics
 │       ├── spec.py                    # 行为规格版本 + 基线偏差清单（规格冻结）
+│       ├── faults.py                  # M4：故障注入脚手架（生产路径不含任何开关）
+│       ├── service.py                 # M4：把 v3 链路包成 HTTP 门面（/chat /healthz /metrics）
 │       ├── llm/                       # 阶段二：base / deepseek / fake / costing
 │       └── data/
 │           ├── __init__.py
@@ -91,7 +100,10 @@ AgentEvalOps/
     ├── test_pipeline_v3.py            # M3 v3 编排：节点顺序、检索、多轮、LLM 臂
     ├── test_rag_cases.py              # M3 数据驱动：回放 rag_cases.jsonl
     ├── test_multiturn_cases.py        # M3 数据驱动：回放 multiturn_cases.jsonl
-    └── test_version_comparison.py     # M3 v1/v2/v3 三方对比器（离线、零成本）
+    ├── test_version_comparison.py     # M3 v1/v2/v3 三方对比器（离线、零成本）
+    ├── test_faults.py                 # M4 故障注入：注入真的生效、口径与规格条款一致
+    ├── test_fault_cases.py            # M4 数据驱动：回放 fault_cases.jsonl
+    └── test_service.py                # M4 HTTP 契约：状态码、审计结构、/metrics 记账
 ```
 
 ## 快速开始
@@ -469,6 +481,79 @@ python scripts/compare_versions.py --llm --cases eval_cases/case_matrix_v2.jsonl
 python scripts/compare_versions.py --llm --yes --budget 2.0 --cases eval_cases/case_matrix_v2.jsonl
 ```
 
+## 阶段二 M4：故障注入 + 并发压测
+
+前三个里程碑回答「正常路径对不对」，M4 回答两个新问题：**坏的时候会不会更坏**，
+以及**并发上来以后还好不好**。前者用故障注入用例，后者用 Locust 压测。
+
+### 故障注入：25 条用例
+
+故障注入是**测试脚手架**，生产代码路径里没有任何开关（SPEC-FAULT-1）。注入点只有三个，
+每条用例在 `fault` 字段里声明「往哪注入、注入什么」：
+
+| target | mode | 注入方式 | 期望终态 / 错误码 |
+| --- | --- | --- | --- |
+| `tool` | `timeout` | 指定工具抛 `ToolTimeout` | `tool_failed` + `TOOL_TIMEOUT` |
+| `tool` | `unavailable` | 指定工具抛 `ToolUnavailable`（模拟 5xx） | `tool_failed` + `TOOL_UNAVAILABLE` |
+| `retrieval` | `empty` | 检索器返回 0 条 | 与「知识库真没有」**逐字段一致**：拒答 + `NO_KNOWLEDGE` |
+| `retrieval` | `timeout` / `unavailable` | 检索器抛错 | `tool_failed` + `TOOL_TIMEOUT` / `TOOL_UNAVAILABLE` |
+| `model` | `rate_limit` | 模型客户端抛限流 | **降级到规则臂**，`plan_source=llm-fallback` |
+
+三条不显然的口径，全部写进了规格 v1.3：
+
+- **写操作不得重试**（SPEC-FAULT-2）：超时那一刻无法判断对方是否已经受理，重试退款等于
+  有可能退两次。
+- **5xx 与超时分开计数**（SPEC-FAULT-3）：一个是「对面挂了」，一个是「对面可能还在做事」，
+  处置方式不同，混成一个数字就没法做告警。
+- **注入的空检索必须与真实的空检索行为完全一致**（SPEC-FAULT-5）：否则这条用例测的是
+  注入器，不是 Agent。
+
+```powershell
+D:\Python\python.exe -m pytest tests/test_faults.py tests/test_fault_cases.py -q
+D:\Python\python.exe scripts/run_faults.py
+```
+
+`run_faults.py` 的实测结果：**25/25 通过**，注入计数
+`{tool:timeout 6, tool:unavailable 5, retrieval:empty 6, retrieval:timeout 1,`
+`retrieval:unavailable 1, model:rate_limit 6}`、`rate_limited_calls=7`，
+错误码分布 `TOOL_TIMEOUT 7 / TOOL_UNAVAILABLE 6 / NO_KNOWLEDGE 5 / UNSUPPORTED_INTENT 1`。
+注入计数是这份报告里最要紧的字段：它证明注入**真的发生过**——没有它，「25 条全过」
+也可能只是故障压根没生效。
+
+### 并发压测：P95 / 吞吐 / 单次成功任务成本
+
+服务端是 `src/agentevalops/service.py`（把 v3 链路包成 HTTP），压测客户端在 `perf/`。
+
+```powershell
+D:\Python\python.exe scripts/load_test.py --users 20 --spawn-rate 5 --run-time 20s
+D:\Python\python.exe scripts/load_test.py --arm rules --users 20 --run-time 15s --port 8131
+# 真实调用会花钱：必须显式加 --yes，不带就停在发请求之前（退出码 2）
+D:\Python\python.exe scripts/load_test.py --real --yes --users 5 --run-time 30s --budget 0.5
+```
+
+| 模型臂 | users | 请求 | RPS | P50 / P95 / P99 (ms) | 服务端自报延迟均值 | http 错误率 | 任务成功率 | 单次成功任务成本 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `modeled`（60ms 建模延迟） | 50 | 2653 | 141.5 | 310 / 480 / 1100 | 74.4 ms | 0.000% | 100.000% | CNY 0.00076 |
+| `rules`（零延迟） | 20 | 1597 | 125.4 | 130 / 220 / 780 | 7.2 ms | 0.000% | 100.000% | CNY 0 |
+
+**表里每个数字都是 mock 臂跑出来的**：报告里 `provenance` 写死
+`{"latency": "modeled", "tokens": "modeled"}`——60ms 是 `time.sleep`、token 是固定估计值，
+只是借 `deepseek-flash` 的价目折算成本。它证明「服务端在这套配置下扛得住 50 并发」，
+**不是**「DeepSeek 的产能或报价」。真实的 P95 和真实账单只有 `--real` 一条路，它会花钱。
+
+两个口径必须分开记，这是本轮踩到的坑（详见证据文档 §11.3）：
+
+- `http_error_rate`（门禁 ≤ 1%）只算**传输层**失败：非 200、连接异常、响应不是 JSON。
+- `task_success_rate`（门禁 ≥ 99%）算「这一轮的终态是不是**这条消息该有的结果**」。
+
+第一版脚本把**业务终态**（拒答 `NO_KNOWLEDGE`、重复退款）也算进了错误率，错误率凭空
+变成 7.27%——那等于说「系统越守规矩，错误率越高」。**拒答是正确行为**，它该进
+`task_success_rate` 的分子，而不是错误率。
+
+`rules` 那一行是特意加的对照片：它零延迟、零成本，而 `locust P50 (130ms)` 与
+`服务端自报延迟 (7.2ms)` 之间那 120 多毫秒全是排队——客户端与服务端跑在同一台机器上抢
+同一个 CPU，**这台机器量出来的 P95 含客户端自己的调度开销**，不能读成纯服务端延迟。
+
 ## 后续路线图
 
 | 阶段 | 目标 | 关键产出 |
@@ -476,8 +561,8 @@ python scripts/compare_versions.py --llm --yes --budget 2.0 --cases eval_cases/c
 | **阶段一（已完成）** | 确定性 Agent + 工具契约 + 测试基线 + JSONL 场景表 | `AuditRecord` 契约、138 个测试项、19 条场景 |
 | **阶段二（进行中）** | 接入 DeepSeek；建立版本 / 运行 / 指标数据模型；用 `LLMPlanner` 替换 `classify_intent` 与槽位抽取（**保持 `AuditRecord` 契约不变**） | `VersionManifest`、`Run`/`RunMetrics`、成本核算与预算熔断、**240 条用例集**、**v1 vs v2 真实对比报告**（`docs/stage2-evidence.md`）、tag `v0.3.0` |
 | **阶段二 M3（已完成，tag `v0.5.0` / `v0.5.1`）** | 接 RAG 检索 + 多轮会话 + LangGraph 编排，产出 **v3**；规格升到 v1.2；用真实模型跑四方对比 | 第 4 个工具 `search_knowledge_base`、意图 `policy_qa`、错误码 `NO_KNOWLEDGE`、`RetrievalRecord` / `SlotRecord`、M3 用例集、四个批次锚定的 v1/v2/v3/v3-rules 对比报告、`v0.5.1` 修掉 v3 兜底路径缺陷 |
-| **阶段二 M4（下一步）** | 故障注入用例 + 并发压测 | 工具超时 / 异常 / 无检索结果注入、Locust 的 P95、吞吐、错误率与**单次成功任务成本** |
-| **阶段二 M5（之后）** | CI 门禁与报告冻结 | GitHub Actions 回归门禁、`releases/<tag>/` 报告归档、Promptfoo / DeepEval / Ragas 分层判分 |
+| **阶段二 M4（已完成，tag `v0.6.0`）** | 故障注入用例 + 并发压测 | 规格 v1.3 的 6 条故障条款（SPEC-FAULT-1..6）、**25 条**故障用例（工具超时 / 5xx / 空检索 / 模型限流）、`faults.py` 注入脚手架、可压测 HTTP 服务 `service.py`、Locust 的 P95 / 吞吐 / 错误率与**单次成功任务成本**、CI 双线门禁 |
+| **阶段二 M5（下一步）** | CI 门禁与报告冻结 | GitHub Actions 回归门禁、`releases/<tag>/` 报告归档、Promptfoo / DeepEval / Ragas 分层判分 |
 
 ### 评测指标（阶段五要算的东西，现在就能算前六项）
 
