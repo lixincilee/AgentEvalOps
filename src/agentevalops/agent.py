@@ -7,7 +7,7 @@ from typing import Any
 from .models import AgentResponse, AgentState, AuditRecord, ErrorCode, Intent, ToolResult
 from .order_store import OrderStore
 from .planner import Plan, Planner, RulePlanner, classify_intent, extract_order_id
-from .tools import HumanTicketTool, OrderStatusTool, RefundTool
+from .tools import HumanTicketTool, OrderStatusTool, RefundTool, ToolError
 
 
 def pre_plan_rejection(message: Any, customer_id: Any) -> str | None:
@@ -87,7 +87,7 @@ class EcommerceSupportAgent:
                     intent, tool.name, {"customer_id": customer_id}, "order_id is required"
                 )
             arguments = {"order_id": order_id, "customer_id": customer_id}
-            return self._execute(intent, tool.name, arguments, tool.execute(**arguments))
+            return self._execute(intent, tool.name, arguments, self._call_tool(tool, arguments))
         if intent is Intent.REFUND:
             tool = self.refund_tool
             if order_id is None:
@@ -99,7 +99,7 @@ class EcommerceSupportAgent:
                 "customer_id": customer_id,
                 "reason": message.strip(),
             }
-            return self._execute(intent, tool.name, arguments, tool.execute(**arguments))
+            return self._execute(intent, tool.name, arguments, self._call_tool(tool, arguments))
 
         if intent is Intent.HUMAN_HANDOFF:
             tool = self.human_ticket_tool
@@ -108,11 +108,24 @@ class EcommerceSupportAgent:
                 "summary": message.strip(),
                 "order_id": order_id,
             }
-            return self._execute(intent, tool.name, arguments, tool.execute(**arguments))
+            return self._execute(intent, tool.name, arguments, self._call_tool(tool, arguments))
 
         # v1.1 的 policy_qa 需要检索能力，这个基线 Agent 没有。它必须明确地「不支持」，
         # 而不是掉进末尾分支去建工单——那是靠分支顺序意外得到的正确行为，改一次就崩。
         return self._no_action(intent)
+
+    @staticmethod
+    def _call_tool(tool: Any, arguments: dict[str, Any]) -> ToolResult:
+        """Call one tool, turning *declared* dependency faults into a ToolResult.
+
+        SPEC-FAULT-6：只有 ToolError 的子类会被转成 tool_failed。其它异常必须继续往上抛，
+        因为那是 bug 不是故障 —— 在这一层铺一个 ``except Exception``，等于把所有真实缺陷
+        都伪装成「工具今天有点抖」。
+        """
+        try:
+            return tool.execute(**arguments)
+        except ToolError as fault:
+            return ToolResult.fail(fault.error_code, str(fault))
 
     @staticmethod
     def _execute(

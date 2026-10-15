@@ -96,7 +96,7 @@ def _baseline_satisfies(case: dict) -> bool:
 
 def test_spec_version_is_declared():
     """规格版本是版本对比的一部分：没有它，两批分数不可比。"""
-    assert SPEC_VERSION == "1.2"
+    assert SPEC_VERSION == "1.3"
 
 
 def test_matrix_file_exists_and_meets_the_size_target():

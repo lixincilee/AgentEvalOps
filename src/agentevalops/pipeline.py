@@ -28,6 +28,7 @@ from .order_store import OrderStore
 from .planner import Plan, Planner, RulePlannerV3, needs_retrieval
 from .retrieval import DEFAULT_TOP_K, KnowledgeBase, KnowledgeBaseTool
 from .session import SLOT_INTENTS, SessionStore, resolve_slot
+from .tools import ToolError
 
 #: 检索工具名。抽成常量，免得审计里的 tool_name 在各处拼写不一致。
 TOOL_SEARCH = "search_knowledge_base"
@@ -48,6 +49,7 @@ class GraphState(TypedDict, total=False):
     retrieval_needed: bool
     retrieval: RetrievalRecord | None
     retrieval_result: ToolResult | None
+    retrieval_fault: ToolError | None
     plan: Plan | None
     slot: SlotRecord | None
     response: AgentResponse | None
@@ -146,7 +148,13 @@ class V3Agent:
     def _retrieve_node(self, state: GraphState) -> GraphState:
         """只在条件边放行时才被调用，所以这里不必再判断一次该不该检索。"""
         query = state["message"].strip()
-        outcome = self.knowledge_tool.execute(query=query, top_k=DEFAULT_TOP_K)
+        try:
+            outcome = self.knowledge_tool.execute(query=query, top_k=DEFAULT_TOP_K)
+        except ToolError as fault:
+            # SPEC-FAULT-2 / 3：检索工具也会坏，而「链路坏了」和「知识库里没有」必须是
+            # 两种结果（SPEC-RAG-1）。这里只把故障记下来，流程照常走到 plan —— 意图仍然
+            # 要判出来，报告才分得清「检索坏了」和「这一轮本来就不该检索」。
+            return {"retrieval_fault": fault}
         hits = tuple(outcome.data.get("hits", ()))
         return {
             "retrieval_result": outcome,
@@ -191,6 +199,18 @@ class V3Agent:
     def _policy_response(self, state: GraphState) -> AgentResponse:
         """SPEC-RAG-4：没有依据就拒答，绝不输出一段编出来的政策。"""
         arguments = {"query": state["message"].strip(), "top_k": DEFAULT_TOP_K}
+        fault = state.get("retrieval_fault")
+        if fault is not None:
+            error = {"code": fault.error_code, "message": str(fault)}
+            audit = AuditRecord(
+                Intent.POLICY_QA,
+                AgentState.TOOL_FAILED,
+                TOOL_SEARCH,
+                arguments,
+                None,
+                error,
+            )
+            return AgentResponse(str(fault), Intent.POLICY_QA, AgentState.TOOL_FAILED, audit)
         record = state.get("retrieval")
         hits = () if record is None else record.hits
         if not hits:

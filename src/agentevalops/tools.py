@@ -8,6 +8,34 @@ from .models import ErrorCode, ToolResult
 from .order_store import OrderStore
 
 
+class ToolError(RuntimeError):
+    """A *declared* dependency fault, as opposed to a bug (SPEC-FAULT-6).
+
+    Only subclasses of this class are allowed to be converted into ``tool_failed`` at the
+    agent boundary. Everything else keeps propagating: an ``except Exception`` there would
+    disguise every real defect in this codebase as "the tool was being flaky today".
+    """
+
+    #: 默认按「依赖不可用」计；超时单独一个子类，因为两者要分开统计（SPEC-FAULT-3）。
+    error_code: str = ErrorCode.TOOL_UNAVAILABLE
+
+    def __init__(self, message: str, *, tool_name: str | None = None) -> None:
+        super().__init__(message)
+        self.tool_name = tool_name
+
+
+class ToolTimeout(ToolError):
+    """The tool did not answer in time (SPEC-FAULT-2)."""
+
+    error_code = ErrorCode.TOOL_TIMEOUT
+
+
+class ToolUnavailable(ToolError):
+    """The tool answered with a 5xx or is otherwise unusable (SPEC-FAULT-3)."""
+
+    error_code = ErrorCode.TOOL_UNAVAILABLE
+
+
 def _missing(value: Any) -> bool:
     return not isinstance(value, str) or not value.strip()
 

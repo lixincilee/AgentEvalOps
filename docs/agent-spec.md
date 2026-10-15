@@ -279,6 +279,43 @@ agent 与评测编排层共用同一份实现。
 
 **SPEC-GRAPH-3（可比较性）** v1 / v2 / v3 必须在同一批用例、同一判分口径下产出结构相同的 `RunMetrics`。
 
+### 2.11 故障与降级（v1.3 新增）
+
+故障实验要回答的是「依赖坏掉时这个 Agent 会变成什么样」，所以每条故障都必须有
+**确定的行为契约**，否则注入出来的失败既不能判分也不能复现。
+
+**SPEC-FAULT-1（注入是测试脚手架）** 故障只由用例的 `fault` 字段声明，作用域限于该用例；
+`src/agentevalops/faults.py` 是唯一实现处，生产路径上没有任何开关，被测代码里不许出现
+「if 正在评测」这类分支。
+
+*理由*：开关一旦进了产品代码，评测结果就取决于「谁记得把它关掉」。
+
+**SPEC-FAULT-2（工具超时）** 工具调用超时 → 状态 `tool_failed`、错误码 `TOOL_TIMEOUT`、
+`tool_name` 仍如实记录、`result` 为 `null`。**写操作不得自动重试**（`apply_refund` /
+`create_human_ticket`）；读操作（`query_order_status` / `search_knowledge_base`）允许重试。
+
+*理由*：超时后重试退款，等于给「重复退款」留一条路；读操作重试没有这个代价。
+
+**SPEC-FAULT-3（工具不可用 / 5xx）** 工具抛 `ToolUnavailable` → 状态 `tool_failed`、
+错误码 `TOOL_UNAVAILABLE`。它与超时**分开计数**：超时查容量与下游延迟，5xx 查依赖本身。
+
+**SPEC-FAULT-4（模型限流 / 429）** 模型调用失败（含 429）**不得**让请求失败：必须降级到
+规则臂并标 `plan_source = llm-fallback`，再按 SPEC-JUDGE-1 正常判分；限流次数必须计入报告。
+
+*理由*：对用户来说「降级之后答对」比「诚实地报错」有价值；但降级不能静默，它得被报告看见。
+
+**SPEC-FAULT-5（空检索的两条路必须不可区分）** 检索返回 `hits = []` 一律按 SPEC-RAG-4 处理
+（`no_action` + `NO_KNOWLEDGE`）。「知识库里确实没有」与「检索被注入成空」在**行为上必须
+完全一样**，报告里也不许标出哪一条是注入的。
+
+*理由*：两者一旦可区分，这套用例测的就是「注入生效了没有」，而不是「真实行为对不对」。
+
+**SPEC-FAULT-6（异常不穿出边界）** 只有 `ToolError` 的子类（`ToolTimeout` / `ToolUnavailable`）
+会被转成 `tool_failed`；**其它异常必须原样抛出**——那是 bug，不是故障。故障路径不得改变
+`AuditRecord` 的字段与顺序（SPEC-GRAPH-1）。
+
+*理由*：把 `except Exception` 铺在工具边界上，等于把所有真实 bug 都伪装成「工具抖动」。
+
 ---
 
 ## 3. 争议裁决表
@@ -346,8 +383,9 @@ C 两条的 v2 偏差记录在本节表格里，因为它是模型行为、无�
 | 1.0 | 2026-10-15 | 首次冻结。明确请求短路规则、意图粒度原则、订单号边界规则、安全断言口径、判分与计数口径；裁决 A/B/C 共 9 条争议用例 | 用例矩阵 7 条期望值改写（A1-A3、B1-B4）；登记 v1 偏差 7 条、v2 偏差 2 条 |
 | 1.1 | 2026-10-15 | M3：新增 §2.8 检索与依据、§2.9 多轮会话状态、§2.10 编排；意图集合新增 `policy_qa`，错误码新增 `NO_KNOWLEDGE` | 既有 213 条用例**期望值零改动**（新意图与新错误码只出现在新增的 RAG / 多轮用例集里）；`unknown` 的既有含义不变 |
 | 1.2 | 2026-10-15 | M3：新增 **SPEC-RAG-7**，把 retrieve 节点的触发条件定成确定性判据（政策词表命中且无订单号），并明确该词表是可枚举白名单 | 无期望值改动；`src/agentevalops/spec.py` 同时新增 `LEGACY_INTENTS` / `LEGACY_ERROR_CODES`，供测试断言「主矩阵不含 v1.1 之后的新取值」 |
+| 1.3 | 2026-10-15 | M4：新增 §2.11 故障与降级（SPEC-FAULT-1..6）与 §7.3 故障用例字段契约；错误码新增 `TOOL_TIMEOUT` / `TOOL_UNAVAILABLE`；`SPEC_VERSION` 升到 `1.3` | 既有 297 条用例期望值**零改动**；故障用例独立成文件、独立判分，**不混入**功能通过率与版本对比分数 |
 
-## 7. 新增用例集的字段契约（v1.1）
+## 7. 新增用例集的字段契约（v1.1 / v1.3）
 
 两个新用例集**独立成文件**，因为字段与主矩阵不同；主矩阵的 213 条 schema 与期望值保持不变
 （SPEC-GRAPH-3 要的可比性靠这一点维持）。
@@ -375,3 +413,20 @@ C 两条的 v2 偏差记录在本节表格里，因为它是模型行为、无�
 
 > 判分口径：每一轮都按 SPEC-JUDGE-1 判；用例通过 = **所有轮次都通过**。
 > 槽位来源由 `SlotRecord` 记录（SPEC-MT-2），不放进 `AuditRecord`。
+
+### 7.3 `eval_cases/fault_cases.jsonl`（故障与降级层，v1.3）
+
+| 字段 | 含义 |
+| --- | --- |
+| `case_id` / `category` / `message` / `customer_id` | `category` 用 `fault_timeout` / `fault_unavailable` / `fault_empty_retrieval` / `fault_rate_limit` |
+| `fault` | 注入声明 `{"target": "tool" / "retrieval" / "model", "mode": "timeout" / "unavailable" / "empty" / "rate_limit", "tool_name": ...}`；`target = retrieval` 时工具名固定为 `search_knowledge_base` |
+| `session_id` | 可选；给「降级发生在多轮中途」的用例用（SPEC-MT-6 的唯一性要求不变） |
+| `warmup` | 可选；在注入生效之前先在同一个 `session_id` 里回放的轮次 `[{"message": ..., "customer_id": ...}]`，用来把会话状态铺垫好。没有它就没法测「多轮中途依赖坏掉」 |
+| `expected_intent` / `expected_state` / `expected_tool` / `expected_error_code` | 与主矩阵同义，按 SPEC-JUDGE-1 判 |
+| `expected_plan_source` | `rules` / `llm` / `llm-fallback` / `null`；`null` = 不断言。限流用例必须断言 `llm-fallback` |
+| `expected_slot_source` | 可选；`verbatim` / `inherited` / `null`。政策轮按 SPEC-MT-2 不解析槽位，因此这里必须是 `null`——它防的是「会话上下文给一个政策轮凭空添槽位」 |
+| `notes` | 这个用例在测什么，一句话 |
+
+> 判分口径：四项判定字段全中才算通过；`expected_plan_source` 非 `null` 时额外断言。
+> 故障用例**不进入**主矩阵，也不计入「版本对比」的通过率——它测的是依赖故障下的行为，
+> 与 v1/v2/v3 的功能分不是一个口径。混在一起只会让两个数字都失去意义。

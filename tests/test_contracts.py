@@ -114,6 +114,9 @@ def test_error_code_vocabulary_is_stable():
         "VALIDATION_ERROR",
         "UNSUPPORTED_INTENT",
         "NO_KNOWLEDGE",
+        # v1.3（M4）：依赖故障与「知识库里没有」分开计，两者的处置完全不同。
+        "TOOL_TIMEOUT",
+        "TOOL_UNAVAILABLE",
     }
 
 

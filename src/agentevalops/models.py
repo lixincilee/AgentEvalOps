@@ -35,6 +35,10 @@ class ErrorCode(StrEnum):
     UNSUPPORTED_INTENT = "UNSUPPORTED_INTENT"
     #: v1.1：检索不到依据。**不是工具故障**，而是「知识库里没有」（SPEC-RAG-4）。
     NO_KNOWLEDGE = "NO_KNOWLEDGE"
+    #: v1.3：依赖故障。与 NO_KNOWLEDGE 分开，是因为「链路坏了」和「知识库里没有」
+    #: 需要完全不同的处置：前者查容量与下游，后者补语料。
+    TOOL_TIMEOUT = "TOOL_TIMEOUT"
+    TOOL_UNAVAILABLE = "TOOL_UNAVAILABLE"
 
 
 @dataclass(frozen=True)
