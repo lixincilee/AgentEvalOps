@@ -288,7 +288,7 @@ python scripts/smoke_llm.py --save reports/smoke.json   # 顺带把证据落盘�
 | --- | --- | --- |
 | `DEEPSEEK_API_KEY` | — | 真实调用必填 |
 | `DEEPSEEK_BASE_URL` | `https://api.deepseek.com` | OpenAI 兼容端点 |
-| `DEEPSEEK_MODEL` | `deepseek-chat` | 模型名 |
+| `DEEPSEEK_MODEL` | `deepseek-chat` | 模型名。**跑真实评测建议显式写成 `deepseek-flash`**：`deepseek-chat` 是别名，内置价目表里没有它，于是跑之前算不出花费上界、预算熔断等于失效（第 10 节记录了这个坑） |
 | `AGENTEVALOPS_TEMPERATURE` | `0` | 解码温度（回归对比建议 0） |
 | `AGENTEVALOPS_MAX_TOKENS` | `1024` | 单次最大输出 |
 | `AGENTEVALOPS_REQUEST_TIMEOUT_S` | `60` | 单次请求超时 |
@@ -438,13 +438,44 @@ print(agent.planner.name)                # llm-v3（v2 是 llm-v2）
 默认用 `RulePlannerV3` 是有意的：离线自检必须能把「检索与多轮链路对不对」和
 「模型这次回答得怎么样」分开，否则失败无法归因。
 
+### M3 的真实三方对比（`v0.5.0` → `v0.5.1`）
+
+四个批次、两个 tag 锚定的真实运行（`deepseek-flash`，合计 CNY 0.542 / 1307 次调用）。
+完整数字与报告文件名见 `docs/stage2-evidence.md` 第 10 节。
+
+| 用例集 | 指标 | v1 | v2 | v3 | v3-rules |
+| --- | --- | --- | --- | --- | --- |
+| 主矩阵 213 行 | 行级通过率 | 96.7% | **100.0%** | 99.5% | 96.7% |
+| 检索 + 多轮 120 行 | 行级通过率 | 37.5% | 37.5% | 99.2% | **100.0%** |
+| 检索 + 多轮 120 行 | 单次调用成本(元) | 0 | 0.000339 | 0.000439 | 0 |
+
+三点结论（推导见证据文档第 10 节）：
+
+- **赢在编排还是赢在模型，必须拆成两列才答得出**：v1 → v2 加了模型，在检索/多轮上
+  一分没多拿（37.5% → 37.5%）——没有检索节点和会话状态，模型再准也没有链路可走；
+  v1 → v3-rules 只加编排就是 +62.5 个点，而且零花费。
+- **真实对比抓到一个真缺陷**：`v0.5.0` 的 v3 用 v1 的规则臂兜底，而那条路径表达不了
+  `policy_qa`，于是「模型答不出 JSON」被放大成「政策问答判成退款动作 + 调写操作」。
+  `v0.5.1` 修掉；复跑后期望 `policy_qa` 的 6 条回退行全部通过。
+- **模型臂有实测方差**：v2 代码一字未改，两次运行 99.1% → 100.0%（差 0.9 个百分点）。
+  小于 1 个百分点的版本分差，在本项目现有口径下不可解释。
+
+```bash
+# 零成本：只跑两个规则列（v2 / v3 会显式标 n/a 并给原因）
+python scripts/compare_versions.py --offline --limit 20
+
+# 真实调用：不带 --yes 时只算花费上界、一个请求都不发
+python scripts/compare_versions.py --llm --cases eval_cases/case_matrix_v2.jsonl --budget 2.0
+python scripts/compare_versions.py --llm --yes --budget 2.0 --cases eval_cases/case_matrix_v2.jsonl
+```
+
 ## 后续路线图
 
 | 阶段 | 目标 | 关键产出 |
 | --- | --- | --- |
 | **阶段一（已完成）** | 确定性 Agent + 工具契约 + 测试基线 + JSONL 场景表 | `AuditRecord` 契约、138 个测试项、19 条场景 |
 | **阶段二（进行中）** | 接入 DeepSeek；建立版本 / 运行 / 指标数据模型；用 `LLMPlanner` 替换 `classify_intent` 与槽位抽取（**保持 `AuditRecord` 契约不变**） | `VersionManifest`、`Run`/`RunMetrics`、成本核算与预算熔断、**240 条用例集**、**v1 vs v2 真实对比报告**（`docs/stage2-evidence.md`）、tag `v0.3.0` |
-| **阶段二 M3（已完成，tag `v0.5.0`）** | 接 RAG 检索 + 多轮会话 + LangGraph 编排，产出 **v3**；规格升到 v1.2 | 第 4 个工具 `search_knowledge_base`、意图 `policy_qa`、错误码 `NO_KNOWLEDGE`、`RetrievalRecord` / `SlotRecord`、M3 用例集、v1/v2/v3 三方对比报告 |
+| **阶段二 M3（已完成，tag `v0.5.0` / `v0.5.1`）** | 接 RAG 检索 + 多轮会话 + LangGraph 编排，产出 **v3**；规格升到 v1.2；用真实模型跑四方对比 | 第 4 个工具 `search_knowledge_base`、意图 `policy_qa`、错误码 `NO_KNOWLEDGE`、`RetrievalRecord` / `SlotRecord`、M3 用例集、四个批次锚定的 v1/v2/v3/v3-rules 对比报告、`v0.5.1` 修掉 v3 兜底路径缺陷 |
 | **阶段二 M4（下一步）** | 故障注入用例 + 并发压测 | 工具超时 / 异常 / 无检索结果注入、Locust 的 P95、吞吐、错误率与**单次成功任务成本** |
 | **阶段二 M5（之后）** | CI 门禁与报告冻结 | GitHub Actions 回归门禁、`releases/<tag>/` 报告归档、Promptfoo / DeepEval / Ragas 分层判分 |
 
