@@ -72,7 +72,7 @@ def test_build_pricing_merges_overrides_without_dropping_defaults():
 
 
 def test_ledger_accumulates_tokens_and_cost():
-    ledger = UsageLedger(pricing={"m": PRICE})
+    ledger = UsageLedger(pricing={"m": PRICE}, off_peak=False)
     ledger.record("m", Usage(1_000_000, 1_000_000))
     ledger.record("m", Usage(0, 1_000_000))
     assert ledger.calls == 2
@@ -130,7 +130,7 @@ def test_ledger_has_no_ceiling_by_default():
 
 
 def test_ledger_trips_when_spend_reaches_the_ceiling():
-    ledger = UsageLedger(limit=1.0, pricing={"m": PRICE})
+    ledger = UsageLedger(limit=1.0, pricing={"m": PRICE}, off_peak=False)
     ledger.record("m", Usage(500_000, 0))
     ledger.assert_within_budget()
     ledger.record("m", Usage(500_000, 0))
@@ -139,10 +139,26 @@ def test_ledger_trips_when_spend_reaches_the_ceiling():
 
 
 def test_ledger_trips_when_spend_exceeds_the_ceiling():
-    ledger = UsageLedger(limit=1.0, pricing={"m": PRICE})
+    ledger = UsageLedger(limit=1.0, pricing={"m": PRICE}, off_peak=False)
     ledger.record("m", Usage(2_000_000, 0))
     with pytest.raises(BudgetExceededError):
         ledger.assert_within_budget()
+
+
+def test_off_peak_hours_are_billed_at_half_the_peak_price():
+    """空闲时段是高峰价的一半，且两类调用分开计数。
+
+    时段必须由参数钉死，不能靠墙上时钟：北京时间高峰是周一至周五 9-12 点与 14-18 点，
+    断言若依赖当前时刻，同一份代码上午跑绿、午休跑红（本仓库真发生过）。
+    """
+    peak = UsageLedger(pricing={"m": PRICE}, off_peak=False)
+    off = UsageLedger(pricing={"m": PRICE}, off_peak=True)
+    for ledger in (peak, off):
+        ledger.record("m", Usage(1_000_000, 1_000_000))
+    assert peak.cost == 3.0
+    assert off.cost == 1.5
+    assert (peak.peak_calls, peak.off_peak_calls) == (1, 0)
+    assert (off.peak_calls, off.off_peak_calls) == (0, 1)
 
 
 def test_metered_client_records_usage_from_the_inner_client():
