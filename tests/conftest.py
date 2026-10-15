@@ -37,10 +37,28 @@ MOCK_ORDERS: list[dict[str, Any]] = [
         "tracking_number": None,
     },
     {
+        "order_id": "ORD-1004",
+        "customer_id": "CUST-001",
+        "status": "delivered",
+        "tracking_number": "JD5566778899",
+    },
+    {
+        "order_id": "ORD-1005",
+        "customer_id": "CUST-001",
+        "status": "processing",
+        "tracking_number": None,
+    },
+    {
         "order_id": "ORD-2001",
         "customer_id": "CUST-002",
         "status": "processing",
         "tracking_number": None,
+    },
+    {
+        "order_id": "ORD-2002",
+        "customer_id": "CUST-002",
+        "status": "delivered",
+        "tracking_number": "ZTO1122334455",
     },
 ]
 

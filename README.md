@@ -41,7 +41,7 @@ AgentEvalOps/
 ├── eval_cases/
 │   ├── support_cases.jsonl            # 阶段一场景集（19 条，v1 亲和的基线集）
 │   ├── v1_gaps_cases.jsonl            # v1 已知漏判集（8 条，用来检验评测集区分度）
-│   └── case_matrix_v2.jsonl           # 阶段二用例矩阵（分类别大规模扩充）
+│   └── case_matrix_v2.jsonl           # 阶段二用例矩阵（213 条；三份合计 240 条）
 ├── src/
 │   └── agentevalops/                  # 生产代码（src-layout，强制安装后再运行）
 │       ├── __init__.py                # 对外公开的 API 汇总
@@ -104,7 +104,7 @@ D:\Python\python.exe -m pip install -e ".[dev]" --no-build-isolation
 ### 3. 运行测试
 
 ```bash
-python -m pytest                                # 全量：585 passed（另有 10 条已登记偏差 xfail）
+python -m pytest                                # 全量：649 passed（另有 10 条已登记偏差 xfail）
 python -m pytest -q                             # 精简输出
 python -m pytest -v                             # 逐条列出用例名
 python -m pytest tests/test_safety.py           # 只跑安全场景
@@ -189,7 +189,10 @@ error      工具失败时的 {code, message}
 | `ORD-1001` | `CUST-001` | `shipped` | 运输中 → 不可退款 |
 | `ORD-1002` | `CUST-001` | `delivered` | 已签收 → 可退款 |
 | `ORD-1003` | `CUST-001` | `cancelled` | 已取消 → 不可退款 |
+| `ORD-1004` | `CUST-001` | `delivered` | 第二个可退款订单 → 多订单互不干扰 |
+| `ORD-1005` | `CUST-001` | `processing` | 本人订单但状态不对 → 与「他人订单」区分开 |
 | `ORD-2001` | `CUST-002` | `processing` | 属于别的客户 → 越权用例 |
+| `ORD-2002` | `CUST-002` | `delivered` | **可退款但属于别人** → 证明所有权校验先于状态校验 |
 
 ## 数据驱动测试：`eval_cases/support_cases.jsonl`
 
@@ -372,7 +375,7 @@ tag 与报告一一对应：`v0.1.0` 是阶段一基线，`v0.2.0` 覆盖真实�
 | 阶段 | 目标 | 关键产出 |
 | --- | --- | --- |
 | **阶段一（已完成）** | 确定性 Agent + 工具契约 + 测试基线 + JSONL 场景表 | `AuditRecord` 契约、138 个测试项、19 条场景 |
-| **阶段二（进行中）** | 接入 DeepSeek；建立版本 / 运行 / 指标数据模型；用 `LLMPlanner` 替换 `classify_intent` 与槽位抽取（**保持 `AuditRecord` 契约不变**） | `VersionManifest`、`Run`/`RunMetrics`、成本核算与预算熔断、**192 条用例集**、**v1 vs v2 真实对比报告**（`docs/stage2-evidence.md`）、tag `v0.2.0` |
+| **阶段二（进行中）** | 接入 DeepSeek；建立版本 / 运行 / 指标数据模型；用 `LLMPlanner` 替换 `classify_intent` 与槽位抽取（**保持 `AuditRecord` 契约不变**） | `VersionManifest`、`Run`/`RunMetrics`、成本核算与预算熔断、**240 条用例集**、**v1 vs v2 真实对比报告**（`docs/stage2-evidence.md`）、tag `v0.3.0` |
 | 阶段三：LangGraph 编排 | 显式状态机：意图节点 → 工具节点 → 人工中断节点 | 图式编排替代 if/else；节点级可观测 trace |
 | 阶段四：RAG | 新增知识库检索工具（第 4 个工具），回答政策类问题 | 检索质量指标（命中率、引用正确率）与幻觉检测 |
 | 阶段五：评测框架与看板 | 批量跑场景、算指标、存历史、卡 CI 门禁 | 回归看板、基线对比、失败样本归档 |

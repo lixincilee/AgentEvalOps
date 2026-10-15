@@ -31,6 +31,7 @@ MATRIX_PATH = REPO_ROOT / "eval_cases" / "case_matrix_v2.jsonl"
 CASES = read_jsonl(MATRIX_PATH)
 CASE_IDS = [case["case_id"] for case in CASES]
 SUPPORT_CASES = load_support_cases()
+GAP_CASES = read_jsonl(REPO_ROOT / "eval_cases" / "v1_gaps_cases.jsonl")
 
 REQUIRED_FIELDS = {
     "case_id",
@@ -98,7 +99,67 @@ def test_spec_version_is_declared():
 
 def test_matrix_file_exists_and_meets_the_size_target():
     assert MATRIX_PATH.is_file()
-    assert len(CASES) >= 150, f"用例数 {len(CASES)} 少于 150"
+    assert len(CASES) >= 210, f"矩阵用例数 {len(CASES)} 少于 210"
+
+
+def test_the_whole_corpus_reaches_the_scale_target():
+    """三个 JSONL 合起来才是交付物：240 条版本化用例。"""
+    total = len(CASES) + len(SUPPORT_CASES) + len(GAP_CASES)
+    assert total >= 240, (
+        f"用例总数 {total} 少于 240"
+        f"（矩阵 {len(CASES)} + 基线 {len(SUPPORT_CASES)} + 漏判 {len(GAP_CASES)}）"
+    )
+
+
+def test_mock_orders_still_support_the_new_case_shapes(orders):
+    """扩张用例依赖的三种订单形态必须还在。
+
+    ORD-2002 是关键：它属于 CUST-002 且状态可退款，所以「退款被拒」只可能来自
+    所有权校验（SPEC-TOOL-3）。少了它，ORD-2001 的拒绝对两个原因同时成立，
+    就分不清是哪一道校验拦下的。
+    """
+    by_id = {order["order_id"]: order for order in orders}
+    assert by_id["ORD-1004"] == {
+        "order_id": "ORD-1004",
+        "customer_id": "CUST-001",
+        "status": "delivered",
+        "tracking_number": "JD5566778899",
+    }
+    assert by_id["ORD-1005"]["customer_id"] == "CUST-001"
+    assert by_id["ORD-1005"]["status"] == "processing"
+    assert by_id["ORD-2002"] == {
+        "order_id": "ORD-2002",
+        "customer_id": "CUST-002",
+        "status": "delivered",
+        "tracking_number": "ZTO1122334455",
+    }
+
+
+def test_the_generator_cannot_silently_overwrite_the_frozen_spec():
+    """生成器与 JSONL 必须逐字段一致。
+
+    生成器是批量写入入口。一旦它的期望值落后于规格（规格冻结后确实如此），
+    下一次 `gen_case_matrix.py --write` 就会把按规格改写的期望值静默改回基线行为，
+    等于把规格冻结的成果撤回。这条断言让这种漂移在测试里当场失败。
+    """
+    import sys
+
+    sys.path.insert(0, str(REPO_ROOT / "scripts"))
+    import gen_case_matrix
+
+    generated = {
+        case["case_id"]: {field: case[field] for field in REQUIRED_FIELDS}
+        for case in gen_case_matrix.CASES
+    }
+    committed = {case["case_id"]: case for case in CASES}
+    assert set(generated) == set(committed), (
+        f"只在生成器里：{sorted(set(generated) - set(committed))}；"
+        f"只在 JSONL 里：{sorted(set(committed) - set(generated))}"
+    )
+    drifted = sorted(
+        case_id for case_id, case in committed.items() if generated[case_id] != case
+    )
+    assert drifted == [], f"生成器与 JSONL 的期望值不一致：{drifted}"
 
 
 def test_every_line_is_valid_json():

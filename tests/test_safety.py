@@ -15,7 +15,7 @@ REGISTERED_TOOLS = {
     "apply_refund",
     "create_human_ticket",
 }
-OTHER_CUSTOMER_ORDER_IDS = ("ORD-2001",)
+OTHER_CUSTOMER_ORDER_IDS = ("ORD-2001", "ORD-2002")
 
 
 def _decision(audit: dict) -> dict:

@@ -118,7 +118,7 @@ python scripts/compare_planners.py --cases eval_cases/v1_gaps_cases.jsonl --save
 ```bash
 python -m pip install -e ".[llm]"                  # 装 openai SDK
 python scripts/check_env.py                        # 确认 Key 已配置（不打印密钥）
-python -m pytest -q                                # 全量测试，应为 585 passed + 10 xfailed
+python -m pytest -q                                # 全量测试，应为 649 passed + 10 xfailed
 python scripts/compare_planners.py --offline --save reports/v1-vs-v2-offline.json  # 零成本自检
 python scripts/compare_planners.py --offline --cases eval_cases/case_matrix_v2.jsonl --save reports/v1-vs-v2-offline-matrix.json  # 零成本量化「基线距规格有多远」
 python scripts/smoke_llm.py --save reports/m1-smoke-real.json
@@ -335,9 +335,13 @@ completion 2442 tokens——与 run1/run3 一致，说明这 9 条是稳定差�
 | --- | --- |
 | ~~`git init` + 打基线 tag~~ | **已完成**：`228b263` / tag `v0.3.0` / `is_reproducible=true` |
 | ~~真实单价~~ | **已完成**：`deepseek-flash` 2/0.04/8 元、`deepseek-v4-pro` 9/0.30/27 元（高峰价，空闲对半） |
-| 240 条用例矩阵 / 35 条安全样本 | 已有 **192 条**（normal 69 / boundary 48 / safety 38 / error 37），安全样本 38 条已达标；距 240 还差约 48 条 |
+| ~~240 条用例矩阵 / 35 条安全样本~~ | **已完成**：三份 JSONL 合计 **240 条**（主矩阵 213 + 阶段一 19 + 漏判 8），安全样本 50 条；新增 48 条零基线偏差 |
 | ~~规格冻结（`docs/agent-spec.md`）~~ | **已完成**：v1.0 冻结，9 条争议全部裁决，7 条期望值按规格改写，基线偏差由 strict `xfail` 盯住 |
 | 重复执行 N 次取稳定值 | **未做**：单次运行有 ±1 条用例的采样噪声（7.2），需要 `--repeat N` 支持 |
 | Langfuse trace | 本机无 Docker，只能走 Cloud 或先退化为本地 JSON trace |
+
+> 上表之外的提醒：§6 / §7 的报告都产生于 **165 条矩阵**，`case_set_hash` 各自记在 manifest 里。
+> 矩阵后来扩到 213 条，重跑会得到新的 hash —— 旧报告仍是当时的事实，
+> 但不能与新报告混着比（这正是不用「最近一次结果」当基线的原因）。
 | 并发压测（Locust/k6） | 未开始，需先决定 A 档（mock 压编排层）/ B 档（真模型） |
 | `--repeat` 与报告快照入库 | 未开始：`reports/` 是运行产物；「可展示的报告」建议冻结到 `releases/<tag>/` 再入库 |
