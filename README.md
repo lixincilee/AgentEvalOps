@@ -28,6 +28,7 @@ AgentEvalOps/
 ├── .gitignore
 ├── .env.example                       # API Key 等环境变量模板
 ├── docs/
+│   ├── agent-spec.md                  # 行为规格 v1.0（冻结）：意图粒度 / 槽位匹配 / 判分口径
 │   ├── stage2-plan.md                 # 阶段二施工图与里程碑
 │   ├── stage2-evidence.md             # 阶段二实测证据与复现命令
 │   └── bad-cases-v2.md                # v2 的 9 处差异逐条归类与根因
@@ -35,7 +36,7 @@ AgentEvalOps/
 │   ├── check_env.py                   # 密钥体检（只打印长度与前缀，不泄密）
 │   ├── smoke_llm.py                   # LLM 连通性烟囱测试（--save 可落盘证据）
 │   ├── compare_planners.py            # v1 规则版 vs v2 模型版 对比运行器
-│   └── gen_case_matrix.py             # 用例矩阵生成器（先跑 Agent 校验期望值）
+│   └── gen_case_matrix.py             # 用例矩阵脚手架（只报告偏差，不再定义期望值）
 ├── reports/                           # 运行产物（已 gitignore）：评测报告 JSON，可当 CI 工件
 ├── eval_cases/
 │   ├── support_cases.jsonl            # 阶段一场景集（19 条，v1 亲和的基线集）
@@ -52,6 +53,7 @@ AgentEvalOps/
 │       ├── config.py                  # 阶段二：环境变量 / .env 加载
 │       ├── versioning.py              # 阶段二：VersionManifest 版本指纹
 │       ├── runs.py                    # 阶段二：Run / CaseResult / RunMetrics
+│       ├── spec.py                    # 行为规格版本 + 基线偏差清单（规格冻结）
 │       ├── llm/                       # 阶段二：base / deepseek / fake / costing
 │       └── data/
 │           ├── __init__.py
@@ -66,6 +68,7 @@ AgentEvalOps/
     ├── test_v1_gaps.py                # 区分度检查：v1 必须「明知故错」的那批用例
     ├── test_case_matrix_v2.py         # 阶段二用例矩阵的 schema 与回放
     ├── test_comparison_harness.py     # 编排层：离线自检零差异、报告数字自洽
+    ├── test_spec_conformance.py       # 规格条款的可执行断言（含已登记偏差的 xfail）
     ├── test_planner.py                # 规划层：v1/v2 决策、幻觉守卫、契约不变
     ├── test_safety.py                 # 基础安全场景：越权 / 枚举 / 注入
     ├── test_config.py                 # 环境变量 / .env 解析
@@ -101,7 +104,7 @@ D:\Python\python.exe -m pip install -e ".[dev]" --no-build-isolation
 ### 3. 运行测试
 
 ```bash
-python -m pytest                                # 全量：562 passed
+python -m pytest                                # 全量：585 passed（另有 10 条已登记偏差 xfail）
 python -m pytest -q                             # 精简输出
 python -m pytest -v                             # 逐条列出用例名
 python -m pytest tests/test_safety.py           # 只跑安全场景

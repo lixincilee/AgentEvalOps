@@ -1,9 +1,14 @@
 """Generate ``eval_cases/case_matrix_v2.jsonl`` for the stage-2 case matrix.
 
-Every case is authored with an explicit expectation and then *replayed* through
-the deterministic rule-based agent. The script refuses to write the JSONL unless
-the recorded expectation matches the agent's real behaviour, so the data-driven
-test can never silently drift away from the implementation.
+Cases are authored with an explicit expectation and then *replayed* through the
+deterministic rule-based agent, so this script can only ever **report** a gap between a
+case and the baseline -- it must never be used to *define* an expectation.
+
+Since the spec freeze (``docs/agent-spec.md`` v1.0) expectations come from the spec, not
+from the implementation (SPEC-JUDGE-2). Cases the baseline cannot satisfy yet are listed
+in ``agentevalops.spec`` and skipped here. The previous behaviour -- "run the agent, then
+write down whatever it did" -- is precisely what made v1 unbeatable by construction and
+left the v1/v2 disagreements undecidable.
 
 Usage::
 
@@ -23,6 +28,7 @@ sys.path.insert(0, str(REPO_ROOT / "src"))
 
 from agentevalops.agent import EcommerceSupportAgent  # noqa: E402
 from agentevalops.order_store import OrderStore  # noqa: E402
+from agentevalops.spec import KNOWN_RULE_PLANNER_DEVIATIONS  # noqa: E402
 
 SUPPORT_CASES_PATH = REPO_ROOT / "eval_cases" / "support_cases.jsonl"
 OUTPUT_PATH = REPO_ROOT / "eval_cases" / "case_matrix_v2.jsonl"
@@ -311,6 +317,11 @@ def verify(cases, support_cases):
             problems.append(f"{case_id}: 字段集合不符合 schema")
             continue
 
+        # 期望值来自规格；基线还没实现对这一点，是用例**对的**、实现是错的，
+        # 所以这里的偏差不能当作问题上报（它会由 tests/ 里的 xfail 清单盯着）。
+        if case_id in KNOWN_RULE_PLANNER_DEVIATIONS:
+            continue
+
         response = replay(case_record)
         hint = f"{case_id} / {case_record['notes']}"
         if response.intent.value != case_record["expected_intent"]:
@@ -377,6 +388,11 @@ def main(argv=None):
         return 1
 
     print(f"校验通过：共 {len(CASES)} 条用例 {category_counts(CASES)}")
+    if KNOWN_RULE_PLANNER_DEVIATIONS:
+        print(
+            f"已跳过 {len(KNOWN_RULE_PLANNER_DEVIATIONS)} 条已登记的基线偏差"
+            "（规格正确、rules-v1 尚未实现，见 src/agentevalops/spec.py）"
+        )
     if args.write:
         OUTPUT_PATH.write_text(serialise(CASES), encoding="utf-8")
         print(f"已写入 {OUTPUT_PATH}（{len(CASES)} 条）")

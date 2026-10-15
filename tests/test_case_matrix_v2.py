@@ -1,10 +1,16 @@
 """Replay the stage-2 case matrix (``eval_cases/case_matrix_v2.jsonl``).
 
-This is the data-driven half of the evaluation: every row is an authored
-expectation that is replayed through the deterministic agent, exactly like
-``test_scenarios_jsonl.py`` does for the stage-1 starter set. The extra tests
-here guard the matrix itself -- schema, sizing, uniqueness and the promise that
-no safety case ever completes a write operation.
+This is the data-driven half of the evaluation: every row is an expectation that is
+replayed through the deterministic agent, exactly like ``test_scenarios_jsonl.py`` does
+for the stage-1 starter set. The extra tests here guard the matrix itself -- schema,
+sizing, uniqueness and the promise that no safety case ever completes a write operation.
+
+Since the spec freeze (``docs/agent-spec.md`` v1.0) the expectations come from the **spec**,
+not from the rule planner's behaviour. That is the point: the baseline is now an object
+under test too. Where it cannot satisfy a frozen clause yet, the case is marked
+``xfail(strict=True)`` and listed in ``agentevalops.spec.KNOWN_RULE_PLANNER_DEVIATIONS``;
+a dedicated test asserts that list is exactly the set of real deviations, so fixing the
+baseline forces the list to shrink instead of leaving a stale defect list behind.
 """
 
 from __future__ import annotations
@@ -12,7 +18,14 @@ from __future__ import annotations
 import pytest
 from conftest import REPO_ROOT, load_support_cases, read_jsonl
 
+from agentevalops.agent import EcommerceSupportAgent
 from agentevalops.models import AgentState, ErrorCode, Intent
+from agentevalops.order_store import OrderStore
+from agentevalops.spec import (
+    KNOWN_LLM_PLANNER_DEVIATIONS,
+    KNOWN_RULE_PLANNER_DEVIATIONS,
+    SPEC_VERSION,
+)
 
 MATRIX_PATH = REPO_ROOT / "eval_cases" / "case_matrix_v2.jsonl"
 CASES = read_jsonl(MATRIX_PATH)
@@ -36,9 +49,51 @@ CATEGORY_MINIMUMS = {"normal": 50, "boundary": 40, "error": 30, "safety": 30}
 WRITE_TOOLS = {"apply_refund", "create_human_ticket"}
 SAFETY_CASES = [case for case in CASES if case["category"] == "safety"]
 
+#: 每条用例一个 param；已登记的基线偏差用 strict xfail 标记——它们**必须**失败，
+#: 一旦基线被修好就会变成 XPASS 并报错，逼我们清掉清单条目。
+CASE_PARAMS = [
+    pytest.param(
+        case,
+        id=case["case_id"],
+        marks=(
+            pytest.mark.xfail(
+                strict=True,
+                reason=KNOWN_RULE_PLANNER_DEVIATIONS[case["case_id"]],
+            )
+            if case["case_id"] in KNOWN_RULE_PLANNER_DEVIATIONS
+            else ()
+        ),
+    )
+    for case in CASES
+]
+
 
 def _count(category: str) -> int:
     return sum(1 for case in CASES if case["category"] == category)
+
+
+def _baseline_satisfies(case: dict) -> bool:
+    """Replay one case through a fresh deterministic agent and check it against the spec."""
+    agent = EcommerceSupportAgent(store=OrderStore())
+    response = agent.handle(case["message"], customer_id=case["customer_id"])
+    error = response.audit.error
+    result = response.audit.result if isinstance(response.audit.result, dict) else {}
+    return (
+        response.intent.value == case["expected_intent"]
+        and response.state.value == case["expected_state"]
+        and response.audit.tool_name == case["expected_tool"]
+        and (None if error is None else error["code"]) == case["expected_error_code"]
+        and all(result.get(key) == value for key, value in case["expected_data"].items())
+        and all(
+            response.audit.arguments.get(key) == value
+            for key, value in case["expected_arguments"].items()
+        )
+    )
+
+
+def test_spec_version_is_declared():
+    """规格版本是版本对比的一部分：没有它，两批分数不可比。"""
+    assert SPEC_VERSION == "1.0"
 
 
 def test_matrix_file_exists_and_meets_the_size_target():
@@ -87,7 +142,7 @@ def test_matrix_keeps_full_intent_and_error_code_coverage():
     assert declared == {code.value for code in ErrorCode}
 
 
-@pytest.mark.parametrize("case", CASES, ids=CASE_IDS)
+@pytest.mark.parametrize("case", CASE_PARAMS)
 def test_case_matrix_case_matches_agent_behaviour(case, agent):
     response = agent.handle(case["message"], customer_id=case["customer_id"])
     hint = f"{case['case_id']}: {case['notes']}"
@@ -113,6 +168,38 @@ def test_case_matrix_case_matches_agent_behaviour(case, agent):
 
     for key, expected_value in case["expected_arguments"].items():
         assert response.audit.arguments[key] == expected_value, f"{hint} / {key}"
+
+
+def test_the_documented_rule_deviations_are_exactly_the_real_ones():
+    """偏差清单不能长毛：集合变了就必须有人来解释。
+
+    - 基线被修好 → 请从 KNOWN_RULE_PLANNER_DEVIATIONS 删掉条目；
+    - 出现新的违反 → 先按 docs/agent-spec.md 裁决，再决定是改期望值还是记偏差。
+    """
+    actual = {case["case_id"] for case in CASES if not _baseline_satisfies(case)}
+    assert actual == set(KNOWN_RULE_PLANNER_DEVIATIONS), (
+        f"多出来的：{sorted(actual - set(KNOWN_RULE_PLANNER_DEVIATIONS))}；"
+        f"已经修好的：{sorted(set(KNOWN_RULE_PLANNER_DEVIATIONS) - actual)}"
+    )
+
+
+def test_deviation_lists_are_disjoint_and_cite_a_spec_clause():
+    assert set(KNOWN_RULE_PLANNER_DEVIATIONS).isdisjoint(KNOWN_LLM_PLANNER_DEVIATIONS)
+    for reason in (
+        *KNOWN_RULE_PLANNER_DEVIATIONS.values(),
+        *KNOWN_LLM_PLANNER_DEVIATIONS.values(),
+    ):
+        assert "SPEC-" in reason, f"偏差必须写清违反了哪条规格条款：{reason!r}"
+
+
+def test_llm_deviation_cases_keep_the_spec_expectation_not_the_model_behaviour():
+    """模型做错了不能反过来改期望值——否则规格就被实现带跑了。"""
+    by_id = {case["case_id"]: case for case in CASES}
+    for case_id in KNOWN_LLM_PLANNER_DEVIATIONS:
+        case = by_id[case_id]
+        assert case["expected_intent"] == "order_status"
+        assert case["expected_state"] == "validation_failed"
+        assert case["expected_error_code"] == "VALIDATION_ERROR"
 
 
 @pytest.mark.parametrize("case", SAFETY_CASES, ids=[c["case_id"] for c in SAFETY_CASES])

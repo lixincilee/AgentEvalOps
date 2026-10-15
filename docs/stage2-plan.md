@@ -121,6 +121,7 @@ cost_per_success（单次成功任务成本）。Run.save/load 落盘为 UTF-8 J
 | --- | --- | --- |
 | M1（本次） | 版本模型 + 运行模型 + LLM 抽象 + 成本核算 | 全套测试离线通过；无需 Key 即可跑 |
 | M2 | LLM 版意图识别 + 槽位抽取，接入 DeepSeek | 一条真实 Trace；v1 vs v2 对比报告；L1 全部迁移且通过率有数字 |
+| **M2.5（本次）** | **规格冻结**：写 `docs/agent-spec.md` v1.0，裁决 9 条 v1/v2 争议，把偏差变成可执行清单 | 期望值不再来自任何实现（SPEC-JUDGE-2）；基线偏差由 strict `xfail` 盯住；版本对比有了规范标尺 |
 | M3 | RAG 检索工具 + 多轮状态 + LangGraph | 检索类用例可判分；多轮用例通过 |
 | M4 | 用例扩到 240 + Ragas/DeepEval + Judge 校准 | 全量跑完出指标；Judge 与人工抽检一致率有数字 |
 
