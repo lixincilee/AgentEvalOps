@@ -65,6 +65,7 @@ AgentEvalOps/
     ├── test_scenarios_jsonl.py        # 数据驱动测试：逐条回放 JSONL 场景
     ├── test_v1_gaps.py                # 区分度检查：v1 必须「明知故错」的那批用例
     ├── test_case_matrix_v2.py         # 阶段二用例矩阵的 schema 与回放
+    ├── test_comparison_harness.py     # 编排层：离线自检零差异、报告数字自洽
     ├── test_planner.py                # 规划层：v1/v2 决策、幻觉守卫、契约不变
     ├── test_safety.py                 # 基础安全场景：越权 / 枚举 / 注入
     ├── test_config.py                 # 环境变量 / .env 解析
@@ -100,7 +101,7 @@ D:\Python\python.exe -m pip install -e ".[dev]" --no-build-isolation
 ### 3. 运行测试
 
 ```bash
-python -m pytest                                # 全量：212 passed
+python -m pytest                                # 全量：562 passed
 python -m pytest -q                             # 精简输出
 python -m pytest -v                             # 逐条列出用例名
 python -m pytest tests/test_safety.py           # 只跑安全场景
@@ -302,6 +303,18 @@ v2 的三道护栏（全在 `planner.py`）：
 2. `order_id` 必须在用户原文里逐字出现，模型编造或格式非法 → 丢弃，改用正则抽取；
 3. 模型不可用 / 输出不是 JSON 对象 → 回退 v1，永远不会把脏数据交给工具层。
 
+**报告里的数字必须自洽**（这条是被真实 bug 逼出来的）：用例矩阵里有 6 条畸形请求
+（`message` 为空、`customer_id` 为空），它们在 `handle()` 里、调用规划器**之前**就被
+请求校验拒绝，因此**不会产生模型调用**。所以「165 条用例 / 159 次调用」是**正确的**，
+报告会把它们单独标成 `source=not-planned`，并用三项不变式自检：
+
+- `peak_calls + off_peak_calls == model_calls`：每次调用必落在高峰或空闲之一档；
+- `model_calls <= planned_cases`：没进规划层的用例不可能产生调用；
+- 所有短路用例的状态都是 `validation_failed`。
+
+离线自检（`--offline`）回放的是 v1 自己的决策，所以 **v2 必须逐条与 v1 一致**；
+一旦编排层给「不会调模型」的用例也发了脚本答案，答案就会整体错位，自检随之虚报差异。
+
 ### 6. 成本口径（单位：人民币元）
 
 内置价目来自供应商官方价目页，单位是**人民币元 / 百万 tokens**，以免把「元」当「美元」
@@ -339,9 +352,13 @@ AGENTEVALOPS_PRICING_JSON={"some-other-model": {"input_per_1m": 1.0, "output_per
 
 ```bash
 git status --short                 # 应为空
-git describe --tags --dirty        # v0.1.0
+git describe --tags --dirty        # v0.2.0
 python scripts/compare_planners.py --cases eval_cases/case_matrix_v2.jsonl --save reports/r.json
 ```
+
+tag 与报告一一对应：`v0.1.0` 是阶段一基线，`v0.2.0` 覆盖真实价目与编排层自洽；
+报告里的 `manifest.code_version` 就是打 tag 的那个提交（当前 `e95ce18`）。
+完整对照表见 `docs/stage2-evidence.md` 第 7.1 节。
 
 > ⚠️ 干净工作区只保证**输入**可复现。同一个 `manifest_id` 跑两次，模型分数仍可能有
 > ±1 条用例的抖动（实测 96.4% / 95.8% / 96.4%）。所以判定「退化」必须重复执行，
@@ -352,7 +369,7 @@ python scripts/compare_planners.py --cases eval_cases/case_matrix_v2.jsonl --sav
 | 阶段 | 目标 | 关键产出 |
 | --- | --- | --- |
 | **阶段一（已完成）** | 确定性 Agent + 工具契约 + 测试基线 + JSONL 场景表 | `AuditRecord` 契约、138 个测试项、19 条场景 |
-| **阶段二（进行中）** | 接入 DeepSeek；建立版本 / 运行 / 指标数据模型；用 `LLMPlanner` 替换 `classify_intent` 与槽位抽取（**保持 `AuditRecord` 契约不变**） | `VersionManifest`、`Run`/`RunMetrics`、成本核算与预算熔断、**192 条用例集**、**v1 vs v2 真实对比报告**（`docs/stage2-evidence.md`）、tag `v0.1.0` |
+| **阶段二（进行中）** | 接入 DeepSeek；建立版本 / 运行 / 指标数据模型；用 `LLMPlanner` 替换 `classify_intent` 与槽位抽取（**保持 `AuditRecord` 契约不变**） | `VersionManifest`、`Run`/`RunMetrics`、成本核算与预算熔断、**192 条用例集**、**v1 vs v2 真实对比报告**（`docs/stage2-evidence.md`）、tag `v0.2.0` |
 | 阶段三：LangGraph 编排 | 显式状态机：意图节点 → 工具节点 → 人工中断节点 | 图式编排替代 if/else；节点级可观测 trace |
 | 阶段四：RAG | 新增知识库检索工具（第 4 个工具），回答政策类问题 | 检索质量指标（命中率、引用正确率）与幻觉检测 |
 | 阶段五：评测框架与看板 | 批量跑场景、算指标、存历史、卡 CI 门禁 | 回归看板、基线对比、失败样本归档 |
