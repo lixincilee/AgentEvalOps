@@ -4,7 +4,7 @@
 它是运行产物），随时可以重跑生成。
 
 **版本锚定**：仓库已 `git init`，下面每一份报告都来自**干净工作区**：
-`code_version = e95ce18`、`is_reproducible = true`、`git describe --tags --dirty = v0.2.0`。
+`code_version = 228b263`、`is_reproducible = true`、`git describe --tags --dirty = v0.3.0`。
 
 > `is_reproducible=true` 只保证**输入**可复现（代码版本 + prompt + 模型 + 用例集全部钉死），
 > **不保证输出可复现**：同一个 manifest 的两次真实运行分数就不一样（7.2 节）；编排层自己
@@ -30,10 +30,10 @@ python scripts/smoke_llm.py --save reports/m1-smoke-real.json
 | --- | --- |
 | 请求 / 返回模型 | `deepseek-chat` / `deepseek-flash` |
 | 用量 | prompt 21 / completion 36 / total 57 tokens（cache_hit 0） |
-| 延迟 | 24694.6 ms —— 这一发正好落在拥塞窗口里（见 7.4） |
-| 花费 | `CNY 0.000330`，`cost_is_complete=true` |
-| 独立复核 | (21×2 + 36×8) ÷ 1e6 = 0.00033 元 ✓ |
-| manifest_id | `9b91e683b422` |
+| 延迟 | 3357.3 ms（健康窗口） |
+| 花费 | `CNY 0.000314`，`cost_is_complete=true` |
+| 独立复核 | (21×2 + 34×8) ÷ 1e6 = 0.000314 元 ✓ |
+| manifest_id | `a415beab0c7e` |
 
 **结论**：链路通、用量可读、成本口径能被一个独立算式复核，而不是「信不信脚本」。
 
@@ -51,9 +51,9 @@ python scripts/compare_planners.py --save reports/v1-vs-v2-real-19.json
 | 参数准确率 | 100.0% | 100.0% | +0.0% |
 | 任务成功率 | 36.8% | 36.8% | +0.0% |
 
-用量：prompt 2106 / completion 311 tokens（无缓存命中）；平均延迟 **2292 ms**；
-19/19 来自模型；行为变化 0 条；花费 `CNY 0.006700`（独立复核：(2106×2 + 311×8) ÷ 1e6 ✓）；
-manifest_id `244c53ab4840`。
+用量：prompt 2106 / completion 306 tokens（无缓存命中）；平均延迟 **811 ms**；
+19/19 来自模型；行为变化 0 条；花费 `CNY 0.006660`（独立复核：(2106×2 + 306×8) ÷ 1e6 ✓）；
+manifest_id `6a2c54de6fbe`。
 
 **结论（重要）**：这 19 条是**为 v1 量身定做的**，v1 满分 ⇒ 这套用例**没有区分度**，
 既不能证明 v2 更差、也不能证明 v2 更好。评测集的第一个质量标准不是「条数多」，
@@ -82,8 +82,8 @@ python scripts/compare_planners.py --cases eval_cases/v1_gaps_cases.jsonl --save
 | 参数准确率 | 0.0% | **100.0%** | +100.0% |
 | 任务成功率 | 0.0% | **100.0%** | +100.0% |
 
-用量：prompt 884 / completion 138 tokens；平均延迟 **1503 ms**；8/8 用例行为发生变化；
-花费 `CNY 0.002872`；单次成功任务成本 `CNY 0.000359`；manifest_id `a36656c2df43`。
+用量：prompt 884 / completion 135 tokens；平均延迟 **957 ms**；8/8 用例行为发生变化；
+花费 `CNY 0.002848`；单次成功任务成本 `CNY 0.000356`；manifest_id `3363dd94329d`。
 
 **结论**：v2 用约 1.5 s/条的代价，把 v1 在口语化表达上的系统性漏判补齐；
 `AuditRecord` 契约未变，说明这次替换是**可回归、可对比**的。
@@ -118,8 +118,9 @@ python scripts/compare_planners.py --cases eval_cases/v1_gaps_cases.jsonl --save
 ```bash
 python -m pip install -e ".[llm]"                  # 装 openai SDK
 python scripts/check_env.py                        # 确认 Key 已配置（不打印密钥）
-python -m pytest -q                                # 全量测试，应为 562 passed
+python -m pytest -q                                # 全量测试，应为 585 passed + 10 xfailed
 python scripts/compare_planners.py --offline --save reports/v1-vs-v2-offline.json  # 零成本自检
+python scripts/compare_planners.py --offline --cases eval_cases/case_matrix_v2.jsonl --save reports/v1-vs-v2-offline-matrix.json  # 零成本量化「基线距规格有多远」
 python scripts/smoke_llm.py --save reports/m1-smoke-real.json
 python scripts/compare_planners.py --save reports/v1-vs-v2-real-19.json
 python scripts/compare_planners.py --cases eval_cases/v1_gaps_cases.jsonl --save reports/v1-vs-v2-gaps.json
@@ -189,16 +190,47 @@ manifest_id `d7dfb5b725e1`。
 
 因此**本文 6 节表格里的分数是冻结前的旧口径**；冻结后重跑见 6.3。
 
+### 6.3 规格冻结后的重跑（口径第一次可比）
+
+期望值改由规格定义之后，分数才变成「相对规格的达标率」，v1 与 v2 这才真正可比：
+
+```bash
+python scripts/compare_planners.py --offline --cases eval_cases/case_matrix_v2.jsonl --save reports/v1-vs-v2-offline-matrix.json
+python scripts/compare_planners.py --cases eval_cases/case_matrix_v2.jsonl --save reports/v1-vs-v2-matrix-165.json
+```
+
+| 指标 | v1 规则 | v2 模型 | 差 |
+| --- | --- | --- | --- |
+| 意图准确率 | 97.6% | **98.8%** | **+1.2%** |
+| 状态准确率 | 95.8% | **98.8%** | **+3.0%** |
+| 工具选择准确率 | 97.6% | **98.8%** | **+1.2%** |
+| 参数准确率 | 95.8% | **98.8%** | **+3.0%** |
+| 任务成功率 | 48.5% | **50.3%** | **+1.8%** |
+
+用量：prompt 20235 / completion 2412 tokens；平均延迟 **768 ms**；花费 `CNY 0.054999`；
+单次成功任务成本 `CNY 0.000663`；159/165 产生模型调用；manifest_id `ead6be97e8e8`。
+
+差异集合仍是同样那 9 条，但**归属翻转了**：其中 7 条是 **v1 违反规格**（SPEC-SLOT-1 三条、
+SPEC-INTENT-2 四条），只有 2 条是 **v2 偏离规格**（`regressions` 恰好是
+`v2_safe_root_01` 与 `v2_safe_injection_07`，均为 SPEC-INTENT-3，无安全后果）。
+
+**顺带记住免费的那一跑**：`--offline` 是把 v1 的决策原样回放给 v2，所以它不花任何模型调用，
+就能测出**基线距规格有多远**——v1 意图 97.6%、状态 95.8%，正好等于「4 条意图违例 + 7 条状态违例」。
+改完代码先跑这一条，是最省钱的回归手段。
+
+**结论**：规格冻结之前，「v1 = 100%、v2 = 96.4%」看起来像 v2 退化；同一批数据按规格重判之后，
+v2 在**每一项**上都不低于 v1。这印证了 6.2 的判断——**先有规格，分数才有意义**。
+
 ## 7. 版本锚定、运行方差与两次真实故障
 
 ### 7.1 锚定结果
 
 | 项 | 值 |
 | --- | --- |
-| 提交 | `e95ce18` |
-| tag | `v0.2.0`（`v0.1.0` 是阶段一基线） |
-| `git describe --tags --dirty` | `v0.2.0`（**没有 `-dirty` 后缀**） |
-| `VersionManifest.code_version` | `e95ce18` |
+| 提交 | `228b263` |
+| tag | `v0.3.0`（`v0.1.0` 阶段一基线 → `v0.2.0` 真实价目 → `v0.3.0` 规格冻结） |
+| `git describe --tags --dirty` | `v0.3.0`（**没有 `-dirty` 后缀**） |
+| `VersionManifest.code_version` | `228b263` |
 | `VersionManifest.is_reproducible` | `true` |
 | 报告里的被测版本身份 | `extra = {"baseline_planner": "rules-v1", "candidate_planner": "llm-v2"}` |
 
@@ -206,11 +238,12 @@ tag 与报告一一对应，拿到报告就能回到产生它的代码状态：
 
 | 报告 | 用例 | code_version | manifest_id |
 | --- | --- | --- | --- |
-| `m1-smoke-real.json` | 1 | `e95ce18` | `9b91e683b422` |
-| `v1-vs-v2-offline.json` | 19 | `e95ce18` | `566e947acc0c` |
-| `v1-vs-v2-real-19.json` | 19 | `e95ce18` | `244c53ab4840` |
-| `v1-vs-v2-gaps.json` | 8 | `e95ce18` | `a36656c2df43` |
-| `v1-vs-v2-matrix-165.json` | 165 | `e95ce18` | `d7dfb5b725e1` |
+| `m1-smoke-real.json` | 1 | `228b263` | `a415beab0c7e` |
+| `v1-vs-v2-offline.json` | 19 | `228b263` | `4fade29677b4` |
+| `v1-vs-v2-offline-matrix.json` | 165 | `228b263` | `e530fe991071` |
+| `v1-vs-v2-real-19.json` | 19 | `228b263` | `6a2c54de6fbe` |
+| `v1-vs-v2-gaps.json` | 8 | `228b263` | `3363dd94329d` |
+| `v1-vs-v2-matrix-165.json` | 165 | `228b263` | `ead6be97e8e8` |
 | `v1-vs-v2-matrix-165-r2.json` | 165 | `31433a7` | `4d598346aff3`（旧价目改动之前跑的第二采样，成本字段是旧口径） |
 
 为了让「干净」这个状态能维持住，做了两件必要的事：
@@ -236,7 +269,7 @@ tag 与报告一一对应，拿到报告就能回到产生它的代码状态：
 这是**供应商侧的采样随机性，不是我们代码的**。
 
 2026-10-15 在 `v0.2.0` 上重跑第四次：意图 96.4%、9 条差异、平均延迟 852 ms、
-completion 2442 tokens——与 run1/run3 一致，说明这 9 条是稳定差异。
+completion 2442 tokens——与 run1/run3 一致，说明这 9 条是稳定差异（口径是冻结前的期望值）。
 
 **结论（最容易踩的坑）**：
 
@@ -300,7 +333,7 @@ completion 2442 tokens——与 run1/run3 一致，说明这 9 条是稳定差�
 
 | 待办 | 状态 |
 | --- | --- |
-| ~~`git init` + 打基线 tag~~ | **已完成**：`e95ce18` / tag `v0.2.0` / `is_reproducible=true` |
+| ~~`git init` + 打基线 tag~~ | **已完成**：`228b263` / tag `v0.3.0` / `is_reproducible=true` |
 | ~~真实单价~~ | **已完成**：`deepseek-flash` 2/0.04/8 元、`deepseek-v4-pro` 9/0.30/27 元（高峰价，空闲对半） |
 | 240 条用例矩阵 / 35 条安全样本 | 已有 **192 条**（normal 69 / boundary 48 / safety 38 / error 37），安全样本 38 条已达标；距 240 还差约 48 条 |
 | ~~规格冻结（`docs/agent-spec.md`）~~ | **已完成**：v1.0 冻结，9 条争议全部裁决，7 条期望值按规格改写，基线偏差由 strict `xfail` 盯住 |
