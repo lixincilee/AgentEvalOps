@@ -6,7 +6,8 @@
 ## 1. 阶段二的目标
 
 让「被测系统」第一次具备不确定性，同时建立**版本 / 运行 / 指标**数据模型。
-完成标准是能产出一份 **v1（规则） vs v2（LLM）** 的对比报告，以及一条可分享的 Trace。
+完成标准是能产出一份 **v1（规则）/ v2（LLM）/ v3（LangGraph + RAG + 多轮）** 的三方对比报告，
+以及一条可分享的 Trace。
 
 > 关键认知：先有版本与运行的数据模型，才可能有「3 个版本回归对比」。
 > 没有它，对比只能靠手工拼截图。
@@ -23,9 +24,9 @@
 | 版本清单 VersionManifest | 本次完成 |
 | 运行数据模型 Run / RunMetrics | 本次完成 |
 | 成本核算与预算熔断 UsageLedger | 本次完成 |
-| RAG 检索工具 / 多轮会话状态 / LangGraph | 未开始 |
+| RAG 检索工具 / 多轮会话状态 / LangGraph | 已完成（M3，v3） |
 | Langfuse Trace | 未开始 |
-| 用例集扩到 240 条 | 已完成（213 + 19 + 8 = 240，见 §5） |
+| 用例集 | 已完成：主矩阵 240 条 + M3 检索 48 条 + 多轮 36 条 = **324 条**（见 §5） |
 | Ragas / DeepEval / Promptfoo / Locust / CI | 未开始 |
 
 ## 3. 三个地基（已落地）
@@ -68,24 +69,26 @@ cost_per_success（单次成功任务成本）。Run.save/load 落盘为 UTF-8 J
 | L5 | Promptfoo | 提示注入 / 越权 / 泄露 | LLM | 安全拦截率 |
 | L6 | Locust | P95 / 吞吐 / 错误率 / 成本 | LLM | 性能与成本 |
 
-## 5. 用例矩阵（240 条已达成）
+## 5. 用例矩阵（324 条已达成）
 
-三份 JSONL 合计 **240 条**，期望值全部来自 `docs/agent-spec.md`（SPEC-JUDGE-2）：
+五份 JSONL 合计 **324 条**，期望值全部来自 `docs/agent-spec.md`（SPEC-JUDGE-2）：
 
 | 文件 | 条数 | 组成 |
 | --- | --- | --- |
 | `eval_cases/case_matrix_v2.jsonl` | 213 | normal 64 / boundary 56 / error 47 / safety 46 |
 | `eval_cases/support_cases.jsonl` | 19 | 阶段一基线集（v1 亲和） |
 | `eval_cases/v1_gaps_cases.jsonl` | 8 | v1 已知漏判集（区分度回归网） |
-| **合计** | **240** | 其中安全样本 50 条（目标 35 条） |
+| `eval_cases/rag_cases.jsonl` | 48 | M3 检索层：rag 22 / rag_stale 8 / rag_poison 8 / rag_refuse 10 |
+| `eval_cases/multiturn_cases.jsonl` | 36 | M3 会话层：multiturn 32 / multiturn_refuse 4（共 72 轮） |
+| **合计** | **324** | 其中安全样本 50 条，另有 M3 投毒样本 8 条（目标 35 条） |
 
-三类用例**还没开始**，因为需要尚不存在的能力——硬写只会得到假用例：
+三类用例的进度：
 
-| 类别 | 目标 | 卡在哪 |
+| 类别 | 目标 | 现状 |
 | --- | --- | --- |
-| RAG 检索 | 45 | 需要检索工具（M3）：有答案 / 应拒答 / 多文档 / 冲突文档 / 过期文档 |
-| 多轮状态 | 35 | 需要会话状态（M3）：指代消解、槽位继承、话题切换、中途改主意 |
-| 故障注入 | 25 | 需要注入能力（M5）：工具超时 / 工具 500 / 检索超时 / 空检索 / 模型限流 |
+| RAG 检索 | 45 | **已完成 48 条**（M3）：有答案 / 应拒答 / 多文档 / 冲突文档 / 过期文档 / 投毒隔离 |
+| 多轮状态 | 35 | **已完成 36 条**（M3）：指代消解 / 槽位继承 / 话题切换 / 中途改主意 / 缺槽位 |
+| 故障注入 | 25 | 未开始（M5）：需要注入能力——工具超时 / 工具 500 / 检索超时 / 空检索 / 模型限流 |
 
 > 新增的 48 条写在 M2.5 规格冻结**之后**，因此**没有引入任何新的基线偏差**
 > （偏差集合仍是 SPEC-SLOT-1 三条 + SPEC-INTENT-2 四条）。
@@ -106,10 +109,12 @@ cost_per_success（单次成功任务成本）。Run.save/load 落盘为 UTF-8 J
 | 版本 | 定义 | 状态 |
 | --- | --- | --- |
 | v1 | 规则版 Agent（阶段一产物） | 已存在 |
-| v2 | LLM 版（DeepSeek + prompt v1），单轮 | M2 |
-| v3 | LLM + RAG 检索 + 多轮状态 + prompt v2 | M3 |
+| v2 | LLM 版（DeepSeek + prompt v2），单轮、无检索 | 已完成（`v0.3.0` / `v0.4.0`） |
+| v3 | LangGraph 编排 + RAG 检索 + 多轮会话 + prompt v3；规划器可换规则臂（`RulePlannerV3`）或模型臂（`GroundedLLMPlanner`） | **M3，tag `v0.5.0`** |
 
 对比报告必须引用三个 manifest_id，并说明每个版本改了什么。
+v1 与 v3 的规则臂都能**离线**跑（零成本、零方差），所以三方对比先对齐「检索与多轮链路成不成立」，
+再花一次钱把模型臂跑出来做归因——两步混在一起，出了差异就说不清是链路错还是模型随机。
 
 ## 7. 性能测试的坑
 
@@ -137,6 +142,8 @@ cost_per_success（单次成功任务成本）。Run.save/load 落盘为 UTF-8 J
 | M3 | RAG 检索工具 + 多轮状态 + LangGraph | 检索类用例可判分；多轮用例通过 |
 | **M2.6（本次）** | **用例集扩到 240**：新增 3 条模拟订单 + 48 条用例（含 4 条 INVALID_ARGUMENT 边界、12 条安全样本） | 三份 JSONL 合计 240 条；新增用例零基线偏差；全量 `649 passed` |
 | M4 | Ragas/DeepEval + Judge 校准 + 50 条 golden set 跑 PR | Judge 与人工抽检一致率有数字；全量 240 条跑完出指标 |
+| **M3（本次）** | **RAG 检索工具 + 多轮会话状态 + LangGraph 编排**；规格升到 v1.2；产出 **v3** | 检索类 48 条 + 多轮类 36 条可判分；v1/v2/v3 三方对比器离线零差异；全量 `912 passed` |
+| M4 | Ragas/DeepEval + Judge 校准 + 50 条 golden set 跑 PR | Judge 与人工抽检一致率有数字；全量用例跑完出指标 |
 | M5 | 故障注入（工具超时 / 工具 500 / 空检索）+ Locust 并发压测 | 注入类用例可判分；P95 / 吞吐 / 单次成功任务成本有数字 |
 
 ## 10. 环境前置（当前状态）
@@ -166,4 +173,6 @@ cost_per_success（单次成功任务成本）。Run.save/load 落盘为 UTF-8 J
 - 预算熔断是**事后**检查（调用完成后才知道花费），因此可能略微超出上限；判定为「达到或超过上限」即熔断。
 - 模型名先按最长前缀匹配已知价目（`deepseek-flash-v4-1` 会命中 `deepseek-flash`）。
 - ScriptedLLMClient 的 token 数是估算值（约 4 字符 1 token），只能用于离线跑通链路，不能当作真实用量。
-- 尚未接入真实检索，retrieval_config_hash 目前多为 None。
+- 检索已接入（M3），但检索器是**词法**的：CJK 字符二元组 + idf 加权覆盖度，没有语义检索。
+  已知的召回缺口与噪声清单见 `docs/stage2-evidence.md` 第 9.4 节；`retrieval_config_hash`
+  记录的是语料指纹，语料一改，两批分数就不再可比。

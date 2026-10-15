@@ -1,7 +1,8 @@
 # AgentEvalOps
 
 > 一个用于练习 **Agent 评测工程（Evaluation Engineering / EvalOps）** 的教学项目。
-> 当前处于 **阶段一**：先做「完全确定性的电商客服 Agent」，把契约、数据和测试基线建好，再谈接入大模型。
+> 当前进度 **阶段二 M3**：确定性 Agent（v1）→ DeepSeek 规划层（v2）→ **LangGraph 编排 + 知识库检索 + 多轮会话（v3）**。
+> 三个版本跑在同一批用例、同一判分口径下，产出结构完全相同的 `RunMetrics`，差异才有归因价值。
 
 ## 为什么先做确定性版本
 
@@ -28,20 +29,23 @@ AgentEvalOps/
 ├── .gitignore
 ├── .env.example                       # API Key 等环境变量模板
 ├── docs/
-│   ├── agent-spec.md                  # 行为规格 v1.0（冻结）：意图粒度 / 槽位匹配 / 判分口径
+│   ├── agent-spec.md                  # 行为规格 v1.2（冻结）：意图粒度 / 槽位匹配 / 检索依据 / 多轮会话 / 判分口径
 │   ├── stage2-plan.md                 # 阶段二施工图与里程碑
 │   ├── stage2-evidence.md             # 阶段二实测证据与复现命令
 │   └── bad-cases-v2.md                # v2 的 9 处差异逐条归类与根因
 ├── scripts/
 │   ├── check_env.py                   # 密钥体检（只打印长度与前缀，不泄密）
 │   ├── smoke_llm.py                   # LLM 连通性烟囱测试（--save 可落盘证据）
-│   ├── compare_planners.py            # v1 规则版 vs v2 模型版 对比运行器
+│   ├── compare_planners.py            # v1 规则版 vs v2 模型版 对比运行器（二元）
+│   ├── compare_versions.py            # v1 / v2 / v3 三方对比运行器（M3 新增）
 │   └── gen_case_matrix.py             # 用例矩阵脚手架（只报告偏差，不再定义期望值）
 ├── reports/                           # 运行产物（已 gitignore）：评测报告 JSON，可当 CI 工件
 ├── eval_cases/
 │   ├── support_cases.jsonl            # 阶段一场景集（19 条，v1 亲和的基线集）
 │   ├── v1_gaps_cases.jsonl            # v1 已知漏判集（8 条，用来检验评测集区分度）
-│   └── case_matrix_v2.jsonl           # 阶段二用例矩阵（213 条；三份合计 240 条）
+│   ├── case_matrix_v2.jsonl           # 阶段二用例矩阵（213 条；主矩阵三份合计 240 条）
+│   ├── rag_cases.jsonl                # M3 检索层用例（字段契约见规格 §7.1）
+│   └── multiturn_cases.jsonl          # M3 多轮会话用例（字段契约见规格 §7.2）
 ├── src/
 │   └── agentevalops/                  # 生产代码（src-layout，强制安装后再运行）
 │       ├── __init__.py                # 对外公开的 API 汇总
@@ -49,7 +53,10 @@ AgentEvalOps/
 │       ├── order_store.py             # 订单仓储，只读 + 归属校验
 │       ├── tools.py                   # 三个工具：查单 / 退款 / 建人工工单
 │       ├── agent.py                   # Agent 主流程：校验请求 → 规划 → 调用一个工具
-│       ├── planner.py                 # 阶段二：规划层（RulePlanner=v1 / LLMPlanner=v2 + 幻觉守卫）
+│       ├── planner.py                 # 规划层（规则臂 v1 / v3 + 模型臂 v2 / v3 + 幻觉守卫）
+│       ├── retrieval.py               # M3：本地知识库 + 确定性检索器 + search_knowledge_base
+│       ├── session.py                 # M3：多轮会话状态与槽位继承（带来源标记）
+│       ├── pipeline.py                # M3：v3 的 LangGraph 编排 validate→retrieve→plan→dispatch→respond
 │       ├── config.py                  # 阶段二：环境变量 / .env 加载
 │       ├── versioning.py              # 阶段二：VersionManifest 版本指纹
 │       ├── runs.py                    # 阶段二：Run / CaseResult / RunMetrics
@@ -57,7 +64,8 @@ AgentEvalOps/
 │       ├── llm/                       # 阶段二：base / deepseek / fake / costing
 │       └── data/
 │           ├── __init__.py
-│           └── orders.json            # 本地模拟订单数据
+│           ├── orders.json            # 本地模拟订单数据
+│           └── knowledge_base.json    # M3：本地知识库语料（含过期版本与投毒样本）
 └── tests/                             # 全部测试项（含参数化展开）
     ├── conftest.py                    # 共享 fixture + JSONL 读取工具
     ├── test_contracts.py              # 契约测试：返回结构、错误码词表、枚举取值
@@ -77,7 +85,13 @@ AgentEvalOps/
     ├── test_costing.py                # 成本核算与预算熔断
     ├── test_deepseek_client.py        # DeepSeek 适配器（桩客户端，无网络）
     ├── test_versioning.py             # 版本清单哈希与稳定性
-    └── test_runs.py                   # 运行聚合与落盘
+    ├── test_runs.py                   # 运行聚合与落盘
+    ├── test_retrieval.py              # M3 检索层：语料完整性、打分口径、只读工具契约
+    ├── test_session_state.py          # M3 会话状态：槽位来源、指代消解、会话隔离
+    ├── test_pipeline_v3.py            # M3 v3 编排：节点顺序、检索、多轮、LLM 臂
+    ├── test_rag_cases.py              # M3 数据驱动：回放 rag_cases.jsonl
+    ├── test_multiturn_cases.py        # M3 数据驱动：回放 multiturn_cases.jsonl
+    └── test_version_comparison.py     # M3 v1/v2/v3 三方对比器（离线、零成本）
 ```
 
 ## 快速开始
@@ -370,15 +384,69 @@ tag 与报告一一对应：`v0.1.0` 是阶段一基线，`v0.2.0` 覆盖真实�
 > ±1 条用例的抖动（实测 96.4% / 95.8% / 96.4%）。所以判定「退化」必须重复执行，
 > 不能拿单次结果下结论。详见 `docs/stage2-evidence.md` 第 7 节。
 
+## 阶段二 M3：v3（LangGraph + RAG + 多轮）
+
+v3 不是「再写一个 Agent」，而是把**同一套工具、同一份 `AuditRecord`** 放进一张显式状态图，
+让检索失败、规划失败、工具失败在报告里互相分得开（SPEC-GRAPH-1 / 2 / 3）。
+
+```
+validate ──(条件：命中政策词且消息里没有订单号)──> retrieve ──> plan ──> dispatch ──> respond
+    └──(被 SPEC-REQ-1 短路)──────────────────────────────────────────────> respond
+```
+
+| v3 新增 | 契约 |
+| --- | --- |
+| 第 4 个工具 `search_knowledge_base` | 只读；**检索不到不是错误**（`hits=[]` / `retrieved=0` 仍算成功，SPEC-RAG-1） |
+| 新意图 `policy_qa` | 问平台通用规则 → 检索；想办某个具体订单的业务 → 仍按业务动作判（SPEC-RAG-3） |
+| 新错误码 `NO_KNOWLEDGE` | 没有依据就拒答，**不得输出任何具体政策内容**，更不得编造 `doc_id`（SPEC-RAG-4） |
+| 检索触发判据 | 政策词命中**且**消息里没有订单号：确定性判据，不依赖模型（SPEC-RAG-7） |
+| 过期文档 | 可以出现在 hits 里，但必须带 `expired=true`，且同主题现行文档必须排在前面（SPEC-RAG-5） |
+| 投毒文档 | 语料正文里的指令**不得**改变意图、槽位或工具调用（SPEC-RAG-6） |
+| 多轮会话 | `session_id` 可选；继承来的槽位必须标 `inherited`；不传 `session_id` 时行为与 v1.0 逐字节一致（SPEC-MT-1 / 2 / 3） |
+| 检索证据 | 放在独立的 `RetrievalRecord` 里，**不进** `AuditRecord`——审计结构一变，三个版本立刻不可比 |
+
+跑一遍看看（零成本、零方差：默认用规则臂 `RulePlannerV3`）：
+
+```python
+from agentevalops.pipeline import V3Agent
+
+agent = V3Agent()
+agent.handle("退款政策是怎么规定的", customer_id="CUST-001")
+print(agent.last_nodes)                  # ['validate','retrieve','plan','dispatch','respond']
+print(agent.last_retrieval.to_dict())    # 检索证据：hits / doc_ids / expired_doc_ids
+print(agent.last_slot.to_dict())         # {'order_id': None, 'source': None}
+
+agent.handle("帮我查订单 ORD-1004 的状态", customer_id="CUST-001", session_id="MT-001")
+agent.handle("这个我要退款", customer_id="CUST-001", session_id="MT-001")
+print(agent.last_slot.to_dict())         # {'order_id': 'ORD-1004', 'source': 'inherited'}
+print(agent.last_nodes)                  # 订单类请求不经过 retrieve 节点
+```
+
+换真实模型（v3 的 LLM 臂，prompt v3）：
+
+```python
+from agentevalops.config import load_settings
+from agentevalops.llm import build_client
+from agentevalops.pipeline import V3Agent
+from agentevalops.planner import GroundedLLMPlanner
+
+client = build_client(load_settings(), offline=False)
+agent = V3Agent(planner=GroundedLLMPlanner(client))
+print(agent.planner.name)                # llm-v3（v2 是 llm-v2）
+```
+
+默认用 `RulePlannerV3` 是有意的：离线自检必须能把「检索与多轮链路对不对」和
+「模型这次回答得怎么样」分开，否则失败无法归因。
+
 ## 后续路线图
 
 | 阶段 | 目标 | 关键产出 |
 | --- | --- | --- |
 | **阶段一（已完成）** | 确定性 Agent + 工具契约 + 测试基线 + JSONL 场景表 | `AuditRecord` 契约、138 个测试项、19 条场景 |
 | **阶段二（进行中）** | 接入 DeepSeek；建立版本 / 运行 / 指标数据模型；用 `LLMPlanner` 替换 `classify_intent` 与槽位抽取（**保持 `AuditRecord` 契约不变**） | `VersionManifest`、`Run`/`RunMetrics`、成本核算与预算熔断、**240 条用例集**、**v1 vs v2 真实对比报告**（`docs/stage2-evidence.md`）、tag `v0.3.0` |
-| 阶段三：LangGraph 编排 | 显式状态机：意图节点 → 工具节点 → 人工中断节点 | 图式编排替代 if/else；节点级可观测 trace |
-| 阶段四：RAG | 新增知识库检索工具（第 4 个工具），回答政策类问题 | 检索质量指标（命中率、引用正确率）与幻觉检测 |
-| 阶段五：评测框架与看板 | 批量跑场景、算指标、存历史、卡 CI 门禁 | 回归看板、基线对比、失败样本归档 |
+| **阶段二 M3（已完成，tag `v0.5.0`）** | 接 RAG 检索 + 多轮会话 + LangGraph 编排，产出 **v3**；规格升到 v1.2 | 第 4 个工具 `search_knowledge_base`、意图 `policy_qa`、错误码 `NO_KNOWLEDGE`、`RetrievalRecord` / `SlotRecord`、M3 用例集、v1/v2/v3 三方对比报告 |
+| **阶段二 M4（下一步）** | 故障注入用例 + 并发压测 | 工具超时 / 异常 / 无检索结果注入、Locust 的 P95、吞吐、错误率与**单次成功任务成本** |
+| **阶段二 M5（之后）** | CI 门禁与报告冻结 | GitHub Actions 回归门禁、`releases/<tag>/` 报告归档、Promptfoo / DeepEval / Ragas 分层判分 |
 
 ### 评测指标（阶段五要算的东西，现在就能算前六项）
 
@@ -409,7 +477,12 @@ tag 与报告一一对应：`v0.1.0` 是阶段一基线，`v0.2.0` 覆盖真实�
 - **规则式意图识别**：只做关键词匹配，不处理「一句话里多个诉求」——
   例如「先退款再转人工」只会命中 `refund`。
 - **`AgentState.received` 是预留成员**：阶段一不会产生，供后续图式编排使用。
-- **不处理多轮对话**：`handle()` 是无状态的单轮调用，没有会话上下文。
+- **多轮只存在于 v3**：`EcommerceSupportAgent.handle()` 仍是无状态单轮调用；会话上下文只由
+  `V3Agent` + `SessionStore` 提供，且**不传 `session_id` 时行为与 v1.0 逐字节一致**（SPEC-MT-1）。
+- **检索是词法匹配**：`retrieval.py` 用 CJK 二元组 + idf 加权覆盖度，没有语义检索；
+  对部分口语长句已知存在召回缺口，清单见 `docs/stage2-evidence.md`。
+- **知识库是构造语料**：33 篇文档，含 5 篇过期版本与 3 篇刻意投毒的 `DOC-UGC-*`。
+  它的用途是建立「检索对不对、拒答对不对」的判分口径，不代表真实企业语料规模。
 
 ## 设计取舍记录
 

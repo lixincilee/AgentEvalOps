@@ -85,10 +85,13 @@ def test_audit_record_exposes_every_required_field():
 
 
 def test_intent_vocabulary_is_stable():
+    # 词汇表的每一次增长都必须来自一次规格升版（v1.1 加入 policy_qa）。
+    # 这个测试故意写得「笨」：新增取值会让它变红，逼人回来确认那是一次有意的规格变更。
     assert {intent.value for intent in Intent} == {
         "order_status",
         "refund",
         "human_handoff",
+        "policy_qa",
         "unknown",
     }
 
@@ -110,6 +113,7 @@ def test_error_code_vocabulary_is_stable():
         "REFUND_NOT_ALLOWED",
         "VALIDATION_ERROR",
         "UNSUPPORTED_INTENT",
+        "NO_KNOWLEDGE",
     }
 
 

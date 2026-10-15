@@ -19,11 +19,13 @@ import pytest
 from conftest import REPO_ROOT, load_support_cases, read_jsonl
 
 from agentevalops.agent import EcommerceSupportAgent
-from agentevalops.models import AgentState, ErrorCode, Intent
+from agentevalops.models import AgentState
 from agentevalops.order_store import OrderStore
 from agentevalops.spec import (
     KNOWN_LLM_PLANNER_DEVIATIONS,
     KNOWN_RULE_PLANNER_DEVIATIONS,
+    LEGACY_ERROR_CODES,
+    LEGACY_INTENTS,
     SPEC_VERSION,
 )
 
@@ -94,7 +96,7 @@ def _baseline_satisfies(case: dict) -> bool:
 
 def test_spec_version_is_declared():
     """规格版本是版本对比的一部分：没有它，两批分数不可比。"""
-    assert SPEC_VERSION == "1.0"
+    assert SPEC_VERSION == "1.2"
 
 
 def test_matrix_file_exists_and_meets_the_size_target():
@@ -197,10 +199,16 @@ def test_each_category_meets_its_minimum(category):
     assert _count(category) >= CATEGORY_MINIMUMS[category]
 
 
-def test_matrix_keeps_full_intent_and_error_code_coverage():
-    assert {case["expected_intent"] for case in CASES} == {intent.value for intent in Intent}
+def test_matrix_keeps_the_frozen_legacy_vocabulary():
+    """主矩阵只覆盖 SPEC 1.0 冻结的取值集合（spec.py 的 LEGACY_*）。
+
+    v1.1 之后新增的取值（policy_qa / NO_KNOWLEDGE）必须留在新用例集里。一旦混进主矩阵，
+    v1 与 v2 会因为「不认识这个取值」而失败——那说明的是版本定义不同，而不是能力退化，
+    分数就再也不能横着比了。新取值由 tests/test_rag_cases.py 与 tests/test_multiturn_cases.py 断言覆盖。
+    """
+    assert {case["expected_intent"] for case in CASES} == LEGACY_INTENTS
     declared = {case["expected_error_code"] for case in CASES} - {None}
-    assert declared == {code.value for code in ErrorCode}
+    assert declared == LEGACY_ERROR_CODES
 
 
 @pytest.mark.parametrize("case", CASE_PARAMS)

@@ -15,7 +15,29 @@ from __future__ import annotations
 
 #: 规格版本。改动 `docs/agent-spec.md` 的任何规范性条款都必须同步提升它，
 #: 否则两份版本对比就不可比：同一批用例在两份规格下的期望值可能不同。
-SPEC_VERSION = "1.0"
+#: v1.1（M3）：加入 §2.8 检索与依据、§2.9 多轮会话状态、§2.10 编排，
+#: 意图集合新增 policy_qa，错误码新增 NO_KNOWLEDGE。
+#: 既有 213 条用例的期望值**零改动**——新取值只出现在新增的 RAG / 多轮用例集里。
+#: v1.2（M3）：新增 SPEC-RAG-7，把「要不要检索」定成确定性判据（retrieve 排在 plan
+#: 之前，那时还没有意图可看）。同样不改变任何既有期望值。
+SPEC_VERSION = "1.2"
+
+#: SPEC 1.0 冻结时的取值集合。v1.1 起新增的取值**只允许**出现在 §7 定义的新用例集里，
+#: 主矩阵必须一直停在下面这两个集合上——否则「v1 / v2 / v3 在同一批用例上可比」
+#: 这句话就不成立了：主矩阵一旦混进新取值，旧版本的失败就变成定义问题，不是能力问题。
+LEGACY_INTENTS: frozenset[str] = frozenset(
+    {"order_status", "refund", "human_handoff", "unknown"}
+)
+
+LEGACY_ERROR_CODES: frozenset[str] = frozenset(
+    {
+        "INVALID_ARGUMENT",
+        "ORDER_NOT_FOUND",
+        "REFUND_NOT_ALLOWED",
+        "VALIDATION_ERROR",
+        "UNSUPPORTED_INTENT",
+    }
+)
 
 #: 基线实现（``RulePlanner``，v1）与规格的已知偏差：case_id -> 「违反的条款 + 原因」。
 #:

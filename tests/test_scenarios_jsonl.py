@@ -5,7 +5,8 @@ from __future__ import annotations
 import pytest
 from conftest import EVAL_CASES_PATH, load_support_cases
 
-from agentevalops.models import AgentState, ErrorCode, Intent
+from agentevalops.models import AgentState, ErrorCode
+from agentevalops.spec import LEGACY_INTENTS
 
 CASES = load_support_cases()
 CASE_IDS = [case["case_id"] for case in CASES]
@@ -45,7 +46,8 @@ def test_cases_cover_every_required_category():
 
 
 def test_cases_cover_every_intent():
-    assert {case["expected_intent"] for case in CASES} == {intent.value for intent in Intent}
+    """这批用例只覆盖 SPEC 1.0 的意图集合；policy_qa 属于 v1.1 之后的新用例集。"""
+    assert {case["expected_intent"] for case in CASES} == LEGACY_INTENTS
 
 
 def test_cases_cover_every_agent_state_the_agent_can_reach():

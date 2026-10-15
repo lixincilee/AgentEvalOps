@@ -64,7 +64,19 @@ class EcommerceSupportAgent:
 
         plan = self.planner.plan(message)
         self.last_plan = plan
-        intent, order_id = plan.intent, plan.order_id
+        return self.dispatch(
+            plan.intent, plan.order_id, message, customer_id=customer_id
+        )
+
+    def dispatch(
+        self, intent: Intent, order_id: str | None, message: str, *, customer_id: str
+    ) -> AgentResponse:
+        """Turn one plan into exactly one tool call: the deterministic core of the agent.
+
+        The v3 graph calls this from its own ``dispatch`` node. There is deliberately only
+        one copy: if the graph re-implemented dispatch, every later v2/v3 difference could
+        be implementation drift instead of a real design difference (SPEC-GRAPH-1).
+        """
 
         if intent is Intent.UNKNOWN:
             return self._no_action(intent)
@@ -89,13 +101,18 @@ class EcommerceSupportAgent:
             }
             return self._execute(intent, tool.name, arguments, tool.execute(**arguments))
 
-        tool = self.human_ticket_tool
-        arguments: dict[str, Any] = {
-            "customer_id": customer_id,
-            "summary": message.strip(),
-            "order_id": order_id,
-        }
-        return self._execute(intent, tool.name, arguments, tool.execute(**arguments))
+        if intent is Intent.HUMAN_HANDOFF:
+            tool = self.human_ticket_tool
+            arguments: dict[str, Any] = {
+                "customer_id": customer_id,
+                "summary": message.strip(),
+                "order_id": order_id,
+            }
+            return self._execute(intent, tool.name, arguments, tool.execute(**arguments))
+
+        # v1.1 的 policy_qa 需要检索能力，这个基线 Agent 没有。它必须明确地「不支持」，
+        # 而不是掉进末尾分支去建工单——那是靠分支顺序意外得到的正确行为，改一次就崩。
+        return self._no_action(intent)
 
     @staticmethod
     def _execute(
