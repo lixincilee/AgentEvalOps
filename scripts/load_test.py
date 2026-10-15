@@ -55,8 +55,12 @@ BUDGET_POLL_S = 1.0
 HTTP_ERROR_RATE_LIMIT = 0.01
 TASK_SUCCESS_RATE_FLOOR = 0.99
 #: 收尾时 locust 会杀掉还在飞的 greenlet：那些请求服务端已经数进去了，locust 却不会记账。
-#: 所以两边的请求数差个位数是正常的；超过这个宽容度才算口径不对。
+#: 所以两边的请求数对不齐是正常的，只问「差得够不够少」。
+#:
+#: 判据必须是**相对**的：固定一个绝对值在低 RPS 下合适，一到高 RPS 就变成狼来了——
+#: 2217 次请求里差 6 次是 0.27%，成本上完全不可见，却会打出一句「口径存疑」。
 INFLIGHT_TOLERANCE = 5
+INFLIGHT_TOLERANCE_RATIO = 0.005
 
 
 class SharedSessionStore(SessionStore):
@@ -262,6 +266,11 @@ def _percentile(response_times: dict[int, int], num_timed: int, quantile: float)
     return 0
 
 
+def inflight_tolerance(requests: int) -> int:
+    """两边的请求数差多少还算「同一次运行」。取绝对值与 0.5% 里的较大者。"""
+    return max(INFLIGHT_TOLERANCE, int(requests * INFLIGHT_TOLERANCE_RATIO))
+
+
 def _summarize(
     entries: list[dict[str, Any]],
     service_metrics: dict[str, Any],
@@ -356,7 +365,8 @@ def _summarize(
             "none_requests": num_none,
             "window_s": round(window_s, 3),
             "requests_delta": service_requests - requests,
-            "consistent_with_service": abs(service_requests - requests) <= INFLIGHT_TOLERANCE,
+            "consistent_with_service": abs(service_requests - requests)
+            <= inflight_tolerance(requests),
         },
         "service_metrics": service_metrics,
         "service_metrics_final": service_metrics_final,
