@@ -8,7 +8,7 @@ import pytest
 from conftest import load_support_cases
 
 from agentevalops.agent import EcommerceSupportAgent
-from agentevalops.llm import LLMUnavailableError, ScriptedLLMClient
+from agentevalops.llm import BudgetExceededError, LLMUnavailableError, ScriptedLLMClient
 from agentevalops.models import AgentState, Intent
 from agentevalops.planner import (
     SOURCE_FALLBACK,
@@ -187,6 +187,17 @@ def test_llm_planner_falls_back_when_the_model_is_unavailable():
     assert plan.source == SOURCE_FALLBACK
     assert plan.intent is Intent.ORDER_STATUS
     assert "LLMUnavailableError" in (plan.note or "")
+
+
+def test_llm_planner_does_not_swallow_a_budget_breaker():
+    """熔断必须往上抛：被 LLMError 一起吞掉的话，--budget 拦不住任何东西。
+
+    实测过一次：预算上限 1e-9 元的那一轮照样跑完 6 条用例、花掉 0.001246 元（超上限
+    1000 倍），报告里通过率 100%、plan_source 全是 llm-fallback——**一次超支长得像一次成功**。
+    """
+    planner = LLMPlanner(BoomClient(BudgetExceededError("达到或超过预算上限")))
+    with pytest.raises(BudgetExceededError):
+        planner.plan("订单 ORD-1001 到哪了")
 
 
 def test_llm_planner_falls_back_when_the_script_runs_out():

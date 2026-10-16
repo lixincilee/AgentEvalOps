@@ -18,7 +18,16 @@ D:\Python\python.exe scripts/load_test.py --arm rules --users 20 --run-time 20s 
 
 # 真实调用（会花钱）：必须 --yes，且环境里要有 DEEPSEEK_API_KEY
 D:\Python\python.exe scripts/load_test.py --real --yes --users 5 --run-time 30s --budget 0.5
+
+# 压方差：同一份配置连跑 5 次，每次都重启服务（新进程、新端口）
+D:\Python\python.exe scripts/load_test.py --arm rules --users 20 --spawn-rate 5 --run-time 15s --repeat 5 --report reports/variance-rules-15s-5x.json
 ```
+
+`--repeat N` 汇总出来的是一份报告，不是 N 份：延迟 / RPS / 成本取**中位数**，
+`http_error_rate` 取**max**、`task_success_rate` 取**min**（最坏值）。理由很直接——
+三次里一次 5% 错误率、两次 0%，取中位数就是 0%，**一次真实故障会被平均掉**。
+每次运行的原始数字留在 `runs[]`，极差与相对极差留在 `variance[]`，汇总口径写在
+`aggregate_policy` 里。两边请求数都取中位数，对账明细逐次留在 `locust.consistency_by_run`。
 
 退出码：`0` 通过；`1` 门禁没过；`2` 根本起不来。门禁两条线都要过：
 
@@ -72,7 +81,10 @@ RPS / P95 / 成本只能读作「该配置下**服务端**的行为」，不能�
   「差多少还算同一次运行」用的是相对判据（绝对值 5 与 0.5% 取大，见
   `inflight_tolerance()`）——固定的绝对值到了 200+ RPS 就会误报。
 - **单次运行的性能数字不能用来比较版本**。同一份配置在本机跑三次实测 RPS
-  `125.4 / 179.2 / 210.1`、P95 `220 / 130 / 100` ms，代码一个字没改。要比较版本
-  先压方差（多次运行取分位），见 `docs/stage2-evidence.md` §11.2。
+  `125.4 / 179.2 / 210.1`、P95 `220 / 130 / 100` ms，代码一个字没改。所以有了 `--repeat N`：
+  背靠背 5 次实测 P95 相对极差 25%、RPS 8.9%（`docs/stage2-evidence.md` §13）。
+  **注意两件事**：(1) `--repeat` 压的是**会话内**噪声，压不掉跨会话漂移，所以两个版本要在
+  同一个会话里交替跑；(2) P99 在 N=5 时的相对极差是 118.9%（一个离群点就够了），门禁只认
+  `perf.p95_ms`。
 - `--budget` 靠轮询 `/metrics` 触发，粒度 1 秒；被打断的那次不会有 locust 统计 JSON，
   报告里 `budget_exceeded=true`、`task_success_rate=null`，门禁按不通过处理。

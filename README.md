@@ -631,6 +631,45 @@ D:\Python\python.exe scripts/regression_gate.py --candidate .release-candidate -
 还没被验证的结论，`docs/ci.md` 第 6 节列了一张表。真实模型那一格更是整块空白——
 延迟、吞吐、账单都还是建模值。
 
+## 阶段二 M6：`--repeat N` —— 先把噪声压出来，再谈版本对比
+
+M5 的门禁能拦住「翻倍级」的退化。但 §11.2 摆着的事实是：同一份配置在本机跑三次，
+RPS 差 1.7 倍、P95 差 2.2 倍，代码一个字没改。M6 给两台测量仪器都装上重复开关，
+并把「重复到底能压掉多少噪声」量了出来。
+
+```powershell
+# 压测：5 次背靠背，每次都重启服务（新进程、新端口）
+D:\Python\python.exe scripts/load_test.py --arm rules --users 20 --spawn-rate 5 --run-time 15s --repeat 5 --report reports/variance-rules-15s-5x.json
+
+# 判分：同一份用例跑 5 次，汇总中位数与方差（离线，零成本，12 秒）
+D:\Python\python.exe scripts/compare_versions.py --offline --repeat 5
+
+# 冻结版本：方差一起写进 release.json，门禁会把它读成报告里的「噪声」列
+D:\Python\python.exe scripts/freeze_release.py --repeat 3
+```
+
+汇总口径写死在报告里（`aggregate_policy` 字段），不是随手取平均：
+
+| 指标 | 口径 | 为什么 |
+| --- | --- | --- |
+| 延迟 / RPS / 通过率 / 成本 | **中位数** | 单次运行的数字本身就是抽样 |
+| `http_error_rate` | **max**（最坏值） | 三次里一次 5% 错误率、两次 0%，取中位数是 0%——**一次真实故障被平均掉** |
+| `task_success_rate` | **min**（最坏值） | 同上 |
+
+三条实测结论（详见 `docs/stage2-evidence.md` §13 / §14）：
+
+- **`--repeat` 压的是会话内噪声，压不掉会话间漂移。** 背靠背 5 次，规则臂 P95 相对极差 25%、
+  RPS 8.9%；而 §11.2 那 2.2 倍是跨时间测的。所以版本对比要在**同一个会话里交替**跑两个版本，
+  光重复一次是不够的。
+- **P95 能当判据，P99 不能。** 模型臂 P99 在 5 次里的相对极差是 **118.9%**（一次 780ms 的
+  离群点就能把它抬一倍）；门禁因此只盯 P95。
+- **通过 / 失败类指标完全确定**：错误率 0%、成功率 100%、token 290、成本 0.00076 的极差全是 0；
+  规则列 5 次通过率一模一样，墙头草用例 0 条。会飘的只有延迟和吞吐——恰好就是门禁里
+  `enforce=False`（只报不拦）的那两个。
+
+顺带修掉一个真 bug：`--budget` 的熔断异常被规划器的 `except LLMError` 吞成规则兜底，
+实测能超上限 1000 倍还报「运行成功」（证据文档 §14.3）。
+
 ## 后续路线图
 
 | 阶段 | 目标 | 关键产出 |
@@ -640,7 +679,8 @@ D:\Python\python.exe scripts/regression_gate.py --candidate .release-candidate -
 | **阶段二 M3（已完成，tag `v0.5.0` / `v0.5.1`）** | 接 RAG 检索 + 多轮会话 + LangGraph 编排，产出 **v3**；规格升到 v1.2；用真实模型跑四方对比 | 第 4 个工具 `search_knowledge_base`、意图 `policy_qa`、错误码 `NO_KNOWLEDGE`、`RetrievalRecord` / `SlotRecord`、M3 用例集、四个批次锚定的 v1/v2/v3/v3-rules 对比报告、`v0.5.1` 修掉 v3 兜底路径缺陷 |
 | **阶段二 M4（已完成，tag `v0.6.0`）** | 故障注入用例 + 并发压测 | 规格 v1.3 的 6 条故障条款（SPEC-FAULT-1..6）、**25 条**故障用例（工具超时 / 5xx / 空检索 / 模型限流）、`faults.py` 注入脚手架、可压测 HTTP 服务 `service.py`、Locust 的 P95 / 吞吐 / 错误率与**单次成功任务成本**、CI 双线门禁 |
 | **阶段二 M5（已完成，tag `v0.7.0`）** | CI 回归门禁 + 发布冻结 | `regression_gate.py`（8 项指标，绝对下限 + 相对退化两条判据）、`freeze_release.py`（五项检查 → `releases/<tag>/`）、GitHub Actions 三 job（test / gate / nightly-real）、首个冻结基线 `releases/v0.7.0`、注入回归实测被拦下 4 条 |
-| **阶段二 M6（下一步）** | 判分分层与噪声压制 | `--repeat N` 压方差、L3 Ragas / L4 DeepEval / L5 Promptfoo 三层判分、真实模型延迟与账单 |
+| **阶段二 M6（已完成）** | 噪声压制：把方差本身变成可测量的量 | `load_test.py --repeat N`（每次重启服务）、`compare_versions.py --repeat N`（中位数 + 极差 + 墙头草用例）、`freeze_release.py --repeat N` 把方差写进 `release.json`、门禁报告新增「噪声」列、修掉预算熔断被兜底吞掉的 bug（证据文档 §13 / §14） |
+| **阶段二 M7（下一步）** | 判分分层 + 多版本回归 | 补冻两个历史版本凑「3 个版本回归对比」、L3 Ragas / L4 DeepEval / L5 Promptfoo 三层判分、真实模型的延迟与账单 |
 
 ### 评测指标（阶段五要算的东西，现在就能算前六项）
 

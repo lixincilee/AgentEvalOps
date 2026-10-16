@@ -4,6 +4,7 @@ Usage:
     python scripts/compare_versions.py --offline --limit 20
     python scripts/compare_versions.py --llm --yes --limit 20
     python scripts/compare_versions.py --out reports/v1-v2-v3.json
+    python scripts/compare_versions.py --offline --repeat 5   # 反复跑，汇总中位数与方差
 
 四列的定义在任何模式下都不变，免得「谁是谁」悄悄漂移：
 
@@ -20,11 +21,16 @@ Usage:
 这比 compare_planners.py 的 task_success（只看 state 是否 tool_completed）严格：
 被正确拒绝的越权请求在这里算「通过」，而不是「没成功」。
 多轮用例集（§7.2）被拆成「一行 = 一轮」；用例级口径另见 report["versions"][列]["case_level"]。
+
+``--repeat N`` 把同一份用例跑 N 次再汇总：通过率 / 成本 / 时延取中位数，逐次的原始数字留在
+``runs[]``，极差留在 ``variance``。**单次运行的通过率是抽样的**，拿它去判「版本退化」会把
+模型的随机性读成代码的退化；这就是这个开关存在的唯一理由。
 """
 
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import sys
 from collections import Counter
@@ -37,6 +43,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from agentevalops.agent import EcommerceSupportAgent, pre_plan_rejection  # noqa: E402
 from agentevalops.config import Settings, load_settings  # noqa: E402
 from agentevalops.llm import (  # noqa: E402
+    BudgetExceededError,
     Usage,
     UsageLedger,
     approx_tokens,
@@ -66,6 +73,17 @@ from agentevalops.versioning import (  # noqa: E402
     git_code_version,
     hash_cases,
     sha256_text,
+)
+
+SCRIPTS_DIR = Path(__file__).resolve().parent
+# scripts/ 不是包：直接跑时 sys.path[0] 就是它，被 importlib 加载时不是。不显式加一次，
+# `from variance import ...` 只在一种运行方式下成立（load_test.py 同款处理）。
+sys.path.insert(0, str(SCRIPTS_DIR))
+
+from variance import (  # noqa: E402
+    difference_is_interpretable,
+    spread_of,
+    summarize_runs,
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -614,6 +632,410 @@ def run_comparison(
     }
 
 
+#: ``--repeat`` 时逐次记录并汇总的列级指标。名字直接对应报告里的取值位置，
+#: 免得下游再去猜「这个 0.9671 是行级还是用例级」。
+REPEAT_COLUMN_METRICS = (
+    "pass_rate",
+    "case_pass_rate",
+    "cost",
+    "total_tokens",
+    "model_calls",
+    "avg_latency_ms",
+)
+
+
+def _column_metric(report: dict[str, Any], column: str, metric: str) -> float | None:
+    """从一次运行的报告里读某一列的某个指标；列不可用就是 None（不是 0）。"""
+    payload = (report.get("versions") or {}).get(column)
+    if not isinstance(payload, dict):
+        return None
+    if metric == "case_pass_rate":
+        value = (payload.get("case_level") or {}).get("pass_rate")
+    else:
+        value = (payload.get("metrics") or {}).get(metric)
+    return None if value is None else float(value)
+
+
+def _compact_run(report: dict[str, Any], index: int) -> dict[str, Any]:
+    """一次运行的摘要。
+
+    整份报告每份都有几百行 ``rows``，N 份全存下来报告会大到没人看；这里只留「每次的数字」。
+    明细留给代表运行——汇总报告顶层的 ``rows`` 就是它。
+    """
+    return {
+        "run": index + 1,
+        "run_id": report.get("run_id"),
+        "generated_at": report.get("generated_at"),
+        "columns": {
+            key: {metric: _column_metric(report, key, metric) for metric in REPEAT_COLUMN_METRICS}
+            for key in COLUMNS
+        },
+    }
+
+
+def _failed_case_ids(report: dict[str, Any]) -> dict[str, list[str]]:
+    """这一次运行里，每一列分别是哪几条用例没过。"""
+    return {
+        key: [
+            row["case_id"]
+            for row in report["rows"]
+            if row.get(key) is not None and not row[key]["passed"]
+        ]
+        for key in COLUMNS
+        if (report.get("versions") or {}).get(key) is not None
+    }
+
+
+def _flaky_cases(
+    per_run: list[dict[str, dict[str, bool]]]
+) -> dict[str, list[dict[str, Any]]]:
+    """跨次运行里**结论翻过**的用例。
+
+    只列翻过的：全部通过、全部失败的用例不进这里（那些不是墙头草）。按「通过的次数」升序，
+    最先出事的排前面。这是 ``--repeat`` 最有价值的产出之一——**跑一次永远看不出来哪条用例
+    是墙头草，而墙头草正是「版本对比时最容易被噪声说成退化」的那些用例**。
+    """
+    if len(per_run) < 2:
+        return {}
+    flaky: dict[str, list[dict[str, Any]]] = {}
+    for key in COLUMNS:
+        totals: dict[str, int] = {}
+        passes: dict[str, int] = {}
+        for run in per_run:
+            for case_id, passed in (run.get(key) or {}).items():
+                totals[case_id] = totals.get(case_id, 0) + 1
+                passes[case_id] = passes.get(case_id, 0) + (1 if passed else 0)
+        rows = [
+            {"case_id": case_id, "passed_runs": passes.get(case_id, 0), "total_runs": total}
+            for case_id, total in sorted(totals.items())
+            if 0 < passes.get(case_id, 0) < total
+        ]
+        if rows:
+            rows.sort(key=lambda item: (item["passed_runs"], item["case_id"]))
+            flaky[key] = rows
+    return flaky
+
+
+def _representative_run(
+    runs: list[dict[str, Any]], variance: dict[str, dict[str, Any]]
+) -> int:
+    """挑「离中位数最近」的那次运行当代表（各列行级通过率的绝对偏差之和最小）。
+
+    顶层明细只可能来自**某一次真实运行**：编一份「平均出来的明细」等于造假。所以代表运行的
+    原始数字原样保留，中位数另行写在 ``metrics`` 与 ``variance`` 里，两者都看得见。
+    """
+    best_index, best_score = 0, None
+    for index, run in enumerate(runs):
+        score = 0.0
+        for key in COLUMNS:
+            value = (run.get("columns") or {}).get(key, {}).get("pass_rate")
+            median = (variance.get(f"{key}.pass_rate") or {}).get("median")
+            if value is None or median is None:
+                continue
+            score += abs(float(value) - float(median))
+        if best_score is None or score < best_score:
+            best_index, best_score = index, score
+    return best_index
+
+
+def _interpretable_deltas(
+    versions: dict[str, dict[str, Any] | None], variance: dict[str, dict[str, Any]]
+) -> dict[str, dict[str, Any] | None]:
+    """两两差值里，哪些比噪声大。
+
+    判据在 ``variance.difference_is_interpretable``：``|差值| > max(两边的极差)``，故意保守。
+    它不是判分，是**把「噪声」和「结论」分开**：报告里每条差值都跟着一句
+    「这次差异能不能解释」，达不到就明说解释不了。
+    """
+    deltas = _pairwise_deltas(versions)
+    out: dict[str, dict[str, Any] | None] = {}
+    for pair, delta in deltas.items():
+        if delta is None:
+            out[pair] = None
+            continue
+        left, right = str(delta["left"]), str(delta["right"])
+        entry: dict[str, Any] = {"left": left, "right": right}
+        for metric in ("pass_rate", "case_pass_rate"):
+            value = float(delta[metric])
+            noise_left = spread_of(variance, f"{left}.{metric}")
+            noise_right = spread_of(variance, f"{right}.{metric}")
+            entry[f"{metric}_delta"] = value
+            entry[f"{metric}_noise"] = max(noise_left, noise_right)
+            entry[f"{metric}_interpretable"] = difference_is_interpretable(
+                value, noise_left, noise_right
+            )
+        out[pair] = entry
+    return out
+
+
+def _aggregate_invariants(
+    versions: dict[str, dict[str, Any] | None], variance: dict[str, dict[str, Any]]
+) -> dict[str, bool]:
+    """汇总自己也要自检：中位数必须落在观测范围内。"""
+    ok = True
+    for key in COLUMNS:
+        if versions.get(key) is None:
+            continue
+        for metric in REPEAT_COLUMN_METRICS:
+            entry = variance.get(f"{key}.{metric}") or {}
+            median = entry.get("median")
+            low, high = entry.get("min"), entry.get("max")
+            if median is None or low is None or high is None:
+                continue
+            if not (float(low) <= float(median) <= float(high)):
+                ok = False
+    return {"median_within_observed_range": ok}
+
+
+def run_repeated_comparison(
+    cases: list[dict[str, Any]],
+    *,
+    repeat: int = 1,
+    **kwargs: Any,
+) -> dict[str, Any]:
+    """把同一份用例跑 ``repeat`` 次，汇总出中位数与方差。
+
+    只加一层「循环 + 汇总」，判分逻辑一个字都不重写：每次老老实实调一次
+    :func:`run_comparison`。三条口径写死在这里，理由和压测（``load_test.py --repeat``）同源：
+
+    * 通过率 / 成本 / 时延取 **中位数**——单次运行的通过率就是抽样的，拿它判退化会把模型随机性
+      读成代码退化。
+    * ``--budget`` 是 **N 次合计** 的上限，不是每次各自的上限（否则实际花销是 N 倍预算）。
+      每次开跑前把「剩余额度」传给那一次，跑完扣账；额度耗尽就停下。
+    * 次数没跑满时**照样出报告**：跑完的那几次是真的，丢掉它们等于把已经花掉的钱烧掉。但
+      ``repeat_completed`` 会写明跑了几次、``repeat_aborted`` 写明为什么停。
+    """
+    planned = max(1, int(repeat))
+    budget = kwargs.get("budget")
+    runs: list[dict[str, Any]] = []
+    reports: list[dict[str, Any]] = []
+    per_run_pass: list[dict[str, dict[str, bool]]] = []
+    aborted: dict[str, Any] | None = None
+    first_error: BaseException | None = None
+    spent = 0.0
+
+    for index in range(planned):
+        remaining = None if budget is None else float(budget) - spent
+        if remaining is not None and remaining <= 0:
+            aborted = {
+                "after_run": index,
+                "reason": "budget",
+                "detail": (
+                    f"累计花费已达上限（{budget}），第 {index + 1} 次没有再跑："
+                    "把没跑的那些算成「通过」才是真的骗人。"
+                ),
+            }
+            break
+        call_kwargs = dict(kwargs)
+        if remaining is not None:
+            call_kwargs["budget"] = remaining
+        # moment 同时钉死时钟和 run_id；重复运行时每次都钉同一秒会撞号，所以逐次放开。
+        call_kwargs.pop("moment", None)
+        try:
+            report = run_comparison(cases, **call_kwargs)
+        except BudgetExceededError as exc:
+            # 熔断发生在**运行中间**：这一次的部分花费不在 cost_total 里（那是下限），
+            # 所以 reason 单独记成 budget，别和后一种「跑着跑着崩了」混成一类。
+            aborted = {
+                "after_run": index,
+                "reason": "budget",
+                "detail": (
+                    f"第 {index + 1} 次运行中途触发预算熔断（剩余额度 "
+                    f"{remaining:.6f}）：{exc}"
+                ),
+            }
+            break
+        except RunSetupError:
+            raise
+        except Exception as exc:  # noqa: BLE001 - 任何一次崩掉都不该把前面几次的数据扔掉
+            first_error = exc
+            aborted = {
+                "after_run": index,
+                "reason": "error",
+                "detail": f"第 {index + 1} 次运行抛了 {type(exc).__name__}: {exc}",
+            }
+            break
+        reports.append(report)
+        runs.append(_compact_run(report, index))
+        per_run_pass.append(
+            {
+                key: {
+                    row["case_id"]: bool(row[key]["passed"])
+                    for row in report["rows"]
+                    if row.get(key) is not None
+                }
+                for key in COLUMNS
+            }
+        )
+        spent += sum(_column_metric(report, key, "cost") or 0.0 for key in COLUMNS)
+        if planned > 1:
+            shown = " ".join(
+                f"{key} {value:.1%}"
+                for key in COLUMNS
+                for value in [_column_metric(report, key, "pass_rate")]
+                if value is not None
+            )
+            print(f"  第 {index + 1}/{planned} 次: {shown}")
+
+    if not reports:
+        if first_error is not None:
+            raise first_error
+        raise RunSetupError(
+            "一次都没跑成：" + (aborted["detail"] if aborted else "没有可用的运行结果。")
+        )
+
+    flat_runs = [
+        {
+            f"{key}.{metric}": _column_metric(report, key, metric)
+            for key in COLUMNS
+            for metric in REPEAT_COLUMN_METRICS
+        }
+        for report in reports
+    ]
+    variance = summarize_runs(
+        flat_runs,
+        [f"{key}.{metric}" for key in COLUMNS for metric in REPEAT_COLUMN_METRICS],
+    )
+
+    base_index = _representative_run(runs, variance)
+    base = reports[base_index]
+    versions = copy.deepcopy(base["versions"])
+    for key in COLUMNS:
+        payload = versions.get(key)
+        if payload is None:
+            continue
+        row_stats = variance.get(f"{key}.pass_rate") or {}
+        case_stats = variance.get(f"{key}.case_pass_rate") or {}
+        if row_stats.get("median") is not None:
+            payload["metrics"]["pass_rate_single_run"] = payload["metrics"]["pass_rate"]
+            payload["metrics"]["pass_rate"] = row_stats["median"]
+            payload["metrics"]["pass_rate_min"] = row_stats["min"]
+            payload["metrics"]["pass_rate_max"] = row_stats["max"]
+        if case_stats.get("median") is not None:
+            payload["case_level"]["pass_rate_single_run"] = payload["case_level"]["pass_rate"]
+            payload["case_level"]["pass_rate"] = case_stats["median"]
+            payload["case_level"]["pass_rate_min"] = case_stats["min"]
+            payload["case_level"]["pass_rate_max"] = case_stats["max"]
+        payload["aggregate"] = {
+            metric: variance[f"{key}.{metric}"]
+            for metric in REPEAT_COLUMN_METRICS
+            if (variance.get(f"{key}.{metric}") or {}).get("count")
+        }
+
+    aggregated = dict(base)
+    aggregated.update(
+        {
+            "repeat": planned,
+            "repeat_completed": len(reports),
+            "repeat_aborted": aborted,
+            "representative_run": base_index + 1,
+            "runs": runs,
+            "variance": variance,
+            "aggregate_policy": {
+                "central_statistic": "median",
+                "central_metrics": list(REPEAT_COLUMN_METRICS),
+                "detail_source": f"第 {base_index + 1} 次运行（离中位数最近的一次）",
+                "budget_scope": "N 次合计" if budget is not None else None,
+            },
+            "flaky_cases": _flaky_cases(per_run_pass),
+            "versions": versions,
+            "deltas": _pairwise_deltas(versions),
+            "interpretable_deltas": _interpretable_deltas(versions, variance),
+            "summary": {
+                **base["summary"],
+                "repeat": planned,
+                "repeat_completed": len(reports),
+                "cost_total": spent,
+                "cost_total_complete": aborted is None,
+                "budget": budget,
+                "failure_signature": {
+                    key: len(ids) for key, ids in _failed_case_ids(base).items()
+                },
+            },
+            "invariants": {
+                **base["invariants"],
+                **_aggregate_invariants(versions, variance),
+            },
+            "notes": list(base.get("notes") or [])
+            + [
+                f"这份报告汇总 {len(reports)}/{planned} 次运行：通过率 / 成本 / 时延取中位数"
+                f"（逐次数字在 runs[]，极差在 variance 与 metrics.pass_rate_min/max）。"
+                f"顶层明细（rows、未中项）来自第 {base_index + 1} 次运行，"
+                f"是真实一次的结果，不是「平均出来的明细」。"
+            ]
+            + (
+                []
+                if aborted is None
+                else [
+                    f"重复未跑满（{aborted['reason']}）：{aborted['detail']}",
+                    "被中断的那一次的花费没有计入 cost_total，所以那是个下限"
+                    "（cost_total_complete=false）。",
+                ]
+            ),
+        }
+    )
+    return aggregated
+
+
+def print_variance(report: dict[str, Any], *, max_flaky: int = 8) -> None:
+    """打印 ``--repeat`` 的方差块：中位数与极差、能不能解释、以及墙头草用例。"""
+    planned = int(report.get("repeat") or 1)
+    if planned <= 1:
+        return
+    variance = report.get("variance") or {}
+    completed = report.get("repeat_completed", planned)
+    aborted = report.get("repeat_aborted")
+    print("=" * 54)
+    print("重复运行方差")
+    print("=" * 54)
+    print(
+        f"次数                      {completed}/{planned}"
+        + ("" if aborted is None else f"（{aborted['reason']}：{aborted['detail']}）")
+    )
+    print("列级中位数（极差 / 相对极差）:")
+    for key in COLUMNS:
+        if (report["versions"].get(key)) is None:
+            continue
+        parts = []
+        for metric in ("pass_rate", "case_pass_rate"):
+            entry = variance.get(f"{key}.{metric}") or {}
+            median = entry.get("median")
+            if median is None:
+                continue
+            label = "行级" if metric == "pass_rate" else "用例级"
+            relative = entry.get("spread_pct")
+            relative_shown = "n/a" if relative is None else f"{relative:.1%}"
+            parts.append(
+                f"{label} {median:.1%}（极差 {entry['spread']:.1%} / 相对 {relative_shown}）"
+            )
+        if parts:
+            print(f"  {key:9s} " + "  ".join(parts))
+    print("差值与噪声（|差值| > 噪声才算解释得了）:")
+    for pair, entry in (report.get("interpretable_deltas") or {}).items():
+        if entry is None:
+            print(f"  {pair}: n/a（该对比有列不可用）")
+            continue
+        verdict = "可解释" if entry["pass_rate_interpretable"] else "不可解释（低于噪声）"
+        print(
+            f"  {pair}: 行级 {entry['pass_rate_delta']:+.1%}"
+            f"（噪声 {entry['pass_rate_noise']:.1%}）-> {verdict}"
+        )
+    flaky = report.get("flaky_cases") or {}
+    if flaky:
+        total = sum(len(items) for items in flaky.values())
+        print(f"墙头草用例（跨次结论翻转）: {total} 条")
+        for key, items in flaky.items():
+            for item in items[:max_flaky]:
+                print(
+                    f"  {key}: {item['case_id']} "
+                    f"{item['total_runs']} 次里过 {item['passed_runs']} 次"
+                )
+            if len(items) > max_flaky:
+                print(f"  {key}: ...（另有 {len(items) - max_flaky} 条，见报告 JSON）")
+    else:
+        print("墙头草用例（跨次结论翻转）: 无——每一列的结论在所有次运行里都一致")
+
+
 def print_report(report: dict[str, Any], *, max_divergent: int = 12) -> None:
     versions = report["versions"]
     summary = report["summary"]
@@ -731,7 +1153,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--out", type=Path, default=None, help="报告路径（默认写到 reports/ 下带时间戳）"
     )
-    parser.add_argument("--budget", type=float, default=None, help="本次运行的花费上限（熔断）")
+    parser.add_argument(
+        "--budget", type=float, default=None, help="花费上限（熔断）；--repeat 时是 N 次合计"
+    )
+    parser.add_argument(
+        "--repeat",
+        type=int,
+        default=1,
+        help="把同一份用例跑 N 次，汇总中位数与方差（默认 1；版本对比建议 ≥3）",
+    )
     parser.add_argument(
         "--period", choices=("peak", "off_peak"), default=None, help="钉死计费时段"
     )
@@ -739,6 +1169,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.llm and args.offline:
         print("--llm 与 --offline 互斥：前者花钱，后者零成本。")
+        return 2
+    if args.repeat < 1:
+        print("--repeat 必须 ≥ 1（1 就是原来的行为）。")
         return 2
     offline = not args.llm
 
@@ -759,10 +1192,10 @@ def main(argv: list[str] | None = None) -> int:
         amount = (
             "未知（该模型没有价目，成本只能算下限）"
             if estimate is None
-            else f"{preview.currency} {estimate:.6f}"
+            else f"{preview.currency} {estimate * max(1, args.repeat):.6f}"
         )
         print(
-            f"本次花费上界: {amount}（{len(cases)} 行 × 2 个模型列，"
+            f"本次花费上界: {amount}（{len(cases)} 行 × 2 个模型列 × {max(1, args.repeat)} 次，"
             f"输出按上限 {OUTPUT_TOKEN_HINT} token 计；真实回答是短 JSON，通常远低于此值）"
         )
         if not args.yes:
@@ -778,20 +1211,26 @@ def main(argv: list[str] | None = None) -> int:
             "本次结果 is_reproducible=false，不能作为版本对比的锚点。"
         )
 
+    comparison_kwargs: dict[str, Any] = dict(
+        offline=offline,
+        confirm=args.yes,
+        budget=args.budget,
+        period=args.period,
+        case_set_version=", ".join(path.name for path in args.cases),
+    )
     try:
-        report = run_comparison(
-            cases,
-            offline=offline,
-            confirm=args.yes,
-            budget=args.budget,
-            period=args.period,
-            case_set_version=", ".join(path.name for path in args.cases),
-        )
+        if args.repeat > 1:
+            report = run_repeated_comparison(
+                cases, repeat=args.repeat, **comparison_kwargs
+            )
+        else:
+            report = run_comparison(cases, **comparison_kwargs)
     except RunSetupError as exc:
         print(exc)
         return 2
 
     print_report(report)
+    print_variance(report)
 
     out = args.out or (
         REPORTS_DIR / f"version-comparison-{report['run_id']}-spec{SPEC_VERSION}.json"
@@ -799,6 +1238,9 @@ def main(argv: list[str] | None = None) -> int:
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     print("报告已写入:", out)
+    if report.get("repeat_aborted"):
+        print("未通过（数据不完整）：" + report["repeat_aborted"]["detail"])
+        return 1
     return 0
 
 

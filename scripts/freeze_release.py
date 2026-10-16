@@ -208,14 +208,18 @@ def check_comparison(name: str, cases: Sequence[str], tmp: Path, artifact: str) 
     }
 
 
-def check_load(tmp: Path, *, port: int, users: int, run_time: str) -> dict[str, Any]:
+def check_load(
+    tmp: Path, *, port: int, users: int, run_time: str, repeat: int = 1
+) -> dict[str, Any]:
     out = tmp / "load-test.json"
-    result = _run(
-        [sys.executable, str(SCRIPTS_DIR / "load_test.py"), "--users", str(users),
-         "--spawn-rate", str(max(1, users // 4)), "--run-time", run_time,
-         "--port", str(port), "--report", str(out)],
-        TIMEOUTS["load"],
-    )
+    command = [
+        sys.executable, str(SCRIPTS_DIR / "load_test.py"), "--users", str(users),
+        "--spawn-rate", str(max(1, users // 4)), "--run-time", run_time,
+        "--port", str(port), "--report", str(out),
+    ]
+    if repeat > 1:
+        command += ["--repeat", str(repeat)]
+    result = _run(command, TIMEOUTS["load"])
     report = _read_json(out) or {}
     metrics = {
         "perf.http_error_rate": report.get("http_error_rate"),
@@ -232,8 +236,15 @@ def check_load(tmp: Path, *, port: int, users: int, run_time: str) -> dict[str, 
         "seconds": result["seconds"],
         "artifact": "load-test.json" if report else None,
         "metrics": metrics,
-        "detail": f"{report.get('arm', '?')} 臂 / P95 {report.get('p95_ms', '?')}ms",
+        "detail": (
+            f"{report.get('arm', '?')} 臂 / P95 {report.get('p95_ms', '?')}ms"
+            + ("" if repeat <= 1 else f"（{repeat} 次的中位数）")
+        ),
         "provenance": report.get("provenance"),
+        #: ``--repeat > 1`` 时的噪声（每次运行的极差与相对极差）。它回答的是
+        #: 「这次测的指标到底有多准」——没有它就说不清某个漂移是真退化还是抖动。
+        "repeat": report.get("repeat", 1),
+        "variance": report.get("variance"),
     }
 
 
@@ -293,6 +304,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--gate-against", type=Path, action="append", default=[],
                         help="跑完顺手做回归门禁；可给多个基线")
     parser.add_argument("--skip-load", action="store_true", help="跳过并发压测（慢，约 1 分钟起）")
+    parser.add_argument("--repeat", type=int, default=1,
+                        help="压测重复次数（量方差；每次重启服务，耗时按倍数增长）")
     parser.add_argument("--load-users", type=int, default=20, help="压测虚拟用户数")
     parser.add_argument("--load-run-time", default="20s", help="压测时长")
     parser.add_argument("--load-port", type=int, default=8140, help="压测用的服务端口")
@@ -334,7 +347,7 @@ def main(argv: list[str] | None = None) -> int:
         else:
             checks.append(
                 check_load(tmp, port=args.load_port, users=args.load_users,
-                           run_time=args.load_run_time)
+                           run_time=args.load_run_time, repeat=args.repeat)
             )
 
         marks = {"passed": "通过", "skipped": "跳过", "failed": "失败"}
@@ -352,6 +365,12 @@ def main(argv: list[str] | None = None) -> int:
             "dirty": dirty,
             "checks": checks,
             "metrics": collect_metrics(checks),
+            # 每个检查自己量出来的噪声。门禁拿它来判断「这个漂移值不值得追」。
+            "variance": {
+                check["name"]: check["variance"]
+                for check in checks
+                if check.get("variance")
+            },
         }
         (tmp / INDEX_NAME).write_text(
             json.dumps(index, ensure_ascii=False, indent=2), encoding="utf-8"

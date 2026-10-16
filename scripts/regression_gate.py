@@ -243,6 +243,21 @@ def _fmt(metric: str, value: float | None) -> str:
     return f"{value:.6f}"
 
 
+def noise_pct(candidate: Release, metric: str) -> float | None:
+    """候选**自己量出来的**噪声（相对极差），没有就 ``None``。
+
+    来源是 ``--repeat`` 的压测：``release.json`` 的 ``variance`` 块里存着每个指标在 N 次
+    运行之间的极差。它不参与判定，专门用来回答「这个漂移值不值得追」——
+    P95 比基线退化 87% 听起来很吓人，但如果这次测量本身的噪声就有 40%，那它八成是抖动。
+    """
+    if not metric.startswith("perf."):
+        return None
+    block = (candidate.raw.get("variance") or {}).get("load_test") or {}
+    entry = block.get(metric[len("perf."):]) or {}
+    value = entry.get("spread_pct")
+    return None if value is None else float(value)
+
+
 def run_gate(candidate: Release, baselines: Sequence[Release]) -> dict[str, Any]:
     """跑完整张规则表。``baselines`` 的**最后一个**是执法基线（调用方按时间顺序传）。"""
     baseline = baselines[-1] if baselines else None
@@ -279,7 +294,10 @@ def run_gate(candidate: Release, baselines: Sequence[Release]) -> dict[str, Any]
             }
             for name in sorted({r.metric for r in RULES} | set(candidate.metrics))
         },
-        "verdicts": [v.to_dict() for v in verdicts],
+        "verdicts": [
+            {**v.to_dict(), "noise_pct": noise_pct(candidate, v.rule.metric)}
+            for v in verdicts
+        ],
         "passed": not failures,
         "failure_count": len(failures),
         "warning_count": len(warnings),
@@ -292,12 +310,15 @@ def print_report(summary: dict[str, Any], candidate: Release, baselines: Sequenc
     """打一张人看的表。列是「基线们 + 候选」，行是指标。"""
     tags = [b.tag for b in baselines] + [candidate.tag]
     width = max([len("指标")] + [len(r.metric) for r in RULES] + [len(t) for t in tags])
-    line = "=" * (width + 17 * len(tags) + 12)
+    line = "=" * (width + 17 * len(tags) + 24)
     print("\n" + line)
     print(f"回归门禁  候选 {candidate.tag}（{candidate.commit or '?'}）"
           f"  执法基线 {summary['enforcement_baseline'] or '无'}")
     print(line)
-    header = "指标".ljust(width) + "".join(t.rjust(17) for t in tags) + "  判定"
+    header = (
+        "指标".ljust(width) + "".join(t.rjust(17) for t in tags)
+        + "噪声".rjust(12) + "  判定"
+    )
     print(header)
     print("-" * len(header))
     verdict_by_metric = {v["metric"]: v for v in summary["verdicts"]}
@@ -308,13 +329,22 @@ def print_report(summary: dict[str, Any], candidate: Release, baselines: Sequenc
         mark = {None: "—", "pass": "通过", "warn": "提醒", "fail": "阻断"}[
             None if verdict is None else verdict["status"]
         ]
-        print(name.ljust(width) + "".join(c.rjust(17) for c in cells) + "  " + mark)
+        noise = None if verdict is None else verdict.get("noise_pct")
+        noise_cell = "—" if noise is None else f"±{noise * 100:.1f}%"
+        print(
+            name.ljust(width) + "".join(c.rjust(17) for c in cells)
+            + noise_cell.rjust(12) + "  " + mark
+        )
     print("-" * len(header))
     for failure in summary["failures"]:
         print("阻断:", failure)
     for warning in summary["warnings"]:
         print("提醒:", warning)
     print(line)
+    print(
+        "噪声 = 候选自己 --repeat 量出来的相对极差（本次测量的精度），不参与判定；"
+        "「—」表示这次没有重复运行。"
+    )
     print("门禁通过。" if summary["passed"] else
           f"门禁未通过：{summary['failure_count']} 条阻断、{summary['warning_count']} 条提醒。")
 

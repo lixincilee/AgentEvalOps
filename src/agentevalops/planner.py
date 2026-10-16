@@ -13,7 +13,13 @@ import re
 from dataclasses import dataclass
 from typing import Any, Protocol, runtime_checkable
 
-from .llm.base import ChatMessage, LLMClient, LLMError, LLMResponse
+from .llm.base import (
+    BudgetExceededError,
+    ChatMessage,
+    LLMClient,
+    LLMError,
+    LLMResponse,
+)
 from .models import Intent
 
 #: v3 的提示词版本号（SPEC-RAG-3 把 policy_qa 加进意图集合）。
@@ -274,6 +280,11 @@ class LLMPlanner:
                 ],
                 max_tokens=self.max_tokens,
             )
+        except BudgetExceededError:
+            # 预算熔断和「模型抽风」不是一回事：降级重试只会继续花钱，而且会把一次超支
+            # 伪装成一次成功的运行（`plan_source` 变成 llm-fallback，通过率还很好看）。
+            # 所以它必须往上抛，让调用方停在这里——否则 --budget 只是个建议。
+            raise
         except LLMError as exc:
             return self._fallback(message, f"模型调用失败（{type(exc).__name__}）")
         self.last_response = response
