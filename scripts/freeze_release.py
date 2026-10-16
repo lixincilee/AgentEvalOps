@@ -337,8 +337,9 @@ def main(argv: list[str] | None = None) -> int:
                            run_time=args.load_run_time)
             )
 
+        marks = {"passed": "通过", "skipped": "跳过", "failed": "失败"}
         for check in checks:
-            mark = "通过" if check["status"] == "passed" else "失败"
+            mark = marks.get(str(check["status"]), str(check["status"]))
             print(f"  [{mark}] {check['name']:<28} {check['seconds']:>7.1f}s  {check['detail']}")
 
         index = {
@@ -362,7 +363,8 @@ def main(argv: list[str] | None = None) -> int:
             shutil.rmtree(out)
         shutil.move(str(tmp), str(out))
 
-    failed = [c for c in checks if c["status"] != "passed"]
+    # 只有 "failed" 才算失败：被跳过的检查（--skip-load）不该让冻结以非 0 退出。
+    failed = [c for c in checks if c["status"] == "failed"]
     print(f"已冻结到 {out}")
     if args.gate_against:
         import regression_gate
