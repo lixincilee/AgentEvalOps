@@ -670,6 +670,11 @@ D:\Python\python.exe scripts/freeze_release.py --repeat 3
 顺带修掉一个真 bug：`--budget` 的熔断异常被规划器的 `except LLMError` 吞成规则兜底，
 实测能超上限 1000 倍还报「运行成功」（证据文档 §14.3）。
 
+冻结产物 `releases/v0.8.0/` 已入库（`--repeat 3`，全离线 2 分 20 秒），门禁对 `releases/v0.7.0`
+14 项全绿。报告里第一次出现「噪声」列：P95 从 160ms 到 140ms（−12.5%），而噪声是 ±21.4%——
+**这个「改善」小于测量精度，不能当结论**。锚定信息也补齐了：`describe=v0.8.0`、
+`is_reproducible=true`（此前是 `nogit` / `false`）。
+
 ## 后续路线图
 
 | 阶段 | 目标 | 关键产出 |

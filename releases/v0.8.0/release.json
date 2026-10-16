@@ -1,0 +1,406 @@
+{
+  "kind": "release_index",
+  "tag": "v0.8.0",
+  "commit": "bff1171",
+  "describe": "v0.8.0",
+  "spec_version": "1.3",
+  "frozen_at": "2026-10-16T09:44:01.485193+00:00",
+  "dirty": false,
+  "checks": [
+    {
+      "name": "pytest",
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 27.89,
+      "artifact": "pytest.txt",
+      "metrics": {
+        "pytest.passed": 1121,
+        "pytest.failed": 0,
+        "pytest.xfailed": 10,
+        "pytest.skipped": 0
+      },
+      "detail": "1121 passed / 0 failed"
+    },
+    {
+      "name": "faults",
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 4.36,
+      "artifact": "fault-run.json",
+      "metrics": {
+        "fault.pass_rate": 1.0,
+        "fault.cases": 25
+      },
+      "detail": "25/25 条故障用例"
+    },
+    {
+      "name": "comparison:matrix",
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 4.797,
+      "artifact": "comparison-matrix.json",
+      "metrics": {
+        "matrix.v1.pass_rate": 0.9671361502347418,
+        "matrix.v3_rules.pass_rate": 0.9671361502347418
+      },
+      "detail": "213 行"
+    },
+    {
+      "name": "comparison:rag_multiturn",
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 4.546,
+      "artifact": "comparison-rag-multiturn.json",
+      "metrics": {
+        "rag_multiturn.v1.pass_rate": 0.375,
+        "rag_multiturn.v3_rules.pass_rate": 1.0
+      },
+      "detail": "120 行"
+    },
+    {
+      "name": "load_test",
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 96.297,
+      "artifact": "load-test.json",
+      "metrics": {
+        "perf.http_error_rate": 0.0,
+        "perf.task_success_rate": 1.0,
+        "perf.p95_ms": 140.0,
+        "perf.rps": 168.498,
+        "perf.tokens_per_request": 290.0,
+        "perf.cost_per_success_cny": 0.00076
+      },
+      "detail": "modeled 臂 / P95 140.0ms（3 次的中位数）",
+      "provenance": {
+        "latency": "modeled",
+        "tokens": "modeled"
+      },
+      "repeat": 3,
+      "variance": {
+        "requests": {
+          "values": [
+            3167.0,
+            3241.0,
+            3150.0
+          ],
+          "count": 3,
+          "median": 3167.0,
+          "min": 3150.0,
+          "max": 3241.0,
+          "mean": 3186.0,
+          "spread": 91.0,
+          "spread_pct": 0.028733817492895483,
+          "stdev": 48.38388161361178
+        },
+        "rps": {
+          "values": [
+            168.498,
+            170.001,
+            167.179
+          ],
+          "count": 3,
+          "median": 168.498,
+          "min": 167.179,
+          "max": 170.001,
+          "mean": 168.55933333333334,
+          "spread": 2.8220000000000027,
+          "spread_pct": 0.01674797326971242,
+          "stdev": 1.4119994098204638
+        },
+        "p50_ms": {
+          "values": [
+            100.0,
+            100.0,
+            100.0
+          ],
+          "count": 3,
+          "median": 100.0,
+          "min": 100.0,
+          "max": 100.0,
+          "mean": 100.0,
+          "spread": 0.0,
+          "spread_pct": 0.0,
+          "stdev": 0.0
+        },
+        "p95_ms": {
+          "values": [
+            130.0,
+            140.0,
+            160.0
+          ],
+          "count": 3,
+          "median": 140.0,
+          "min": 130.0,
+          "max": 160.0,
+          "mean": 143.33333333333334,
+          "spread": 30.0,
+          "spread_pct": 0.21428571428571427,
+          "stdev": 15.275252316519467
+        },
+        "p99_ms": {
+          "values": [
+            230.0,
+            200.0,
+            280.0
+          ],
+          "count": 3,
+          "median": 230.0,
+          "min": 200.0,
+          "max": 280.0,
+          "mean": 236.66666666666666,
+          "spread": 80.0,
+          "spread_pct": 0.34782608695652173,
+          "stdev": 40.414518843273804
+        },
+        "avg_ms": {
+          "values": [
+            109.274,
+            108.455,
+            110.251
+          ],
+          "count": 3,
+          "median": 109.274,
+          "min": 108.455,
+          "max": 110.251,
+          "mean": 109.32666666666667,
+          "spread": 1.7960000000000065,
+          "spread_pct": 0.016435748668484785,
+          "stdev": 0.8991575686904599
+        },
+        "http_error_rate": {
+          "values": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "count": 3,
+          "median": 0.0,
+          "min": 0.0,
+          "max": 0.0,
+          "mean": 0.0,
+          "spread": 0.0,
+          "spread_pct": null,
+          "stdev": 0.0
+        },
+        "task_success_rate": {
+          "values": [
+            1.0,
+            1.0,
+            1.0
+          ],
+          "count": 3,
+          "median": 1.0,
+          "min": 1.0,
+          "max": 1.0,
+          "mean": 1.0,
+          "spread": 0.0,
+          "spread_pct": 0.0,
+          "stdev": 0.0
+        },
+        "tokens_per_request": {
+          "values": [
+            290.0,
+            290.0,
+            290.0
+          ],
+          "count": 3,
+          "median": 290.0,
+          "min": 290.0,
+          "max": 290.0,
+          "mean": 290.0,
+          "spread": 0.0,
+          "spread_pct": 0.0,
+          "stdev": 0.0
+        },
+        "cost_per_success_cny": {
+          "values": [
+            0.00076,
+            0.00076,
+            0.00076
+          ],
+          "count": 3,
+          "median": 0.00076,
+          "min": 0.00076,
+          "max": 0.00076,
+          "mean": 0.0007599999999999999,
+          "spread": 0.0,
+          "spread_pct": 0.0,
+          "stdev": 0.0
+        }
+      }
+    }
+  ],
+  "metrics": {
+    "fault.cases": 25.0,
+    "fault.pass_rate": 1.0,
+    "matrix.v1.pass_rate": 0.9671361502347418,
+    "matrix.v3_rules.pass_rate": 0.9671361502347418,
+    "perf.cost_per_success_cny": 0.00076,
+    "perf.http_error_rate": 0.0,
+    "perf.p95_ms": 140.0,
+    "perf.rps": 168.498,
+    "perf.task_success_rate": 1.0,
+    "perf.tokens_per_request": 290.0,
+    "pytest.failed": 0.0,
+    "pytest.passed": 1121.0,
+    "pytest.skipped": 0.0,
+    "pytest.xfailed": 10.0,
+    "rag_multiturn.v1.pass_rate": 0.375,
+    "rag_multiturn.v3_rules.pass_rate": 1.0
+  },
+  "variance": {
+    "load_test": {
+      "requests": {
+        "values": [
+          3167.0,
+          3241.0,
+          3150.0
+        ],
+        "count": 3,
+        "median": 3167.0,
+        "min": 3150.0,
+        "max": 3241.0,
+        "mean": 3186.0,
+        "spread": 91.0,
+        "spread_pct": 0.028733817492895483,
+        "stdev": 48.38388161361178
+      },
+      "rps": {
+        "values": [
+          168.498,
+          170.001,
+          167.179
+        ],
+        "count": 3,
+        "median": 168.498,
+        "min": 167.179,
+        "max": 170.001,
+        "mean": 168.55933333333334,
+        "spread": 2.8220000000000027,
+        "spread_pct": 0.01674797326971242,
+        "stdev": 1.4119994098204638
+      },
+      "p50_ms": {
+        "values": [
+          100.0,
+          100.0,
+          100.0
+        ],
+        "count": 3,
+        "median": 100.0,
+        "min": 100.0,
+        "max": 100.0,
+        "mean": 100.0,
+        "spread": 0.0,
+        "spread_pct": 0.0,
+        "stdev": 0.0
+      },
+      "p95_ms": {
+        "values": [
+          130.0,
+          140.0,
+          160.0
+        ],
+        "count": 3,
+        "median": 140.0,
+        "min": 130.0,
+        "max": 160.0,
+        "mean": 143.33333333333334,
+        "spread": 30.0,
+        "spread_pct": 0.21428571428571427,
+        "stdev": 15.275252316519467
+      },
+      "p99_ms": {
+        "values": [
+          230.0,
+          200.0,
+          280.0
+        ],
+        "count": 3,
+        "median": 230.0,
+        "min": 200.0,
+        "max": 280.0,
+        "mean": 236.66666666666666,
+        "spread": 80.0,
+        "spread_pct": 0.34782608695652173,
+        "stdev": 40.414518843273804
+      },
+      "avg_ms": {
+        "values": [
+          109.274,
+          108.455,
+          110.251
+        ],
+        "count": 3,
+        "median": 109.274,
+        "min": 108.455,
+        "max": 110.251,
+        "mean": 109.32666666666667,
+        "spread": 1.7960000000000065,
+        "spread_pct": 0.016435748668484785,
+        "stdev": 0.8991575686904599
+      },
+      "http_error_rate": {
+        "values": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "count": 3,
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "mean": 0.0,
+        "spread": 0.0,
+        "spread_pct": null,
+        "stdev": 0.0
+      },
+      "task_success_rate": {
+        "values": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "count": 3,
+        "median": 1.0,
+        "min": 1.0,
+        "max": 1.0,
+        "mean": 1.0,
+        "spread": 0.0,
+        "spread_pct": 0.0,
+        "stdev": 0.0
+      },
+      "tokens_per_request": {
+        "values": [
+          290.0,
+          290.0,
+          290.0
+        ],
+        "count": 3,
+        "median": 290.0,
+        "min": 290.0,
+        "max": 290.0,
+        "mean": 290.0,
+        "spread": 0.0,
+        "spread_pct": 0.0,
+        "stdev": 0.0
+      },
+      "cost_per_success_cny": {
+        "values": [
+          0.00076,
+          0.00076,
+          0.00076
+        ],
+        "count": 3,
+        "median": 0.00076,
+        "min": 0.00076,
+        "max": 0.00076,
+        "mean": 0.0007599999999999999,
+        "spread": 0.0,
+        "spread_pct": 0.0,
+        "stdev": 0.0
+      }
+    }
+  }
+}

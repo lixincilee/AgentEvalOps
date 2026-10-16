@@ -977,3 +977,53 @@ except LLMError as exc:
    按已实测的单次调用均摊，实际量级在 0.04 元左右）。**这笔钱还没花。**
 2. **`interpretable_deltas` 的判据还很粗。** 它比的是极差，而极差随 N 单调变大：
    N=5 时「解释得了」的门槛，到了 N=20 会自动变高。要稳，需要的是置信区间而不是极差。
+
+### 14.5 冻结 v0.8.0：门禁报告里第一次出现「噪声」列
+
+```powershell
+D:\Python\python.exe scripts/freeze_release.py --repeat 3 --gate-against releases/v0.7.0
+```
+
+全程离线，约 2 分 20 秒（压测那 3 次占 96 秒）：
+
+```
+  [通过] pytest                          27.9s  1121 passed / 0 failed
+  [通过] faults                           4.4s  25/25 条故障用例
+  [通过] comparison:matrix                4.8s  213 行
+  [通过] comparison:rag_multiturn         4.5s  120 行
+  [通过] load_test                       96.3s  modeled 臂 / P95 140.0ms（3 次的中位数）
+```
+
+门禁（候选 v0.8.0 / 基线 v0.7.0）：14 项指标全绿。
+
+| 指标 | v0.7.0 | v0.8.0 | 噪声 | 判定 |
+| --- | --- | --- | --- | --- |
+| `pytest.passed` | 1061 | 1121 | — | — |
+| `pytest.failed` | 0 | 0 | — | 通过 |
+| `fault.pass_rate` | 100.000% | 100.000% | — | 通过 |
+| `matrix.v3_rules.pass_rate` | 96.714% | 96.714% | — | 通过 |
+| `rag_multiturn.v3_rules.pass_rate` | 100.000% | 100.000% | — | 通过 |
+| `perf.p95_ms` | 160ms | **140ms** | **±21.4%** | 通过 |
+| `perf.rps` | 144.8 | 168.5 | — | — |
+| `perf.http_error_rate` | 0.000% | 0.000% | — | 通过 |
+| `perf.task_success_rate` | 100.000% | 100.000% | ±0.0% | 通过 |
+| `perf.cost_per_success_cny` | CNY 0.00076000 | CNY 0.00076000 | ±0.0% | 通过 |
+
+**噪声列要这样读**：P95 从 160ms 降到 140ms（−12.5%），而这次冻结自己量出来的噪声是
+±21.4%（3 次运行的相对极差）——**也就是这个「改善」小于本次测量的精度**，不能拿它当结论。
+真要说它变快了，要么把 N 加到 20 左右，要么把压测机和被测机分开。这正是 M5 §12.2 那句
+「还没压出方差就拿来拦版本，拦的是噪声」的落地版本：门禁不再只给通过 / 不通过，还把
+「这次测量有多准」一起印出来。
+
+锚定这一格从 M5 起就一直空着（`code_version=nogit`、`is_reproducible=false`），现在填上了
+（`releases/v0.8.0/release.json`）：
+
+```json
+{"kind": "release_index", "tag": "v0.8.0", "commit": "bff1171", "describe": "v0.8.0",
+ "dirty": false, "spec_version": "1.3"}
+```
+
+`describe` 正好等于 `v0.8.0`（而不是 `v0.7.0-3-gbff1171`），因为 tag 打在了冻结**之前**的干净
+工作区上；对比报告里的 `manifest.code_version = "bff1171"`、`is_reproducible = true`。
+**「3 个版本回归对比」还差两个版本**：现在有两份冻结基线（v0.7.0 / v0.8.0），还需要补冻一个
+历史版本，或者再往前走一版——那是 M7。
