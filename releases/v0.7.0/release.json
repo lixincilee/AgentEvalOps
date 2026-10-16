@@ -1,0 +1,99 @@
+{
+  "kind": "release_index",
+  "tag": "v0.7.0",
+  "commit": "d7fe209",
+  "describe": "v0.7.0",
+  "spec_version": "1.3",
+  "frozen_at": "2026-10-16T07:27:59.394458+00:00",
+  "dirty": false,
+  "checks": [
+    {
+      "name": "pytest",
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 35.625,
+      "artifact": "pytest.txt",
+      "metrics": {
+        "pytest.passed": 1061,
+        "pytest.failed": 0,
+        "pytest.xfailed": 10,
+        "pytest.skipped": 0
+      },
+      "detail": "1061 passed / 0 failed"
+    },
+    {
+      "name": "faults",
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 7.719,
+      "artifact": "fault-run.json",
+      "metrics": {
+        "fault.pass_rate": 1.0,
+        "fault.cases": 25
+      },
+      "detail": "25/25 条故障用例"
+    },
+    {
+      "name": "comparison:matrix",
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 9.171,
+      "artifact": "comparison-matrix.json",
+      "metrics": {
+        "matrix.v1.pass_rate": 0.9671361502347418,
+        "matrix.v3_rules.pass_rate": 0.9671361502347418
+      },
+      "detail": "213 行"
+    },
+    {
+      "name": "comparison:rag_multiturn",
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 9.5,
+      "artifact": "comparison-rag-multiturn.json",
+      "metrics": {
+        "rag_multiturn.v1.pass_rate": 0.375,
+        "rag_multiturn.v3_rules.pass_rate": 1.0
+      },
+      "detail": "120 行"
+    },
+    {
+      "name": "load_test",
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 44.422,
+      "artifact": "load-test.json",
+      "metrics": {
+        "perf.http_error_rate": 0.0,
+        "perf.task_success_rate": 1.0,
+        "perf.p95_ms": 160,
+        "perf.rps": 144.799,
+        "perf.tokens_per_request": 290.0,
+        "perf.cost_per_success_cny": 0.00076
+      },
+      "detail": "modeled 臂 / P95 160ms",
+      "provenance": {
+        "latency": "modeled",
+        "tokens": "modeled"
+      }
+    }
+  ],
+  "metrics": {
+    "fault.cases": 25.0,
+    "fault.pass_rate": 1.0,
+    "matrix.v1.pass_rate": 0.9671361502347418,
+    "matrix.v3_rules.pass_rate": 0.9671361502347418,
+    "perf.cost_per_success_cny": 0.00076,
+    "perf.http_error_rate": 0.0,
+    "perf.p95_ms": 160.0,
+    "perf.rps": 144.799,
+    "perf.task_success_rate": 1.0,
+    "perf.tokens_per_request": 290.0,
+    "pytest.failed": 0.0,
+    "pytest.passed": 1061.0,
+    "pytest.skipped": 0.0,
+    "pytest.xfailed": 10.0,
+    "rag_multiturn.v1.pass_rate": 0.375,
+    "rag_multiturn.v3_rules.pass_rate": 1.0
+  }
+}
