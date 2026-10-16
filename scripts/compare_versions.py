@@ -644,6 +644,12 @@ REPEAT_COLUMN_METRICS = (
 )
 
 
+#: 挂在**列载荷**上、而不是 ``metrics`` 里的指标。真实运行暴露过一次：这两个名字看着像指标，
+#: 实际位置不同，而读错位置的后果是它们**静默消失**在 runs[] 与 variance 里
+#: （``summarize_runs`` 会把 None 跳过，缺了不报错）。
+PAYLOAD_LEVEL_METRICS = ("model_calls", "avg_latency_ms")
+
+
 def _column_metric(report: dict[str, Any], column: str, metric: str) -> float | None:
     """从一次运行的报告里读某一列的某个指标；列不可用就是 None（不是 0）。"""
     payload = (report.get("versions") or {}).get(column)
@@ -651,6 +657,8 @@ def _column_metric(report: dict[str, Any], column: str, metric: str) -> float | 
         return None
     if metric == "case_pass_rate":
         value = (payload.get("case_level") or {}).get("pass_rate")
+    elif metric in PAYLOAD_LEVEL_METRICS:
+        value = payload.get(metric)
     else:
         value = (payload.get("metrics") or {}).get(metric)
     return None if value is None else float(value)

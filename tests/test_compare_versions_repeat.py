@@ -128,6 +128,26 @@ def test_column_metric_reads_case_level_from_its_own_slot():
     assert harness._column_metric(report, "v1", "case_pass_rate") == 0.25
 
 
+def test_column_metric_reads_the_metrics_that_do_not_live_under_metrics():
+    """`model_calls` / `avg_latency_ms` 挂在列载荷上，不在 metrics 里。
+
+    真实调用那一轮才暴露出来：读错位置不会报错，只会让这两项**静默消失**在 runs[] 与
+    variance 里——`summarize_runs` 会把 None 跳过，缺了什么都不说。
+    """
+    report = {
+        "versions": {
+            "v2": {
+                "metrics": {"pass_rate": 0.5, "cost": 0.01},
+                "model_calls": 37,
+                "avg_latency_ms": 12.5,
+            }
+        }
+    }
+    assert harness._column_metric(report, "v2", "model_calls") == 37.0
+    assert harness._column_metric(report, "v2", "avg_latency_ms") == 12.5
+    assert harness._column_metric(report, "v2", "cost") == 0.01
+
+
 def test_column_metric_treats_an_unavailable_column_as_missing_not_zero():
     """离线时模型列不可用：它是「没测到」，不是 0 分。补 0 会把极差凭空撑大。"""
     assert harness._column_metric({"versions": {"v2": None}}, "v2", "pass_rate") is None
@@ -253,6 +273,13 @@ def test_repeat_records_every_run_in_runs_and_variance(offline_repeat):
     assert values == [
         offline_repeat["runs"][index]["columns"]["v1"]["pass_rate"] for index in range(3)
     ]
+
+
+def test_repeat_records_payload_level_metrics_per_run(offline_repeat):
+    """即使值是 0，也必须在 runs[] 与 variance 里各占一格（0 和「没测到」不是一回事）。"""
+    assert offline_repeat["runs"][1]["columns"]["v1"]["model_calls"] == 0.0
+    assert offline_repeat["variance"]["v1.model_calls"]["count"] == 3
+    assert offline_repeat["variance"]["v1.avg_latency_ms"]["count"] == 3
 
 
 def test_identical_offline_runs_have_zero_noise_and_no_flaky_cases(offline_repeat):
