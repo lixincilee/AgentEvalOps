@@ -585,7 +585,9 @@ D:\Python\python.exe scripts/freeze_release.py
 | `load_test`（mock 臂压测） | `perf.http_error_rate` / `perf.task_success_rate` / `perf.p95_ms` / `perf.rps` / `perf.cost_per_success_cny` |
 
 `reports/` 是 gitignore 掉的运行产物；`releases/` 正相反——**它必须提交进 git**，
-因为「上个版本长什么样」不能靠记忆。首个基线是 `releases/v0.7.0/`。
+因为「上个版本长什么样」不能靠记忆。已冻结的基线：`releases/v0.7.0/`（首个）、
+`releases/v0.8.0/`（M6；`--repeat 3`，带方差）。CI 门禁的执法基线目前钉在 `v0.7.0`——
+它是个**刻意选定**的基线，不随新版本自动上移。
 
 **脏工作区会被拒绝冻结**：指标锚不住版本号，之后的对比就都失去了意义。
 
