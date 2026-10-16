@@ -55,6 +55,9 @@ class Rule:
     #: ``relative`` = 相对基线的比例（0.50 就是允许差 50%）。带噪声的指标必须用相对：
     #: 它们的绝对差本来就随机器状态浮动，写死一个毫秒数只会变成随机门禁。
     tolerance_kind: str = "absolute"
+    #: 这个指标由哪一项检查产出（对应 release.json 里 ``checks[].name``）。用来区分
+    #: 「这次没跑这项检查」与「跑了但没这个数」——前者不该阻断版本，后者才该。
+    check: str | None = None
 
     def __post_init__(self) -> None:
         if self.direction not in ("higher", "lower"):
@@ -70,24 +73,24 @@ class Rule:
 #: 门禁规则表。**只有这一处**，因为它就是「什么算退化」的定义。
 #: 阈值写死在这里而不是当命令行参数传——能被现场放宽的门禁等于没有门禁。
 RULES: tuple[Rule, ...] = (
-    Rule("pytest.failed", "lower", bound=0.0, tolerance=0.0,
+    Rule("pytest.failed", "lower", bound=0.0, tolerance=0.0, check="pytest",
          note="任何一条测试失败都阻断"),
-    Rule("fault.pass_rate", "higher", bound=1.0, tolerance=0.0,
+    Rule("fault.pass_rate", "higher", bound=1.0, tolerance=0.0, check="faults",
          note="故障注入必须全过：它测的就是错误路径，掉一条就是错误路径坏了"),
     Rule("matrix.v3_rules.pass_rate", "higher", bound=0.90, tolerance=0.01,
-         note="主矩阵（213 行）规则臂通过率"),
+         check="comparison:matrix", note="主矩阵（213 行）规则臂通过率"),
     Rule("rag_multiturn.v3_rules.pass_rate", "higher", bound=0.90, tolerance=0.01,
-         note="检索 + 多轮（120 行）规则臂通过率"),
-    Rule("perf.http_error_rate", "lower", bound=0.01, tolerance=0.005,
+         check="comparison:rag_multiturn", note="检索 + 多轮（120 行）规则臂通过率"),
+    Rule("perf.http_error_rate", "lower", bound=0.01, tolerance=0.005, check="load_test",
          note="传输层错误率（与 scripts/load_test.py 的门禁同源）"),
-    Rule("perf.task_success_rate", "higher", bound=0.99, tolerance=0.005,
+    Rule("perf.task_success_rate", "higher", bound=0.99, tolerance=0.005, check="load_test",
          note="任务成功率：终态是不是这条消息该有的结果"),
     # 下面两条只报不拦：单次运行的延迟与成本还压不出结论（证据文档 §11.2）。
     Rule("perf.p95_ms", "lower", bound=None, tolerance=0.50, enforce=False,
-         tolerance_kind="relative",
+         tolerance_kind="relative", check="load_test",
          note="延迟噪声大（实测单次运行差 2.2 倍），先只报；等 --repeat N"),
     Rule("perf.cost_per_success_cny", "lower", bound=None, tolerance=0.50, enforce=False,
-         tolerance_kind="relative",
+         tolerance_kind="relative", check="load_test",
          note="模型臂的建模成本，同上"),
 )
 
@@ -165,12 +168,22 @@ def load_release(path: Path) -> Release:
     )
 
 
-def evaluate(rule: Rule, candidate: float | None, baseline: float | None) -> Verdict:
+def evaluate(
+    rule: Rule,
+    candidate: float | None,
+    baseline: float | None,
+    skipped_checks: frozenset[str] | None = None,
+) -> Verdict:
     """判一条规则。顺序是有意的：**先绝对下限，再相对退化**。
 
     反过来会先给出「比基线掉了多少」，那个数字在指标本身就不可接受时会分散注意力。
     """
     if candidate is None:
+        # 「这项检查本次没跑」和「跑了但没产出这个数」是两件事：前者是没测，
+        # 不能拿它阻断版本——否则 `freeze_release.py --skip-load` 会永远红。
+        if rule.check is not None and skipped_checks and rule.check in skipped_checks:
+            return Verdict(rule, None, baseline, "warn",
+                           f"本次跳过了 {rule.check} 检查：没测就不断言退化")
         status = "fail" if rule.enforce else "warn"
         return Verdict(rule, None, baseline, status, "候选里没有这个指标")
 
@@ -233,9 +246,14 @@ def _fmt(metric: str, value: float | None) -> str:
 def run_gate(candidate: Release, baselines: Sequence[Release]) -> dict[str, Any]:
     """跑完整张规则表。``baselines`` 的**最后一个**是执法基线（调用方按时间顺序传）。"""
     baseline = baselines[-1] if baselines else None
+    skipped = frozenset(
+        str(check.get("name"))
+        for check in (candidate.raw.get("checks") or [])
+        if check.get("status") == "skipped"
+    )
     verdicts = [
         evaluate(rule, candidate.metric(rule.metric),
-                 None if baseline is None else baseline.metric(rule.metric))
+                 None if baseline is None else baseline.metric(rule.metric), skipped)
         for rule in RULES
     ]
     failures = [v for v in verdicts if v.status == "fail"]
@@ -252,6 +270,7 @@ def run_gate(candidate: Release, baselines: Sequence[Release]) -> dict[str, Any]
             for b in baselines
         ],
         "enforcement_baseline": None if baseline is None else baseline.tag,
+        "skipped_checks": sorted(skipped),
         "metrics": {
             name: {
                 "candidate": candidate.metric(name),

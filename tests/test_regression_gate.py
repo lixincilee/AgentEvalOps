@@ -229,3 +229,41 @@ def test_report_names_the_candidate_and_baseline(tmp_path: Path) -> None:
     assert summary["kind"] == "regression_gate"
     assert summary["candidate"]["tag"] == "candidate"
     assert summary["baselines"][0]["tag"] == "v0.6.0"
+
+
+def _release_with_checks(directory: Path, tag: str, metrics: dict[str, Any],
+                         checks: list[dict[str, Any]]) -> Path:
+    directory.mkdir(parents=True, exist_ok=True)
+    (directory / "release.json").write_text(
+        json.dumps({"kind": "release_index", "tag": tag, "commit": "abcdef0",
+                    "dirty": False, "metrics": metrics, "checks": checks},
+                   ensure_ascii=False),
+        encoding="utf-8",
+    )
+    return directory
+
+
+def test_skipped_check_downgrades_block_to_warning(tmp_path: Path) -> None:
+    """「本次没跑这项检查」不该阻断版本——否则 --skip-load 的候选永远红。"""
+    metrics = {k: v for k, v in BASE_METRICS.items() if not k.startswith("perf.")}
+    candidate = gate.load_release(
+        _release_with_checks(tmp_path / "c", "candidate", metrics,
+                             [{"name": "load_test", "status": "skipped"}])
+    )
+    summary = gate.run_gate(candidate, [])
+    assert summary["passed"] is True
+    assert summary["skipped_checks"] == ["load_test"]
+    assert any("load_test" in item for item in summary["warnings"])
+    assert not any("load_test" in item for item in summary["failures"])
+
+
+def test_missing_metric_still_blocks_when_the_check_did_run(tmp_path: Path) -> None:
+    """检查跑了却没产出这个数 → 照样阻断：那是报告坏了，不是没测。"""
+    metrics = {k: v for k, v in BASE_METRICS.items() if not k.startswith("perf.")}
+    candidate = gate.load_release(
+        _release_with_checks(tmp_path / "c", "candidate", metrics,
+                             [{"name": "load_test", "status": "passed", "metrics": {}}])
+    )
+    summary = gate.run_gate(candidate, [])
+    assert summary["passed"] is False
+    assert any("没有这个指标" in item for item in summary["failures"])

@@ -1,0 +1,164 @@
+# AgentEvalOps 回归门禁。
+#
+# 三个 job 分工：test 管功能，gate 管质量门禁，nightly-real 管真实模型的延迟与账单。
+# 前两个在 push / PR 上跑并阻塞合并；nightly-real 只在定时任务里跑，不阻塞任何人。
+#
+# 诚实声明：这份 workflow 还没有在 GitHub 上真跑过（本机没有 Docker，也没有 gh CLI）。
+# 它的正确性来自「每条 run 命令都在本机按同一顺序跑过」+「YAML 能被解析」，
+# 不是来自一次 CI 运行记录。详见 docs/ci.md 的「没有验证过的部分」。
+
+name: regression
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    # GitHub 的 cron 只认 UTC：UTC 18:00 = 北京时间次日 02:00。
+    - cron: "0 18 * * *"
+
+# 最小权限：CI 只需要读仓库。
+permissions:
+  contents: read
+
+# 同一分支上的新推送取消旧运行：门禁回答的是「现在这版过不过」，旧版跑完也没人看。
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # 用例与报告里都是中文。scripts/freeze_release.py 内部也会强制这两个变量；
+  # 这里再设一次，是为了让 nightly 里那两条直接调用脚本的命令行为一致。
+  PYTHONUTF8: "1"
+  PYTHONIOENCODING: "utf-8"
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+
+jobs:
+  test:
+    name: 全量测试
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 缓存 pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      # 装全量 extra：tests/test_service.py 在模块层就 import fastapi，
+      # 而 tests/ 下没有任何 importorskip —— 少装一个 extra 不是「跳过」，是收集期报错。
+      - name: 安装依赖
+        run: python -m pip install -e ".[dev,llm,api,perf]"
+
+      - name: 全量测试
+        run: python -m pytest -q
+
+  gate:
+    name: 冻结候选发布 + 回归门禁
+    needs: test
+    runs-on: ubuntu-latest
+    # 冻结要跑五件事，最慢的是 mock 臂压测（默认 20 用户 20 秒）；45 分钟是余量不是预期。
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # freeze_release.py 用 git describe --tags / git rev-parse 把指标锚到版本号上。
+          # actions/checkout 默认 depth=1，浅克隆里没有 tag，锚点会退化成 unknown。
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 缓存 pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: 安装依赖
+        run: python -m pip install -e ".[dev,llm,api,perf]"
+
+      # 一条命令跑齐：pytest、25 条故障用例、两份离线对比、mock 臂压测，
+      # 然后拿 releases/v0.7.0 当执法基线判退化。
+      # 退出码 0 = 全过；1 = 有检查失败或门禁没过；2 = 起不来（环境问题）。
+      - name: 冻结候选发布并跑回归门禁
+        run: python scripts/freeze_release.py --out .release-candidate --gate-against releases/v0.7.0
+
+      # 门禁失败的时候最需要证据，所以两条上传都挂 if: always()。
+      - name: 上传候选发布
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-candidate
+          path: .release-candidate/
+          # 目录名以点开头：upload-artifact v4.4 起默认排除隐藏文件，
+          # 不显式打开这一项，可能上传出一个空工件而日志里只留一句 warning。
+          include-hidden-files: true
+          if-no-files-found: warn
+
+      - name: 上传运行产物
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports
+          path: reports/
+          if-no-files-found: warn
+
+  nightly-real:
+    name: 夜间真实模型（会花钱）
+    # 只在定时任务里跑：PR 上永不触发，所以它结构上就不可能阻塞合并。
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # 供应商拥塞、限流、余额不足都不该让整个 workflow 变红：这一格只是夜间情报。
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 缓存 pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: 安装依赖
+        run: python -m pip install -e ".[dev,llm,api,perf]"
+
+      # 真实模型列：--limit 40 控规模，--budget 0.5 是花费熔断上限（元）。
+      # 少了 --yes 时脚本会停在发请求之前并返回 2，这是刻意的双人确认。
+      - name: 真实模型四方对比
+        run: python scripts/compare_versions.py --llm --yes --limit 40 --budget 0.5
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+
+      # 真实供应商的 P95 与单次成功成本。冻结发布里这两项是建模值，只有这里能取到真值。
+      - name: 真实模型并发压测
+        run: python scripts/load_test.py --real --yes --users 5 --spawn-rate 1 --run-time 30s --budget 0.5
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+
+      - name: 上传夜间报告
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-real-reports
+          path: reports/
+          if-no-files-found: warn

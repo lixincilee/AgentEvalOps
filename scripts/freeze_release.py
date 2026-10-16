@@ -324,7 +324,13 @@ def main(argv: list[str] | None = None) -> int:
                              "comparison-rag-multiturn.json")
         )
         if args.skip_load:
+            # 记一条 skipped，而不是干脆不出现：门禁要靠它区分「没跑」与「没数」。
             print("跳过并发压测（--skip-load）")
+            checks.append({
+                "name": "load_test", "status": "skipped", "exit_code": None,
+                "seconds": 0.0, "artifact": None, "metrics": {},
+                "detail": "本次跳过了并发压测（--skip-load）",
+            })
         else:
             checks.append(
                 check_load(tmp, port=args.load_port, users=args.load_users,
@@ -361,8 +367,15 @@ def main(argv: list[str] | None = None) -> int:
     if args.gate_against:
         import regression_gate
 
-        candidate = regression_gate.load_release(out)
-        baselines = [regression_gate.load_release(path) for path in args.gate_against]
+        try:
+            candidate = regression_gate.load_release(out)
+            baselines = [regression_gate.load_release(path) for path in args.gate_against]
+        except regression_gate.GateUsageError as exc:
+            # 基线不存在是环境问题（还没冻结过基线？），不是质量结论——所以是 2 不是 1。
+            # 不加这一层，用户看到的会是一个 traceback，退出码还带着 1 的误导。
+            print(f"门禁起不来：{exc}")
+            print("提示：基线要用 scripts/freeze_release.py 先冻结一次，或改 --gate-against 的路径。")
+            return 2
         summary = regression_gate.run_gate(candidate, baselines)
         regression_gate.print_report(summary, candidate, baselines)
         if not summary["passed"]:
