@@ -21,3 +21,7 @@ build/
 # 用 .release-candidate* 而不是 .release-candidate/：注入回归演示会写
 # .release-candidate-regression/，漏一个通配就会在 git status 里留噪声。
 .release-candidate*/
+
+# 补冻历史版本用的 worktree（冻结器本身不在旧 tag 上，得借过去一份）。
+# 它是工具，不是产物；harness 那一份提交在 freeze/<tag> 分支上。
+.worktrees/

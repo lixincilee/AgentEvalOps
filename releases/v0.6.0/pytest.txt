@@ -1,0 +1,27 @@
+........................................................................ [  6%]
+.................................................xx...................xx [ 13%]
+.............xx..............................x.......................... [ 20%]
+........................................................................ [ 27%]
+........................................................................ [ 34%]
+........................................................................ [ 41%]
+........................................................................ [ 48%]
+........................................................................ [ 55%]
+........................................................................ [ 62%]
+........................................................................ [ 69%]
+........................................................................ [ 76%]
+........................................................................ [ 83%]
+.....................................................................xxx [ 90%]
+........................................................................ [ 97%]
+...........................                                              [100%]
+=========================== short test summary info ===========================
+XFAIL tests/test_case_matrix_v2.py::test_case_matrix_case_matches_agent_behaviour[v2_bnd_cjk_adjacent_left] - SPEC-SLOT-1 要求左边界不设限；rules-v1 用 \b 却对 CJK 失效（\w 含中日韩字符），中文紧贴订单号时认不出订单号
+XFAIL tests/test_case_matrix_v2.py::test_case_matrix_case_matches_agent_behaviour[v2_bnd_cjk_adjacent_right] - SPEC-SLOT-1 只要求右边界排除紧跟的 ASCII 字母数字；rules-v1 的 \b 同样被 CJK 挡下
+XFAIL tests/test_case_matrix_v2.py::test_case_matrix_case_matches_agent_behaviour[v2_bnd_digit_prefix] - SPEC-SLOT-1 要求左边界不设限；rules-v1 的 \b 被紧贴的数字挡下
+XFAIL tests/test_case_matrix_v2.py::test_case_matrix_case_matches_agent_behaviour[v2_bnd_status_word_only] - SPEC-INTENT-2 要求缺槽位不改意图；rules-v1 只要没有订单词就判 unknown
+XFAIL tests/test_case_matrix_v2.py::test_case_matrix_case_matches_agent_behaviour[v2_bnd_status_no_order] - SPEC-INTENT-2 要求缺槽位不改意图；rules-v1 只要没有订单词就判 unknown
+XFAIL tests/test_case_matrix_v2.py::test_case_matrix_case_matches_agent_behaviour[v2_err_unsupported_01] - SPEC-INTENT-2 要求口语化查单仍判 order_status；rules-v1 的关键词表命中不了「查一下我的快递」
+XFAIL tests/test_case_matrix_v2.py::test_case_matrix_case_matches_agent_behaviour[v2_err_unsupported_06] - SPEC-INTENT-2 要求缺槽位不改意图；rules-v1 只要没有订单词就判 unknown
+XFAIL tests/test_spec_conformance.py::test_spec_slot_1_tolerates_characters_adjacent_to_the_order_id[\u8ba2\u5355ORD-1001\u72b6\u6001-ORD-1001] - SPEC-SLOT-1 只要求右边界排除紧跟的 ASCII 字母数字、左边界不设限；rules-v1 用 \b（\w 含中日韩字符）在相邻时认不出订单号
+XFAIL tests/test_spec_conformance.py::test_spec_slot_1_tolerates_characters_adjacent_to_the_order_id[\u67e5\u8be2 ORD-1001\u72b6\u6001-ORD-1001] - SPEC-SLOT-1 只要求右边界排除紧跟的 ASCII 字母数字、左边界不设限；rules-v1 用 \b（\w 含中日韩字符）在相邻时认不出订单号
+XFAIL tests/test_spec_conformance.py::test_spec_slot_1_tolerates_characters_adjacent_to_the_order_id[12345ORD-1001 \u72b6\u6001-ORD-1001] - SPEC-SLOT-1 只要求右边界排除紧跟的 ASCII 字母数字、左边界不设限；rules-v1 用 \b（\w 含中日韩字符）在相邻时认不出订单号
+1025 passed, 10 xfailed in 29.46s

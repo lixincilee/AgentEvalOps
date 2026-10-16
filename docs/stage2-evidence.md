@@ -341,11 +341,12 @@ completion 2442 tokens——与 run1/run3 一致，说明这 9 条是稳定差�
 | ~~规格冻结（`docs/agent-spec.md`）~~ | **已完成**：v1.0 冻结，9 条争议全部裁决，7 条期望值按规格改写，基线偏差由 strict `xfail` 盯住 |
 | ~~RAG 检索工具 / 多轮会话状态 / LangGraph~~ | **已完成**（M3，tag `v0.5.0`）：48 条检索用例 + 36 条多轮用例全通过；v1/v2/v3 三方对比器离线可跑（见第 9 节） |
 | ~~真实三方对比（v1 / v2 / v3 / v3-rules）~~ | **已完成**（第 10 节）：四个批次、两个 tag（`v0.5.0` / `v0.5.1`）锚定，`is_reproducible=true`，合计花费 CNY 0.542；并抓到 v3 兜底路径的一个真实缺陷 |
-| 重复执行 N 次取稳定值 | **仍未做，但已有实测数字**：同一份代码、同一份用例跑两次差 0.9 个百分点（§10.4）。在拿到 `--repeat N` 之前，任何小于 1 个百分点的版本分差都不可解释 |
+| ~~重复执行 N 次取稳定值~~ | **已完成**（M6，§14）：规则列跑 5 次零噪声；真实模型 `--repeat 3` 实测噪声 2.5pp（CNY 0.0893） |
+| ~~3 个版本回归对比~~ | **已完成**（M7，§15）：补冻 `releases/v0.6.0/`，`releases/comparisons/v0.6.0-v0.7.0-v0.8.0.json` 三版并排、门禁全绿；**但功能指标三版无区分度**，见 §15.6 ① |
 | Langfuse trace | 本机无 Docker，只能走 Cloud 或先退化为本地 JSON trace |
-| 故障注入（25 条） | 未开始（M5）：工具超时 / 工具 500 / 空检索 / 模型限流 |
-| 并发压测（Locust/k6） | 未开始，需先决定 A 档（mock 压编排层）/ B 档（真模型） |
-| `--repeat` 与报告快照入库 | 未开始：`reports/` 是运行产物；「可展示的报告」建议冻结到 `releases/<tag>/` 再入库 |
+| ~~故障注入（25 条）~~ | **已完成**（M4，tag `v0.6.0`）：工具超时 / 工具 500 / 空检索 / 模型限流，25/25 全过（§11.1） |
+| ~~并发压测（Locust/k6）~~ | **已完成**（M4，tag `v0.6.0`）：mock 臂 + modeled 臂，P95 / 吞吐 / 错误率 / 单次成功任务成本都有数（§11.2）；真模型并发仍未跑 |
+| ~~`--repeat` 与报告快照入库~~ | **已完成**（M6，tag `v0.8.0`）：三处 `--repeat N`、门禁报告「噪声」列；发布快照冻结到 `releases/<tag>/` 并入库（§13 / §14） |
 
 > 上表之外的提醒：§6 / §7 的报告都产生于 **165 条矩阵**，`case_set_hash` 各自记在 manifest 里。
 > 矩阵后来扩到 213 条、M3 又加了 84 条，重跑会得到新的 hash —— 旧报告仍是当时的事实，
@@ -1063,3 +1064,146 @@ D:\Python\python.exe scripts/freeze_release.py --repeat 3 --gate-against release
 1. **`interpretable_deltas` 的判据还很粗。** 它比的是极差，而极差随 N 单调变大：
    N=5 时「解释得了」的门槛，到了 N=20 会自动变高。要稳，需要的是置信区间而不是极差。
 
+## 15. 证据十一：补冻 v0.6.0 —— 三个版本的回归对比
+
+简历上写「3 个版本回归对比」，需要有东西能指过去。原来 `releases/` 里只有两份冻结产物
+（`v0.7.0` / `v0.8.0`）——`v0.6.0` 有 tag、没有冻结目录，三版对比缺一角。
+
+这一节把它补齐。**全程离线、零成本、单次 86 秒**，产出两个东西：`releases/v0.6.0/`
+（第三个冻结基线）和 `releases/comparisons/v0.6.0-v0.7.0-v0.8.0.json`（三版并排报告）。
+
+### 15.1 为什么 v0.6.0 要单独补冻
+
+冻结器 `scripts/freeze_release.py` 是 M5 才写出来的，`v0.6.0`（M4）冻结时它还不存在。
+所以 v0.6.0 是「有 tag、没有冻结目录」。
+
+补冻的麻烦在于：**不能在 HEAD 上跑冻结器**，那样量到的是 HEAD 的代码。做法是开一个
+detached worktree 停在旧 tag 上，把量具借过去：
+
+```
+git worktree add --detach .worktrees/v0.6.0 v0.6.0
+```
+
+借的只有 `scripts/freeze_release.py` 和 `scripts/regression_gate.py` 两个脚本。选它们的
+理由很具体：**只用标准库、不 import 本仓库任何模块**——借过去不会把新代码混进旧版本的
+测量链路。这一份「量具」提交在 `freeze/v0.6.0` 分支上（`c61d0b3`），worktree 里的
+`git describe` 因此变成 `v0.6.0-1-gc61d0b3`。
+
+**这是已知的口径偏差，不是 bug。** `releases/v0.6.0/release.json` 里的 `commit` 记的是
+量具提交 `c61d0b3`，不是 tag `v0.6.0` 指向的 `1fd5135`；冻结目录自己的 `README.md`
+第一行也把这串 `describe` 原样写出来了。被测代码一个字没动。
+
+### 15.2 两个必须先解决的操作细节
+
+**（a）`PYTHONPATH` 必须指向 `<worktree>\src`。** 本项目是编辑安装（editable install），
+`src/` 的路径被钉死在主仓库上。不设 `PYTHONPATH` 就跑，量到的是 **HEAD 的代码**，
+而脚本以为自己量的是 v0.6.0——这是「静默量错对象」，比报错危险得多。本机实测踩到过一次。
+
+**（b）用例集必须先核 hash。** v0.6.0 与 HEAD 的四份用例集逐字节相同：
+
+| 用例文件 | 条数 |
+| --- | --- |
+| `case_matrix_v2.jsonl` | 213 |
+| `rag_cases.jsonl` | 48 |
+| `multiturn_cases.jsonl` | 36 |
+| `fault_cases.jsonl` | 25 |
+
+三份冻结产物的 `manifest.case_set_hash` 都是 `9610adbc31f39f4f…`。**先比 hash，再比分数**，
+否则比的是两份不同的卷子。
+
+### 15.3 补冻结果：五项检查全过
+
+86 秒跑完（原始报告在 `releases/v0.6.0/`）：
+
+| 检查 | 结论 |
+| --- | --- |
+| `pytest` | 1025 passed / 0 failed |
+| `faults` | 25/25 |
+| `comparison:matrix` | 213 行 |
+| `comparison:rag_multiturn` | 120 行 |
+| `load_test` | modeled 臂 / P95 190ms |
+
+### 15.4 三版本指标对照
+
+| 指标 | v0.6.0 | v0.7.0 | v0.8.0 |
+| --- | --- | --- | --- |
+| `pytest.passed` | 1025 | 1061 | 1121 |
+| `pytest.failed` / `pytest.xfailed` | 0 / 10 | 0 / 10 | 0 / 10 |
+| `fault.pass_rate` | 100.000% | 100.000% | 100.000% |
+| `matrix.v3_rules.pass_rate` | 96.714% | 96.714% | 96.714% |
+| `rag_multiturn.v3_rules.pass_rate` | 100.000% | 100.000% | 100.000% |
+| `perf.p95_ms`（v0.8.0 自测噪声 ±21.4%） | 190ms | 160ms | 140ms |
+| `perf.rps` | 133.831 | 144.799 | 168.498 |
+| `perf.http_error_rate` | 0.000% | 0.000% | 0.000% |
+| `perf.task_success_rate` | 100.000% | 100.000% | 100.000% |
+| `perf.cost_per_success_cny` | CNY 0.00076 | CNY 0.00076 | CNY 0.00076 |
+
+三份冻结产物的锚定信息都齐：`describe` 分别是 `v0.6.0-1-gc61d0b3` / `v0.7.0` / `v0.8.0`，
+`dirty=false`，上传进 manifest 的 `is_reproducible=true`。
+
+### 15.5 三版并排的门禁报告
+
+```
+D:\Python\python.exe scripts/regression_gate.py --candidate releases/v0.8.0 --baseline releases/v0.6.0 --baseline releases/v0.7.0 --out releases/comparisons/v0.6.0-v0.7.0-v0.8.0.json
+```
+
+候选 `v0.8.0`，两条基线并排。**报告 16 行指标、8 项判定全过**（6 项强制阻断 + 2 项只报不拦），
+`passed: true`、`failure_count: 0`、`warning_count: 0`，退出码 0。报告已入库：
+`releases/comparisons/v0.6.0-v0.7.0-v0.8.0.json`（`reports/` 是 gitignore 的运行产物，
+`releases/` 正相反——必须入库）。
+
+**多基线不等于多判据。** `--baseline` 是 `action="append"`，可以重复传，但**只有
+`baselines[-1]` 是执法基线**（报告里的 `enforcement_baseline` 字段就是它，本次是 `v0.7.0`），
+其余基线只进报告做并排展示（`scripts/regression_gate.py:261-292`）。
+想要「任何一条基线退化都拦」，要的是多次调用，不是多传参数。
+
+### 15.6 三条诚实警告
+
+**① 功能指标三版一模一样。** `matrix.v3_rules` 三版都是 96.714%、`rag_multiturn.v3_rules`
+都是 100%、故障都是 25/25，`perf` 的建模口径也完全没变。原因是这三版之间**同时改了用例集
+和 Agent 行为**，却没有留下能区分它们的新用例。结论要分两层：三版对比**可信、可复现**
+（同 hash、同口径、锚定齐全），但**区分度低**——它证明的是「流程跑得通、指标没退化」，
+不是「v0.8.0 比 v0.6.0 更好」。真正带区分度的版本证据是 §14.4 的真实模型 `--repeat 3`
+（v1 92.5% / v2 100% / v3 97.5%）和 §10 的四方对比。
+
+**② P95 190→160→140ms 不能当结论。** v0.6.0 只跑 1 次，没有噪声估计；v0.8.0 的
+`--repeat 3` 自测噪声是 ±21.4%；§13.4 的结论一还摆在那里——**跨机器状态的漂移量级大于
+这些差值**。门禁给这两项定 `enforce=False`（只报不拦）就是这个原因。
+
+**③ `pytest.passed` 有两套口径，别混用。** 冻结器（黑名单收集）报 v0.6.0=1025 / HEAD=1123，
+`pytest --collect-only` 报 1035 / 1133——差额是 10 个 strict `xfail` 用例：被收集到、但不执行。
+同一处论证里只用一种口径。
+
+### 15.7 复现命令
+
+```powershell
+# 1) 开 worktree 停在旧 tag（随后 PYTHONPATH 必须指向这个 worktree 的 src）
+git worktree add --detach .worktrees/v0.6.0 v0.6.0
+$env:PYTHONPATH = "F:\Agent学习\AgentEvalOps\.worktrees\v0.6.0\src"
+
+# 2) 借量具：只用标准库、不 import 本仓库的那两个脚本
+Copy-Item scripts\freeze_release.py  .worktrees\v0.6.0\scripts\
+Copy-Item scripts\regression_gate.py .worktrees\v0.6.0\scripts\
+
+# 3) 在 worktree 里补冻（86 秒，零成本）
+cd .worktrees\v0.6.0
+D:\Python\python.exe scripts/freeze_release.py --out releases/v0.6.0
+
+# 4) 回主仓库，三版并排
+cd ..\..
+D:\Python\python.exe scripts/regression_gate.py --candidate releases/v0.8.0 --baseline releases/v0.6.0 --baseline releases/v0.7.0 --out releases/comparisons/v0.6.0-v0.7.0-v0.8.0.json
+```
+
+> 补冻用的 worktree 留在 `.worktrees/`（已 gitignore），让 v0.6.0 的数字能重新量一遍；
+> `freeze/v0.6.0` 分支也保留——`releases/comparisons/` 里记的 `c61d0b3` 就在那条分支上，
+> 删掉分支，这个 commit 会变成游离对象。
+
+### 15.8 这一节还没证明的事
+
+| 声明 | 状态 |
+| --- | --- |
+| 三个版本有可区分的功能差异 | **没有**。三版功能指标完全相同（§15.6 ①）。要做出区分度，得补「只有新版本才该过」的用例 |
+| 补冻结果的稳定性 | **未测**。v0.6.0 只跑 1 次，没有 `--repeat` 的方差数字 |
+| `v0.6.0` 的锚点等于 tag 本身 | **不等**。`describe=v0.6.0-1-gc61d0b3`，量具提交和被测 tag 差一个 commit（§15.1） |
+| `perf.*` 三版可比 | **只能算同口径，不能算同环境**。三次冻结跨了不同的机器状态，P95 的差小于噪声（§15.6 ②） |
+| 门禁在候选退化时会拦 | 本次三版报告是全绿路径，**不含拦截证据**；拦截证据在 §12.3 的注入回归 |

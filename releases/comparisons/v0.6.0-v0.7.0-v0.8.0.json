@@ -1,0 +1,371 @@
+{
+  "kind": "regression_gate",
+  "generated_at": "2026-10-16T13:09:14.975157+00:00",
+  "candidate": {
+    "path": "releases\\v0.8.0",
+    "tag": "v0.8.0",
+    "commit": "bff1171",
+    "dirty": false
+  },
+  "baselines": [
+    {
+      "path": "releases\\v0.6.0",
+      "tag": "v0.6.0",
+      "commit": "c61d0b3",
+      "dirty": false
+    },
+    {
+      "path": "releases\\v0.7.0",
+      "tag": "v0.7.0",
+      "commit": "d7fe209",
+      "dirty": false
+    }
+  ],
+  "enforcement_baseline": "v0.7.0",
+  "skipped_checks": [],
+  "metrics": {
+    "fault.cases": {
+      "candidate": 25.0,
+      "baseline": 25.0,
+      "series": [
+        {
+          "tag": "v0.6.0",
+          "value": 25.0
+        },
+        {
+          "tag": "v0.7.0",
+          "value": 25.0
+        }
+      ]
+    },
+    "fault.pass_rate": {
+      "candidate": 1.0,
+      "baseline": 1.0,
+      "series": [
+        {
+          "tag": "v0.6.0",
+          "value": 1.0
+        },
+        {
+          "tag": "v0.7.0",
+          "value": 1.0
+        }
+      ]
+    },
+    "matrix.v1.pass_rate": {
+      "candidate": 0.9671361502347418,
+      "baseline": 0.9671361502347418,
+      "series": [
+        {
+          "tag": "v0.6.0",
+          "value": 0.9671361502347418
+        },
+        {
+          "tag": "v0.7.0",
+          "value": 0.9671361502347418
+        }
+      ]
+    },
+    "matrix.v3_rules.pass_rate": {
+      "candidate": 0.9671361502347418,
+      "baseline": 0.9671361502347418,
+      "series": [
+        {
+          "tag": "v0.6.0",
+          "value": 0.9671361502347418
+        },
+        {
+          "tag": "v0.7.0",
+          "value": 0.9671361502347418
+        }
+      ]
+    },
+    "perf.cost_per_success_cny": {
+      "candidate": 0.00076,
+      "baseline": 0.00076,
+      "series": [
+        {
+          "tag": "v0.6.0",
+          "value": 0.00076
+        },
+        {
+          "tag": "v0.7.0",
+          "value": 0.00076
+        }
+      ]
+    },
+    "perf.http_error_rate": {
+      "candidate": 0.0,
+      "baseline": 0.0,
+      "series": [
+        {
+          "tag": "v0.6.0",
+          "value": 0.0
+        },
+        {
+          "tag": "v0.7.0",
+          "value": 0.0
+        }
+      ]
+    },
+    "perf.p95_ms": {
+      "candidate": 140.0,
+      "baseline": 160.0,
+      "series": [
+        {
+          "tag": "v0.6.0",
+          "value": 190.0
+        },
+        {
+          "tag": "v0.7.0",
+          "value": 160.0
+        }
+      ]
+    },
+    "perf.rps": {
+      "candidate": 168.498,
+      "baseline": 144.799,
+      "series": [
+        {
+          "tag": "v0.6.0",
+          "value": 133.831
+        },
+        {
+          "tag": "v0.7.0",
+          "value": 144.799
+        }
+      ]
+    },
+    "perf.task_success_rate": {
+      "candidate": 1.0,
+      "baseline": 1.0,
+      "series": [
+        {
+          "tag": "v0.6.0",
+          "value": 1.0
+        },
+        {
+          "tag": "v0.7.0",
+          "value": 1.0
+        }
+      ]
+    },
+    "perf.tokens_per_request": {
+      "candidate": 290.0,
+      "baseline": 290.0,
+      "series": [
+        {
+          "tag": "v0.6.0",
+          "value": 290.0
+        },
+        {
+          "tag": "v0.7.0",
+          "value": 290.0
+        }
+      ]
+    },
+    "pytest.failed": {
+      "candidate": 0.0,
+      "baseline": 0.0,
+      "series": [
+        {
+          "tag": "v0.6.0",
+          "value": 0.0
+        },
+        {
+          "tag": "v0.7.0",
+          "value": 0.0
+        }
+      ]
+    },
+    "pytest.passed": {
+      "candidate": 1121.0,
+      "baseline": 1061.0,
+      "series": [
+        {
+          "tag": "v0.6.0",
+          "value": 1025.0
+        },
+        {
+          "tag": "v0.7.0",
+          "value": 1061.0
+        }
+      ]
+    },
+    "pytest.skipped": {
+      "candidate": 0.0,
+      "baseline": 0.0,
+      "series": [
+        {
+          "tag": "v0.6.0",
+          "value": 0.0
+        },
+        {
+          "tag": "v0.7.0",
+          "value": 0.0
+        }
+      ]
+    },
+    "pytest.xfailed": {
+      "candidate": 10.0,
+      "baseline": 10.0,
+      "series": [
+        {
+          "tag": "v0.6.0",
+          "value": 10.0
+        },
+        {
+          "tag": "v0.7.0",
+          "value": 10.0
+        }
+      ]
+    },
+    "rag_multiturn.v1.pass_rate": {
+      "candidate": 0.375,
+      "baseline": 0.375,
+      "series": [
+        {
+          "tag": "v0.6.0",
+          "value": 0.375
+        },
+        {
+          "tag": "v0.7.0",
+          "value": 0.375
+        }
+      ]
+    },
+    "rag_multiturn.v3_rules.pass_rate": {
+      "candidate": 1.0,
+      "baseline": 1.0,
+      "series": [
+        {
+          "tag": "v0.6.0",
+          "value": 1.0
+        },
+        {
+          "tag": "v0.7.0",
+          "value": 1.0
+        }
+      ]
+    }
+  },
+  "verdicts": [
+    {
+      "metric": "pytest.failed",
+      "direction": "lower",
+      "status": "pass",
+      "candidate": 0.0,
+      "baseline": 0.0,
+      "bound": 0.0,
+      "tolerance": 0.0,
+      "tolerance_kind": "absolute",
+      "enforce": true,
+      "reason": "通过",
+      "note": "任何一条测试失败都阻断",
+      "noise_pct": null
+    },
+    {
+      "metric": "fault.pass_rate",
+      "direction": "higher",
+      "status": "pass",
+      "candidate": 1.0,
+      "baseline": 1.0,
+      "bound": 1.0,
+      "tolerance": 0.0,
+      "tolerance_kind": "absolute",
+      "enforce": true,
+      "reason": "通过",
+      "note": "故障注入必须全过：它测的就是错误路径，掉一条就是错误路径坏了",
+      "noise_pct": null
+    },
+    {
+      "metric": "matrix.v3_rules.pass_rate",
+      "direction": "higher",
+      "status": "pass",
+      "candidate": 0.9671361502347418,
+      "baseline": 0.9671361502347418,
+      "bound": 0.9,
+      "tolerance": 0.01,
+      "tolerance_kind": "absolute",
+      "enforce": true,
+      "reason": "通过",
+      "note": "主矩阵（213 行）规则臂通过率",
+      "noise_pct": null
+    },
+    {
+      "metric": "rag_multiturn.v3_rules.pass_rate",
+      "direction": "higher",
+      "status": "pass",
+      "candidate": 1.0,
+      "baseline": 1.0,
+      "bound": 0.9,
+      "tolerance": 0.01,
+      "tolerance_kind": "absolute",
+      "enforce": true,
+      "reason": "通过",
+      "note": "检索 + 多轮（120 行）规则臂通过率",
+      "noise_pct": null
+    },
+    {
+      "metric": "perf.http_error_rate",
+      "direction": "lower",
+      "status": "pass",
+      "candidate": 0.0,
+      "baseline": 0.0,
+      "bound": 0.01,
+      "tolerance": 0.005,
+      "tolerance_kind": "absolute",
+      "enforce": true,
+      "reason": "通过",
+      "note": "传输层错误率（与 scripts/load_test.py 的门禁同源）",
+      "noise_pct": null
+    },
+    {
+      "metric": "perf.task_success_rate",
+      "direction": "higher",
+      "status": "pass",
+      "candidate": 1.0,
+      "baseline": 1.0,
+      "bound": 0.99,
+      "tolerance": 0.005,
+      "tolerance_kind": "absolute",
+      "enforce": true,
+      "reason": "通过",
+      "note": "任务成功率：终态是不是这条消息该有的结果",
+      "noise_pct": 0.0
+    },
+    {
+      "metric": "perf.p95_ms",
+      "direction": "lower",
+      "status": "pass",
+      "candidate": 140.0,
+      "baseline": 160.0,
+      "bound": null,
+      "tolerance": 0.5,
+      "tolerance_kind": "relative",
+      "enforce": false,
+      "reason": "通过",
+      "note": "延迟噪声大（实测单次运行差 2.2 倍），先只报；等 --repeat N",
+      "noise_pct": 0.21428571428571427
+    },
+    {
+      "metric": "perf.cost_per_success_cny",
+      "direction": "lower",
+      "status": "pass",
+      "candidate": 0.00076,
+      "baseline": 0.00076,
+      "bound": null,
+      "tolerance": 0.5,
+      "tolerance_kind": "relative",
+      "enforce": false,
+      "reason": "通过",
+      "note": "模型臂的建模成本，同上",
+      "noise_pct": 0.0
+    }
+  ],
+  "passed": true,
+  "failure_count": 0,
+  "warning_count": 0,
+  "failures": [],
+  "warnings": []
+}

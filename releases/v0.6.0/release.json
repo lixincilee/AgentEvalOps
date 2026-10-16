@@ -1,0 +1,102 @@
+{
+  "kind": "release_index",
+  "tag": "v0.6.0",
+  "commit": "c61d0b3",
+  "describe": "v0.6.0-1-gc61d0b3",
+  "spec_version": "1.3",
+  "frozen_at": "2026-10-16T13:00:08.386676+00:00",
+  "dirty": false,
+  "checks": [
+    {
+      "name": "pytest",
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 39.984,
+      "artifact": "pytest.txt",
+      "metrics": {
+        "pytest.passed": 1025,
+        "pytest.failed": 0,
+        "pytest.xfailed": 10,
+        "pytest.skipped": 0
+      },
+      "detail": "1025 passed / 0 failed"
+    },
+    {
+      "name": "faults",
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 8.328,
+      "artifact": "fault-run.json",
+      "metrics": {
+        "fault.pass_rate": 1.0,
+        "fault.cases": 25
+      },
+      "detail": "25/25 条故障用例"
+    },
+    {
+      "name": "comparison:matrix",
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 9.203,
+      "artifact": "comparison-matrix.json",
+      "metrics": {
+        "matrix.v1.pass_rate": 0.9671361502347418,
+        "matrix.v3_rules.pass_rate": 0.9671361502347418
+      },
+      "detail": "213 行"
+    },
+    {
+      "name": "comparison:rag_multiturn",
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 8.141,
+      "artifact": "comparison-rag-multiturn.json",
+      "metrics": {
+        "rag_multiturn.v1.pass_rate": 0.375,
+        "rag_multiturn.v3_rules.pass_rate": 1.0
+      },
+      "detail": "120 行"
+    },
+    {
+      "name": "load_test",
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 48.375,
+      "artifact": "load-test.json",
+      "metrics": {
+        "perf.http_error_rate": 0.0,
+        "perf.task_success_rate": 1.0,
+        "perf.p95_ms": 190,
+        "perf.rps": 133.831,
+        "perf.tokens_per_request": 290.0,
+        "perf.cost_per_success_cny": 0.00076
+      },
+      "detail": "modeled 臂 / P95 190ms",
+      "provenance": {
+        "latency": "modeled",
+        "tokens": "modeled"
+      },
+      "repeat": 1,
+      "variance": null
+    }
+  ],
+  "metrics": {
+    "fault.cases": 25.0,
+    "fault.pass_rate": 1.0,
+    "matrix.v1.pass_rate": 0.9671361502347418,
+    "matrix.v3_rules.pass_rate": 0.9671361502347418,
+    "perf.cost_per_success_cny": 0.00076,
+    "perf.http_error_rate": 0.0,
+    "perf.p95_ms": 190.0,
+    "perf.rps": 133.831,
+    "perf.task_success_rate": 1.0,
+    "perf.tokens_per_request": 290.0,
+    "pytest.failed": 0.0,
+    "pytest.passed": 1025.0,
+    "pytest.skipped": 0.0,
+    "pytest.xfailed": 10.0,
+    "rag_multiturn.v1.pass_rate": 0.375,
+    "rag_multiturn.v3_rules.pass_rate": 1.0
+  },
+  "variance": {}
+}

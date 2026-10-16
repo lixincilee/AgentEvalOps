@@ -48,7 +48,10 @@ AgentEvalOps/
 │   └── regression_gate.py             # M5：候选 vs 基线，按阈值判退化（退出码给 CI 用）
 ├── reports/                           # 运行产物（已 gitignore）：评测报告 JSON，可当 CI 工件
 ├── releases/                          # M5：冻结的发布（要提交进 git）——回归门禁的比较对象
-│   └── v0.7.0/                        #   release.json（指标索引）+ 五项检查的原始报告
+│   ├── v0.6.0/                        #   M7 补冻（v0.6.0 冻结时还没有 freeze_release.py）
+│   ├── v0.7.0/                        #   release.json（指标索引）+ 五项检查的原始报告
+│   ├── v0.8.0/                        #   M6：--repeat 3，release.json 里带方差
+│   └── comparisons/                   #   M7：多版本并排报告（v0.6.0-v0.7.0-v0.8.0.json）
 ├── perf/                              # M4：压测客户端（服务端本体在 src/agentevalops/service.py）
 │   ├── latency_client.py              # 建模用的假模型：只睡 60ms + 固定 token，不发网络请求
 │   ├── locustfile.py                  # Locust 用户画像与期望表（什么算「任务成功」的唯一来源）
@@ -585,16 +588,21 @@ D:\Python\python.exe scripts/freeze_release.py
 | `load_test`（mock 臂压测） | `perf.http_error_rate` / `perf.task_success_rate` / `perf.p95_ms` / `perf.rps` / `perf.cost_per_success_cny` |
 
 `reports/` 是 gitignore 掉的运行产物；`releases/` 正相反——**它必须提交进 git**，
-因为「上个版本长什么样」不能靠记忆。已冻结的基线：`releases/v0.7.0/`（首个）、
-`releases/v0.8.0/`（M6；`--repeat 3`，带方差）。CI 门禁的执法基线目前钉在 `v0.7.0`——
-它是个**刻意选定**的基线，不随新版本自动上移。
+因为「上个版本长什么样」不能靠记忆。已冻结的基线：`releases/v0.6.0/`（M7 补冻）、
+`releases/v0.7.0/`（M5 首个）、`releases/v0.8.0/`（M6；`--repeat 3`，带方差）；
+`releases/comparisons/` 存多版本并排报告。CI 门禁的**执法基线 = 最新已冻结版本**
+（现在是 `v0.8.0`），随每次冻结前移。`--baseline` 可以重复传，但**只有最后一条是执法
+基线**，其余进报告只做并排展示——「多基线」不等于「多判据」。
 
 **脏工作区会被拒绝冻结**：指标锚不住版本号，之后的对比就都失去了意义。
 
 ### 门禁：`scripts/regression_gate.py`
 
 ```powershell
-D:\Python\python.exe scripts/regression_gate.py --candidate .release-candidate --baseline releases/v0.7.0
+D:\Python\python.exe scripts/regression_gate.py --candidate .release-candidate --baseline releases/v0.8.0
+
+# 多版本并排：三条都进报告，但只有最后一条是执法基线
+D:\Python\python.exe scripts/regression_gate.py --candidate releases/v0.8.0 --baseline releases/v0.6.0 --baseline releases/v0.7.0 --out releases/comparisons/v0.6.0-v0.7.0-v0.8.0.json
 ```
 
 每项指标两条判据，缺一不可：
@@ -625,7 +633,7 @@ D:\Python\python.exe scripts/regression_gate.py --candidate .release-candidate -
 | job | 触发 | 干什么 | 阻塞 PR |
 | --- | --- | --- | --- |
 | `test` | push / PR / 手动 / 定时 | `python -m pytest -q` | 是 |
-| `gate` | 同上（`needs: test`） | `freeze_release.py --gate-against releases/v0.7.0` | 是 |
+| `gate` | 同上（`needs: test`） | `freeze_release.py --gate-against releases/v0.8.0` | 是 |
 | `nightly-real` | **只在定时任务里** | 真实模型对比 + 真实并发压测（会花钱） | 否 |
 
 **诚实说明**：这份 workflow **没有在 GitHub 上真跑过**（本机没有 Docker、也没有 `gh`）。
@@ -681,6 +689,15 @@ D:\Python\python.exe scripts/freeze_release.py --repeat 3
 **这个「改善」小于测量精度，不能当结论**。锚定信息也补齐了：`describe=v0.8.0`、
 `is_reproducible=true`（此前是 `nogit` / `false`）。
 
+**M7 补冻了第三个版本。** `v0.6.0`（M4）冻结时 `freeze_release.py` 还没写出来，所以它是
+「有 tag、没有冻结目录」。补冻走 `git worktree add --detach .worktrees/v0.6.0 v0.6.0`，
+只把两个 stdlib-only 的量具（`freeze_release.py` / `regression_gate.py`）借进 worktree，
+全离线 86 秒完成。三版并排报告已入库 `releases/comparisons/v0.6.0-v0.7.0-v0.8.0.json`
+（16 行指标、8 项判定全过——6 项强制阻断 + 2 项只报不拦，退出码 0）。
+**功能指标三版一模一样**——这三版之间同时改了用例集和 Agent 行为，却没有可区分的新用例，
+所以「3 个版本回归对比」可信、可复现，但**区分度低**；真正的版本区分度证据是真实模型
+`--repeat 3` 那一组（v1 92.5% / v2 100% / v3 97.5%）。细节和另外两条警告见证据文档 §15。
+
 ## 后续路线图
 
 | 阶段 | 目标 | 关键产出 |
@@ -691,7 +708,7 @@ D:\Python\python.exe scripts/freeze_release.py --repeat 3
 | **阶段二 M4（已完成，tag `v0.6.0`）** | 故障注入用例 + 并发压测 | 规格 v1.3 的 6 条故障条款（SPEC-FAULT-1..6）、**25 条**故障用例（工具超时 / 5xx / 空检索 / 模型限流）、`faults.py` 注入脚手架、可压测 HTTP 服务 `service.py`、Locust 的 P95 / 吞吐 / 错误率与**单次成功任务成本**、CI 双线门禁 |
 | **阶段二 M5（已完成，tag `v0.7.0`）** | CI 回归门禁 + 发布冻结 | `regression_gate.py`（8 项指标，绝对下限 + 相对退化两条判据）、`freeze_release.py`（五项检查 → `releases/<tag>/`）、GitHub Actions 三 job（test / gate / nightly-real）、首个冻结基线 `releases/v0.7.0`、注入回归实测被拦下 4 条 |
 | **阶段二 M6（已完成）** | 噪声压制：把方差本身变成可测量的量 | `load_test.py --repeat N`（每次重启服务）、`compare_versions.py --repeat N`（中位数 + 极差 + 墙头草用例）、`freeze_release.py --repeat N` 把方差写进 `release.json`、门禁报告新增「噪声」列、修掉预算熔断被兜底吞掉的 bug（证据文档 §13 / §14） |
-| **阶段二 M7（下一步）** | 判分分层 + 多版本回归 | 补冻两个历史版本凑「3 个版本回归对比」、L3 Ragas / L4 DeepEval / L5 Promptfoo 三层判分、真实模型的延迟与账单 |
+| **阶段二 M7（进行中）** | 判分分层 + 多版本回归 | ~~补冻历史版本凑「3 个版本回归对比」~~**已完成**：`releases/v0.6.0/` 补冻 + `releases/comparisons/v0.6.0-v0.7.0-v0.8.0.json`（三版并排、门禁全绿）；待办：L3 Ragas / L4 DeepEval / L5 Promptfoo 三层判分、真实模型的延迟与账单 |
 
 ### 评测指标（阶段五要算的东西，现在就能算前六项）
 

@@ -91,10 +91,10 @@ jobs:
         run: python -m pip install -e ".[dev,llm,api,perf]"
 
       # 一条命令跑齐：pytest、25 条故障用例、两份离线对比、mock 臂压测，
-      # 然后拿 releases/v0.7.0 当执法基线判退化。
+      # 然后拿 releases/v0.8.0（最新已冻结版本）当执法基线判退化。
       # 退出码 0 = 全过；1 = 有检查失败或门禁没过；2 = 起不来（环境问题）。
       - name: 冻结候选发布并跑回归门禁
-        run: python scripts/freeze_release.py --out .release-candidate --gate-against releases/v0.7.0
+        run: python scripts/freeze_release.py --out .release-candidate --gate-against releases/v0.8.0
 
       # 门禁失败的时候最需要证据，所以两条上传都挂 if: always()。
       - name: 上传候选发布
