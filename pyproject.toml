@@ -21,6 +21,9 @@ llm = ["openai>=1.0"]
 # 它们是可选依赖，因为单元测试与故障用例全都不需要它们：装不上也不该让主干测试变红。
 api = ["fastapi>=0.110", "uvicorn>=0.27"]
 perf = ["locust>=2.20"]
+# M8 的 trace 出口。**可选**且未在本机验证过：没有 Langfuse 账号，也没装这个 SDK。
+# 不装也不影响任何测试与评测：缺它时 LangfuseEmitter 降级成 dry-run（见 docs/tracing.md）。
+trace = ["langfuse>=3.0"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

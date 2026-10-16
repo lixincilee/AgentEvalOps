@@ -21,6 +21,7 @@ from .llm.base import (
     LLMResponse,
 )
 from .models import Intent
+from .tracing import SpanKind, span
 
 #: v3 的提示词版本号（SPEC-RAG-3 把 policy_qa 加进意图集合）。
 PROMPT_VERSION_V3 = "v3"
@@ -272,36 +273,84 @@ class LLMPlanner:
 
     def plan(self, message: str, *, session_hint: str | None = None) -> Plan:
         self.last_response = None
-        try:
-            response = self.client.complete(
-                [
-                    ChatMessage.system(self.build_system_prompt(session_hint)),
-                    ChatMessage.user(message),
-                ],
-                max_tokens=self.max_tokens,
+        system_prompt = self.build_system_prompt(session_hint)
+        # prompt 也记进 trace。不记 prompt 的 trace 只能告诉你「模型答错了」，
+        # 没法回答「是不是我给它的 prompt 就错了」。
+        with span(
+            "llm.plan",
+            kind=SpanKind.LLM,
+            model=self.client.model_id,
+            prompt_version=self.prompt_version,
+            max_tokens=self.max_tokens,
+            system_prompt=system_prompt,
+            user_message=message,
+        ) as llm_span:
+            try:
+                response = self.client.complete(
+                    [
+                        ChatMessage.system(system_prompt),
+                        ChatMessage.user(message),
+                    ],
+                    max_tokens=self.max_tokens,
+                )
+            except BudgetExceededError as exc:
+                # 预算熔断和「模型抽风」不是一回事：降级重试只会继续花钱，而且会把一次超支
+                # 伪装成一次成功的运行（`plan_source` 变成 llm-fallback，通过率还很好看）。
+                # 所以它必须往上抛，让调用方停在这里——否则 --budget 只是个建议。
+                llm_span.fail("BUDGET_EXCEEDED", exc)
+                raise
+            except LLMError as exc:
+                # 限流 / 超时 / 5xx 都落在这里：这是「模型这一层坏了」，不是「模型答得不好」。
+                # trace 里必须能分开这两件事，否则网络抖动会被记成 prompt 问题。
+                llm_span.fail(type(exc).__name__, exc)
+                return _annotate(
+                    llm_span, self._fallback(message, f"模型调用失败（{type(exc).__name__}）")
+                )
+            self.last_response = response
+            llm_span.set(
+                response=response.text,
+                model=response.model,
+                usage=response.usage.to_dict(),
+                latency_ms=response.latency_ms,
+                cached=response.cached,
             )
-        except BudgetExceededError:
-            # 预算熔断和「模型抽风」不是一回事：降级重试只会继续花钱，而且会把一次超支
-            # 伪装成一次成功的运行（`plan_source` 变成 llm-fallback，通过率还很好看）。
-            # 所以它必须往上抛，让调用方停在这里——否则 --budget 只是个建议。
-            raise
-        except LLMError as exc:
-            return self._fallback(message, f"模型调用失败（{type(exc).__name__}）")
-        self.last_response = response
-        payload = parse_plan_json(response.text)
-        if payload is None:
-            return self._fallback(message, "模型输出不是合法 JSON 对象")
-        intent = coerce_intent(payload.get("intent"), self.intent_aliases)
-        if intent is None:
-            return self._fallback(
-                message, f"模型给出的 intent 非法（{payload.get('intent')!r}）"
-            )
-        order_id, note = ground_order_id(payload.get("order_id"), message)
-        return Plan(intent, order_id, SOURCE_LLM, note)
+            payload = parse_plan_json(response.text)
+            if payload is None:
+                llm_span.set(parse="not-json")
+                return _annotate(
+                    llm_span, self._fallback(message, "模型输出不是合法 JSON 对象")
+                )
+            intent = coerce_intent(payload.get("intent"), self.intent_aliases)
+            if intent is None:
+                llm_span.set(parse="bad-intent", raw_intent=payload.get("intent"))
+                return _annotate(
+                    llm_span,
+                    self._fallback(
+                        message, f"模型给出的 intent 非法（{payload.get('intent')!r}）"
+                    ),
+                )
+            order_id, note = ground_order_id(payload.get("order_id"), message)
+            llm_span.set(parse="ok")
+            return _annotate(llm_span, Plan(intent, order_id, SOURCE_LLM, note))
 
     def _fallback(self, message: str, note: str) -> Plan:
         plan = self.fallback.plan(message)
         return Plan(plan.intent, plan.order_id, SOURCE_FALLBACK, note)
+
+
+def _annotate(llm_span: Any, plan: Plan) -> Plan:
+    """把「这次到底是谁做的决定」记在模型 span 上。
+
+    ``plan_source=llm-fallback`` 的含义是「模型调通了，但它的答案不能用」——它必须和
+    「模型根本没调通」（span 上带 error_code）分开，否则 prompt 的问题会被算到网络头上。
+    """
+    llm_span.set(
+        plan_source=plan.source,
+        intent=str(plan.intent),
+        order_id=plan.order_id,
+        note=plan.note,
+    )
+    return plan
 
 
 class GroundedLLMPlanner(LLMPlanner):

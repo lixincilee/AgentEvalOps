@@ -33,7 +33,8 @@ AgentEvalOps/
 │   ├── stage2-plan.md                 # 阶段二施工图与里程碑
 │   ├── stage2-evidence.md             # 阶段二实测证据与复现命令
 │   ├── ci.md                          # M5：CI 三个 job、门禁判据、本地复刻、"没验证过的部分"
-│   └── bad-cases-v2.md                # v2 的 9 处差异逐条归类与根因
+│   ├── bad-cases-v2.md                # v2 的 9 处差异逐条归类与根因
+│   └── tracing.md                     # M8：trace 口径、Langfuse 映射、失败定位规则
 ├── .github/
 │   └── workflows/regression.yml       # M5：test / gate / nightly-real 三个 job
 ├── scripts/
@@ -45,7 +46,10 @@ AgentEvalOps/
 │   ├── run_faults.py                  # M4：跑故障注入用例集并落盘报告
 │   ├── load_test.py                   # M4：起服务 + Locust 压测 + P95/成本汇总 + CI 门禁
 │   ├── freeze_release.py              # M5：跑齐离线检查并冻结到 releases/<tag>/
-│   └── regression_gate.py             # M5：候选 vs 基线，按阈值判退化（退出码给 CI 用）
+│   ├── regression_gate.py             # M5：候选 vs 基线，按阈值判退化（退出码给 CI 用）
+│   ├── trace_run.py                   # M8：跑一批用例并落 trace（期望值随行落盘）
+│   ├── trace_report.py                # M8：判分 + 失败环节定位（检索/推理/工具/状态）
+│   └── trace_view.py                  # M8：自包含 HTML 瀑布图（离线可看、可入库）
 ├── reports/                           # 运行产物（已 gitignore）：评测报告 JSON，可当 CI 工件
 ├── releases/                          # M5：冻结的发布（要提交进 git）——回归门禁的比较对象
 │   ├── v0.6.0/                        #   M7 补冻（v0.6.0 冻结时还没有 freeze_release.py）
@@ -80,6 +84,7 @@ AgentEvalOps/
 │       ├── spec.py                    # 行为规格版本 + 基线偏差清单（规格冻结）
 │       ├── faults.py                  # M4：故障注入脚手架（生产路径不含任何开关）
 │       ├── service.py                 # M4：把 v3 链路包成 HTTP 门面（/chat /healthz /metrics）
+│       ├── tracing.py                 # M8：一轮一条 trace（span 树 + 脱敏 + JSONL/Langfuse 出口）
 │       ├── llm/                       # 阶段二：base / deepseek / fake / costing
 │       └── data/
 │           ├── __init__.py
@@ -94,6 +99,9 @@ AgentEvalOps/
     ├── test_scenarios_jsonl.py        # 数据驱动测试：逐条回放 JSONL 场景
     ├── test_v1_gaps.py                # 区分度检查：v1 必须「明知故错」的那批用例
     ├── test_case_matrix_v2.py         # 阶段二用例矩阵的 schema 与回放
+    ├── test_tracing.py                # M8：trace 契约（零行为改变 / 脱敏 / 出口 / 落盘口径）
+    ├── test_trace_report.py           # M8：失败环节定位规则逐条
+    ├── test_trace_view.py             # M8：瀑布图的几何、转义与退出码
     ├── test_comparison_harness.py     # 编排层：离线自检零差异、报告数字自洽
     ├── test_spec_conformance.py       # 规格条款的可执行断言（含已登记偏差的 xfail）
     ├── test_planner.py                # 规划层：v1/v2 决策、幻觉守卫、契约不变
@@ -698,6 +706,95 @@ D:\Python\python.exe scripts/freeze_release.py --repeat 3
 所以「3 个版本回归对比」可信、可复现，但**区分度低**；真正的版本区分度证据是真实模型
 `--repeat 3` 那一组（v1 92.5% / v2 100% / v3 97.5%）。细节和另外两条警告见证据文档 §15。
 
+## 阶段二 M8：Trace —— 每一轮都留下可定位的证据
+
+M3 之后，一次 `handle()` 会走 5 个节点，可能查知识库、可能调模型、可能调工具、还会写会话
+状态。只看 `AuditRecord` 只能知道「最后是什么状态」，**不知道是哪一层先出的事**。M8 补的
+就是这一层：一轮一条 trace，把每一步的输入、输出、耗时和错误码都记下来。
+
+### 一条 trace 长什么样
+
+```
+D:\Python\python.exe scripts/trace_run.py --cases eval_cases/case_matrix_v2.jsonl ^
+    --faults eval_cases/fault_cases.jsonl --multiturn eval_cases/multiturn_cases.jsonl ^
+    --out reports/traces-full.jsonl
+```
+
+一轮 = 一条 trace = 一个根 `agent.turn` + 若干子 span：
+
+```
+turn      agent.turn                   25.4ms  intent=order_status state=tool_failed error_code=ORDER_NOT_FOUND
+  node      node.validate
+  node      node.plan
+  node      node.dispatch
+    tool      tool.query_order_status     2.1ms  arguments={'order_id': 'ORD-1001'} success=False
+  node      node.respond
+```
+
+**没有 tracer 时插桩点是空操作。** `tests/test_tracing.py` 里有一条
+`test_instrumentation_does_not_change_behaviour`：同一句话分别用「带 tracer」和「不带
+tracer」的 Agent 跑一遍，**审计记录的每个字段都必须相同**。做不到这一点，「加了可观测性」
+就变成了「换了一个被测系统」——M3 之前所有回归数字都要重跑。
+
+### 三个脚本，各管一段
+
+| 脚本 | 干什么 | 产物 |
+| --- | --- | --- |
+| `scripts/trace_run.py` | 跑一批用例（默认规则臂，零成本），一轮一条 trace；`--llm --yes` 才发真实模型请求 | `reports/traces-*.jsonl` + 同名 `.cases.jsonl`（期望值随行） |
+| `scripts/trace_report.py` | 判分 + **失败环节定位**，按环节聚类 | `reports/trace-report.md` / `.json` |
+| `scripts/trace_view.py` | 渲染自包含 HTML 瀑布图（不联网、不依赖服务） | `reports/trace-view.html` |
+
+```powershell
+D:\Python\python.exe scripts/trace_report.py --traces reports/traces-full.jsonl --cases reports/traces-full.cases.jsonl --out reports/trace-report.md
+D:\Python\python.exe scripts/trace_view.py   --traces reports/traces-full.jsonl --out reports/trace-view.html
+```
+
+定位规则固定在 `scripts/trace_report.py` 的模块文档里，优先级从硬事实到间接证据：
+span 失败（模型 / 检索 / 工具）→ 无依据（`NO_KNOWLEDGE` / 命中 0）→ 兜底规划（prompt 或
+输出格式）→ 槽位继承与状态 → 字段级判定。`unclassified` 是**待办**，不是噪声。
+
+期望值刻意**不写进 trace**：trace 描述「发生了什么」，期望值是一把尺子。两个文件一起交给
+`trace_report.py`，证据与断言各归各位。
+
+### 真实模型的 trace：`--llm --yes`
+
+规则臂跑出来的 trace 里没有 `llm.plan` span（本来就没调模型）。要拿到真实的 prompt、回答、
+token 与延迟，加 `--llm --yes`：
+
+```powershell
+D:\Python\python.exe scripts/trace_run.py --cases eval_cases/case_matrix_v2.jsonl --limit 10 ^
+    --llm --yes --budget 0.2 --out reports/traces-llm-matrix.jsonl
+```
+
+实测（`deepseek-flash`，16 次调用共 **CNY 0.0057**）：10 条矩阵用例各留一个 `llm.plan`，
+带 203 个 prompt token、16 个 completion token、3036ms 延迟，以及模型的原始回答
+`{"intent":"order_status","order_id":"ORD-1001"}`；6 条检索用例还多出 `retriever.search`
+（`hits=2`、`doc_ids=['DOC-REFUND-001','DOC-REFUND-002']`）。
+
+会花钱的三条规矩与另外两个脚本一致：不带 `--yes` 停在发请求之前（退出码 2）；缺 key 同样
+零成本退出；`--budget` 是硬熔断（触到就停，退出码 1）。还有一条不明显的：**开了预算又没有
+价目的模型会在发请求之前被拒** —— 否则账本抛的 `UnknownModelPriceError` 会被规划器当成
+「模型抽风」降级成 `llm-fallback`，整个 run 静默地不再发请求，通过率还很好看。
+
+### Langfuse：可选出口，不是前置条件
+
+`LangfuseEmitter` 只在真发的时候才 `import langfuse`；没装 SDK 或没配 key 时降级成
+dry-run，把「本来要发什么」写进 `<out>.langfuse-dryrun.jsonl`，本地 trace 照写不误——
+观测层不该把被测系统带崩。映射关系是一个纯函数（`tracing.langfuse_payload()`，有测试
+钉住）：span 名 → Langfuse span，`retriever.search` 的 query/doc_ids → input/output，
+`llm.plan` 的 usage → `usage_details`。
+
+**诚实说明**：本机没有 Docker、也没有 Langfuse 账号，所以**没有任何一份 trace 真的到过
+Langfuse 服务**。验证到的是：载荷映射、dry-run 降级、以及注入假 client 时的调用序列
+（`tests/test_tracing.py`）。真机连通属于「还没验证过的部分」。
+
+### 脱敏是硬要求
+
+trace 是要入库、要给人看的。API key、`Bearer` 头、邮箱、手机号在写盘前一律替换成 `***`
+（`tracing.redact_text` / `redact_value`），属性有长度上限。有一个反例值得记下来：
+`prompt_tokens` / `total_tokens` 里带 "token"，第一版脱敏规则把它们也变成了 `***`——
+**静默删掉了成本指标**。现在有白名单钉住：「带计数提示词的 `*_tokens` 不算凭据」。
+
 ## 后续路线图
 
 | 阶段 | 目标 | 关键产出 |
@@ -708,7 +805,9 @@ D:\Python\python.exe scripts/freeze_release.py --repeat 3
 | **阶段二 M4（已完成，tag `v0.6.0`）** | 故障注入用例 + 并发压测 | 规格 v1.3 的 6 条故障条款（SPEC-FAULT-1..6）、**25 条**故障用例（工具超时 / 5xx / 空检索 / 模型限流）、`faults.py` 注入脚手架、可压测 HTTP 服务 `service.py`、Locust 的 P95 / 吞吐 / 错误率与**单次成功任务成本**、CI 双线门禁 |
 | **阶段二 M5（已完成，tag `v0.7.0`）** | CI 回归门禁 + 发布冻结 | `regression_gate.py`（8 项指标，绝对下限 + 相对退化两条判据）、`freeze_release.py`（五项检查 → `releases/<tag>/`）、GitHub Actions 三 job（test / gate / nightly-real）、首个冻结基线 `releases/v0.7.0`、注入回归实测被拦下 4 条 |
 | **阶段二 M6（已完成）** | 噪声压制：把方差本身变成可测量的量 | `load_test.py --repeat N`（每次重启服务）、`compare_versions.py --repeat N`（中位数 + 极差 + 墙头草用例）、`freeze_release.py --repeat N` 把方差写进 `release.json`、门禁报告新增「噪声」列、修掉预算熔断被兜底吞掉的 bug（证据文档 §13 / §14） |
-| **阶段二 M7（进行中）** | 判分分层 + 多版本回归 | ~~补冻历史版本凑「3 个版本回归对比」~~**已完成**：`releases/v0.6.0/` 补冻 + `releases/comparisons/v0.6.0-v0.7.0-v0.8.0.json`（三版并排、门禁全绿）；待办：L3 Ragas / L4 DeepEval / L5 Promptfoo 三层判分、真实模型的延迟与账单 |
+| **阶段二 M7（已完成）** | 多版本回归 | 补冻 `releases/v0.6.0/`、`releases/comparisons/v0.6.0-v0.7.0-v0.8.0.json`（三版并排、门禁全绿）；CI 执法基线上移到最新已冻结版本 |
+| **阶段二 M8（已完成）** | 可观测性：Trace 层 | `tracing.py`（span 树 + 脱敏 + JSONL / Langfuse 双出口、零行为改变）、`trace_run.py` / `trace_report.py` / `trace_view.py`、失败环节定位规则、`--llm` 真实模型臂（16 条真 trace，CNY 0.0057）、**97 条**新测试（证据 §16） |
+| **阶段二 M9（下一步）** | 判分分层 + 把 trace 纳入发布冻结 | L3 Ragas / L4 DeepEval / L5 Promptfoo 三层判分；`freeze_release.py` 顺带冻结 trace 与定位报告；真实模型的延迟与账单 |
 
 ### 评测指标（阶段五要算的东西，现在就能算前六项）
 

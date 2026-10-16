@@ -9,7 +9,7 @@ The AuditRecord is deliberately untouched -- retrieval evidence travels in
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import TypedDict
+from typing import Any, TypedDict
 
 from langgraph.graph import END, START, StateGraph
 
@@ -29,6 +29,7 @@ from .planner import Plan, Planner, RulePlannerV3, needs_retrieval
 from .retrieval import DEFAULT_TOP_K, KnowledgeBase, KnowledgeBaseTool
 from .session import SLOT_INTENTS, SessionStore, resolve_slot
 from .tools import ToolError
+from .tracing import SpanKind, Tracer, current_tracer, span, tracing
 
 #: 检索工具名。抽成常量，免得审计里的 tool_name 在各处拼写不一致。
 TOOL_SEARCH = "search_knowledge_base"
@@ -73,6 +74,7 @@ class V3Agent:
         planner: Planner | None = None,
         knowledge_base: KnowledgeBase | None = None,
         sessions: SessionStore | None = None,
+        tracer: Tracer | None = None,
     ) -> None:
         self.store = store or OrderStore()
         # 默认用规则臂：离线可复现。真实评测跑的是 GroundedLLMPlanner（见 scripts）。
@@ -82,6 +84,8 @@ class V3Agent:
         self.knowledge_base = knowledge_base or KnowledgeBase()
         self.knowledge_tool = KnowledgeBaseTool(self.knowledge_base)
         self.sessions = sessions or SessionStore()
+        #: 显式注入的 tracer；没注入时看上下文里有没有激活的 tracer（见 handle）。
+        self.tracer = tracer
         self.last_plan: Plan | None = None
         self.last_retrieval: RetrievalRecord | None = None
         self.last_slot: SlotRecord | None = None
@@ -119,11 +123,40 @@ class V3Agent:
         self, name: str, node: Callable[[GraphState], GraphState]
     ) -> Callable[[GraphState], GraphState]:
         """记下实际走过的节点。SPEC-GRAPH-2 的「短路不得经过 retrieve / plan」
-        必须能被直接断言，而不是靠读代码相信。"""
+        必须能被直接断言，而不是靠读代码相信。
+
+        M8 起顺带开一个节点 span：节点名 + 这一步的结局（意图 / 状态 / 错误码）。
+        失败定位的第一层就是它——先看哪个节点先出事，再往下钻它的子 span。
+        """
 
         def runner(state: GraphState) -> GraphState:
             self.last_nodes.append(name)
-            return node(state)
+            with span(f"node.{name}", kind=SpanKind.NODE, node=name) as node_span:
+                result = node(state)
+            if not isinstance(result, dict):
+                return result
+            response = result.get("response")
+            if response is not None:
+                error = response.audit.error or {}
+                node_span.set(
+                    intent=str(response.intent),
+                    state=str(response.state),
+                    tool_name=response.audit.tool_name,
+                    error_code=error.get("code"),
+                )
+            fault = result.get("retrieval_fault")
+            if fault is not None:
+                node_span.fail(
+                    getattr(fault, "error_code", type(fault).__name__), str(fault)
+                )
+            record = result.get("retrieval")
+            if record is not None:
+                node_span.set(
+                    retrieval_query=record.query,
+                    retrieval_hits=len(record.hits),
+                    retrieval_grounded=record.grounded,
+                )
+            return result
 
         return runner
 
@@ -146,22 +179,42 @@ class V3Agent:
         }
 
     def _retrieve_node(self, state: GraphState) -> GraphState:
-        """只在条件边放行时才被调用，所以这里不必再判断一次该不该检索。"""
+        """只在条件边放行时才被调用，所以这里不必再判断一次该不该检索。
+
+        检索 span 建在**节点里**而不是 ``KnowledgeBaseTool`` 里：故障注入是包在工具外面的
+        （``FaultyTool`` 在调内层之前就抛），插在工具内部的话，「检索工具坏了」那一轮的
+        trace 里会一条检索痕迹都不剩——而它恰恰是最需要被看见的轮次。
+        """
         query = state["message"].strip()
-        try:
-            outcome = self.knowledge_tool.execute(query=query, top_k=DEFAULT_TOP_K)
-        except ToolError as fault:
-            # SPEC-FAULT-2 / 3：检索工具也会坏，而「链路坏了」和「知识库里没有」必须是
-            # 两种结果（SPEC-RAG-1）。这里只把故障记下来，流程照常走到 plan —— 意图仍然
-            # 要判出来，报告才分得清「检索坏了」和「这一轮本来就不该检索」。
-            return {"retrieval_fault": fault}
-        hits = tuple(outcome.data.get("hits", ()))
-        return {
-            "retrieval_result": outcome,
-            "retrieval": RetrievalRecord(
-                query=query, top_k=DEFAULT_TOP_K, hits=hits, grounded=bool(hits)
-            ),
-        }
+        with span(
+            "retriever.search",
+            kind=SpanKind.RETRIEVER,
+            tool=self.knowledge_tool.name,
+            query=query,
+            top_k=DEFAULT_TOP_K,
+        ) as search_span:
+            try:
+                outcome = self.knowledge_tool.execute(query=query, top_k=DEFAULT_TOP_K)
+            except ToolError as fault:
+                # SPEC-FAULT-2 / 3：检索工具也会坏，而「链路坏了」和「知识库里没有」必须是
+                # 两种结果（SPEC-RAG-1）。这里只把故障记下来，流程照常走到 plan —— 意图仍然
+                # 要判出来，报告才分得清「检索坏了」和「这一轮本来就不该检索」。
+                search_span.fail(fault.error_code, str(fault))
+                return {"retrieval_fault": fault}
+            hits = tuple(outcome.data.get("hits", ()))
+            search_span.set(
+                hits=len(hits),
+                doc_ids=[hit.get("doc_id") for hit in hits],
+                scores=[hit.get("score") for hit in hits],
+                expired=[hit.get("expired") for hit in hits],
+                grounded=bool(hits),
+            )
+            return {
+                "retrieval_result": outcome,
+                "retrieval": RetrievalRecord(
+                    query=query, top_k=DEFAULT_TOP_K, hits=hits, grounded=bool(hits)
+                ),
+            }
 
     def _plan_node(self, state: GraphState) -> GraphState:
         plan = self.planner.plan(
@@ -245,14 +298,79 @@ class V3Agent:
         if slot is None or slot.order_id is None:
             return {}
         session = self.sessions.state_for(session_id, state["customer_id"])
-        session.remember(
-            state["message"], response.intent, slot.order_id, slot.source
-        )
+        with span(
+            "state.update",
+            kind=SpanKind.STATE,
+            session_id=session_id,
+            order_id=slot.order_id,
+            source=slot.source,
+        ) as state_span:
+            session.remember(
+                state["message"], response.intent, slot.order_id, slot.source
+            )
+            state_span.set(written=True, last_order_id=session.last_order_id)
         return {}
 
     # --- 门面 ----------------------------------------------------------------
 
+    def _stamp(self, turn_span: Any, response: AgentResponse) -> AgentResponse:
+        """把这一轮的结论记在根 span 上：报告先看它，再决定往哪一层钻。
+
+        槽位与判定来源也在这里：多轮状态出问题时，证据就是 ``slot_source`` 是不是
+        ``inherited``、以及这一轮的意图是模型判的还是兜底判的。这两件事都不在
+        ``AuditRecord`` 里（审计是对外契约，不为观测扩容），所以只能记在 trace 上。
+        """
+        error = response.audit.error or {}
+        slot = self.last_slot
+        turn_span.set(
+            intent=str(response.intent),
+            state=str(response.state),
+            tool_name=response.audit.tool_name,
+            error_code=error.get("code"),
+            response=response.message,
+            plan_source=None if self.last_plan is None else self.last_plan.source,
+            slot_order_id=None if slot is None else slot.order_id,
+            slot_source=None if slot is None else slot.source,
+            nodes=list(self.last_nodes),
+        )
+        return response
+
     def handle(
+        self,
+        message: str,
+        *,
+        customer_id: str,
+        session_id: str | None = None,
+    ) -> AgentResponse:
+        """跑一轮。带 tracer 时留一条 trace；没带时行为与 M3 逐字节一致。"""
+        tracer = self.tracer or current_tracer()
+        if tracer is None:
+            return self._handle(message, customer_id=customer_id, session_id=session_id)
+        # 在上下文里激活 tracer：下游的 agent / tool / planner / session 就不必再传一遍
+        # 参数，也能把子 span 挂到这一轮上。
+        with tracing(tracer):
+            metadata = {
+                "message": message,
+                "customer_id": customer_id,
+                "session_id": session_id,
+            }
+            if tracer.active:
+                # 已经在一轮里（调用方自己开了 turn）：只挂一个子 span，不另起一条 trace，
+                # 否则一次调用会分裂成两条互不相干的记录。
+                with tracer.span(
+                    "agent.turn", kind=SpanKind.TURN, **metadata
+                ) as turn_span:
+                    response = self._handle(
+                        message, customer_id=customer_id, session_id=session_id
+                    )
+                    return self._stamp(turn_span, response)
+            with tracer.turn("agent.turn", **metadata) as root:
+                response = self._handle(
+                    message, customer_id=customer_id, session_id=session_id
+                )
+                return self._stamp(root, response)
+
+    def _handle(
         self,
         message: str,
         *,

@@ -129,6 +129,17 @@ D:\Python\python.exe scripts/regression_gate.py --candidate .release-candidate -
 D:\Python\python.exe scripts/freeze_release.py --out .release-candidate --allow-dirty --skip-load
 ```
 
+trace 这套**还没有进 CI**（属于 M9）。它是纯 Python、不依赖 Docker，本机跑一遍 310 条 trace
+只要约 10 秒：
+
+```powershell
+D:\Python\python.exe scripts/trace_run.py --cases eval_cases/case_matrix_v2.jsonl --faults eval_cases/fault_cases.jsonl --multiturn eval_cases/multiturn_cases.jsonl --out reports/traces-full.jsonl
+D:\Python\python.exe scripts/trace_report.py --traces reports/traces-full.jsonl --cases reports/traces-full.cases.jsonl --out reports/trace-report.md
+```
+
+接进 `gate` job 时注意两件事：`trace_run.py` 默认**覆盖**输出文件（`--append` 才追加），
+以及 `--llm` 会真的花钱（没有 `--yes` 会停在发请求之前并返回 2）。
+
 关于第 4 条：它只用于本地快速迭代。`--skip-load` 会让 `perf.*` 指标缺失，但冻结会把
 `load_test` 记成 `status: "skipped"`，门禁据此只给 4 条提醒、不阻断（见第 4 节）。
 
@@ -155,8 +166,9 @@ D:\Python\python.exe scripts/load_test.py --real --yes --users 5 --run-time 30s 
 | 冻结发布里的 `matrix.v2.pass_rate` / `matrix.v3.pass_rate` | 永远是 `n/a`：`freeze_release.py` 只跑 `--offline`（规则臂）。离线模式下模型列是 `None`，不是 0 |
 | 执法基线 | **已入库三份**：`releases/v0.6.0/`（M7 补冻）、`releases/v0.7.0/`（M5 首个）、`releases/v0.8.0/`（M6）。`gate` job 的执法基线是最新已冻结版本（现在是 `v0.8.0`），随每次冻结前移。本机已验证「冻结候选 → 门禁」整条链路通过；三版并排报告见 `releases/comparisons/` |
 | mock 臂压测的 P95 / token | 建模值，报告里标 `provenance: modeled`，不是供应商真值 |
-| 测试条数 | 会随用例增加而变。本机 HEAD 实测 `1123 passed, 10 xfailed`；各冻结基线分别是 `v0.6.0` 1025、`v0.7.0` 1061、`v0.8.0` 1121（同一口径：冻结器的收集值） |
+| 测试条数 | 会随用例增加而变。本机 HEAD 实测 `1220 passed, 10 xfailed`；各冻结基线分别是 `v0.6.0` 1025、`v0.7.0` 1061、`v0.8.0` 1121（同一口径：冻结器的收集值） |
 | `.release-candidate/` 能被打包上传 | **未验证**：本机没有 GitHub，验证不了「以点开头的目录」在当前 action 版本下的行为。为了不依赖它，上传步骤显式写了 `include-hidden-files: true` |
+| Trace 出口（Langfuse / Opik） | **未验证**：没有任何一份 trace 真的到过 Langfuse 服务（本机无 Docker、无账号），`langfuse>=3.0` 的 API 形状也没在真机上核对过 —— 猜错会**静默**降级成 dry-run。验证到的是载荷映射、dry-run 降级与注入假 client 时的调用序列（`docs/tracing.md` 第 7 节、`docs/stage2-evidence.md` §16.8） |
 
 ## 7. 已经踩过的坑
 

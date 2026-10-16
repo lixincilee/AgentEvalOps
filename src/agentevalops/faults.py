@@ -25,7 +25,7 @@ from .llm.base import ChatMessage, LLMResponse, LLMUnavailableError
 from .models import ToolResult
 from .order_store import OrderStore
 from .pipeline import V3Agent
-from .planner import GroundedLLMPlanner
+from .planner import GroundedLLMPlanner, Planner
 from .retrieval import KnowledgeBase
 from .session import SessionStore
 from .tools import ToolTimeout, ToolUnavailable
@@ -157,11 +157,16 @@ def build_faulted_agent(
     store: OrderStore | None = None,
     knowledge_base: KnowledgeBase | None = None,
     sessions: SessionStore | None = None,
+    planner: Planner | None = None,
 ) -> V3Agent:
     """Build one v3 agent with exactly one fault installed.
 
     注入点刻意选在**工具对象**上而不是「agent 内部加开关」：工具是唯一被替换的东西，
     规划、编排、审计、判分全部走真实代码，所以故障用例判出来的行为就是生产行为。
+
+    ``planner`` 只给 ``--llm`` 的 trace 运行用：让故障轮也走真实模型，好让报告里的
+    ``llm.plan`` span 是真的。**模型类故障会忽略它**——那一轮的 client 就是被限流的那一个，
+    换成别的就等于把被测对象换掉了。
 
     返回值上会挂两个诊断字段（脚手架专用，不是产品契约）：
 
@@ -176,6 +181,9 @@ def build_faulted_agent(
         kwargs["knowledge_base"] = knowledge_base
     if sessions is not None:
         kwargs["sessions"] = sessions
+
+    if planner is not None and spec.target != "model":
+        kwargs["planner"] = planner
 
     client: RateLimitedClient | None = None
     if spec.target == "model":

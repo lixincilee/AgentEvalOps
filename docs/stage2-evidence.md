@@ -1,4 +1,4 @@
-# 阶段二实测证据（M1 / M2 / M3 / M4 / M5 / M6）
+# 阶段二实测证据（M1 ~ M8）
 
 所有数字都来自本机真实调用。原始 JSON 由脚本写入 `reports/`（已被 `.gitignore` 忽略，
 它是运行产物），随时可以重跑生成。
@@ -343,7 +343,7 @@ completion 2442 tokens——与 run1/run3 一致，说明这 9 条是稳定差�
 | ~~真实三方对比（v1 / v2 / v3 / v3-rules）~~ | **已完成**（第 10 节）：四个批次、两个 tag（`v0.5.0` / `v0.5.1`）锚定，`is_reproducible=true`，合计花费 CNY 0.542；并抓到 v3 兜底路径的一个真实缺陷 |
 | ~~重复执行 N 次取稳定值~~ | **已完成**（M6，§14）：规则列跑 5 次零噪声；真实模型 `--repeat 3` 实测噪声 2.5pp（CNY 0.0893） |
 | ~~3 个版本回归对比~~ | **已完成**（M7，§15）：补冻 `releases/v0.6.0/`，`releases/comparisons/v0.6.0-v0.7.0-v0.8.0.json` 三版并排、门禁全绿；**但功能指标三版无区分度**，见 §15.6 ① |
-| Langfuse trace | 本机无 Docker，只能走 Cloud 或先退化为本地 JSON trace |
+| ~~Langfuse trace~~ | **已完成**（M8，§16）：本机无 Docker / 无账号，做的是**本地 JSONL trace + Langfuse 载荷映射 + dry-run 降级**；没有任何 trace 真的到过 Langfuse 服务（§16.8） |
 | ~~故障注入（25 条）~~ | **已完成**（M4，tag `v0.6.0`）：工具超时 / 工具 500 / 空检索 / 模型限流，25/25 全过（§11.1） |
 | ~~并发压测（Locust/k6）~~ | **已完成**（M4，tag `v0.6.0`）：mock 臂 + modeled 臂，P95 / 吞吐 / 错误率 / 单次成功任务成本都有数（§11.2）；真模型并发仍未跑 |
 | ~~`--repeat` 与报告快照入库~~ | **已完成**（M6，tag `v0.8.0`）：三处 `--repeat N`、门禁报告「噪声」列；发布快照冻结到 `releases/<tag>/` 并入库（§13 / §14） |
@@ -1207,3 +1207,179 @@ D:\Python\python.exe scripts/regression_gate.py --candidate releases/v0.8.0 --ba
 | `v0.6.0` 的锚点等于 tag 本身 | **不等**。`describe=v0.6.0-1-gc61d0b3`，量具提交和被测 tag 差一个 commit（§15.1） |
 | `perf.*` 三版可比 | **只能算同口径，不能算同环境**。三次冻结跨了不同的机器状态，P95 的差小于噪声（§15.6 ②） |
 | 门禁在候选退化时会拦 | 本次三版报告是全绿路径，**不含拦截证据**；拦截证据在 §12.3 的注入回归 |
+
+## 16. 证据十二：M8 的 Trace 层 —— 每一轮都留下可定位的证据
+
+简历上写「使用 Langfuse 记录 Prompt、检索结果、模型响应和工具调用轨迹，将失败案例定位到
+检索、推理、工具或状态管理环节」。这一节把这句话拆成「已经做到的」与「还没做到的」两部分，
+并把后者写清楚——**本机没有 Docker，也没有 Langfuse 账号**，所以没有任何一份 trace 真的到过
+Langfuse 服务（见 §16.8）。
+
+### 16.1 310 条 trace：一轮一条
+
+```powershell
+D:\Python\python.exe scripts/trace_run.py --cases eval_cases/case_matrix_v2.jsonl --faults eval_cases/fault_cases.jsonl --multiturn eval_cases/multiturn_cases.jsonl --out reports/traces-full.jsonl
+# 用例 274 条 → trace 310 条，其中带错误码的 151 条
+```
+
+| 来源 | 用例 | trace |
+| --- | --- | --- |
+| `case_matrix_v2.jsonl` | 213 | 213 |
+| `fault_cases.jsonl` | 25 | 25 |
+| `multiturn_cases.jsonl` | 36 | 72（一轮一条） |
+| **合计** | **274** | **310** |
+
+多轮用例一轮一条 trace 是有意的：合成一条就再也回答不了「是第几轮开始跑偏的」。故障用例
+`warmup` 里的铺垫轮**跑但不记**，否则报告里会多出一条没有期望值的「用例」。
+
+310 条 trace 合计 **1848 个 span**：
+
+| `kind` | 条数 | 建在哪 |
+| --- | --- | --- |
+| `turn` | 310 | `V3Agent.handle`（一轮一个根 span） |
+| `node` | 1250 | 图节点包装器 `pipeline._traced` |
+| `tool` | 209 | `agent._call_tool`（工具层唯一的插桩点） |
+| `state` | 51 | `pipeline._respond_node`（会话写入） |
+| `retriever` | 22 | `pipeline._retrieve_node` |
+| `llm` | 6 | `planner.LLMPlanner.plan` |
+
+`llm` 只有 6 条、`retriever` 只有 22 条，这本身就是一条信息：这次是全**规则臂**的离线运行，
+模型只在 6 条限流故障用例里被真的调用过（而且全部失败）。规则臂的 trace 能定位状态与工具
+问题，回答不了 prompt 问题 —— 所以 §16.5 补了真实模型的 16 条。
+
+### 16.2 判分与定位：310 条里 7 条不通过
+
+```powershell
+D:\Python\python.exe scripts/trace_report.py --traces reports/traces-full.jsonl --cases reports/traces-full.cases.jsonl --out reports/trace-report.md --json reports/trace-report.json
+# trace 310 条，不通过 7 条；按环节：reasoning 4，state 3
+```
+
+| 环节 | 条数 | 细节 | 用例 |
+| --- | --- | --- | --- |
+| `reasoning`（推理层） | 4 | `intent` | `v2_bnd_status_word_only`、`v2_bnd_status_no_order`、`v2_err_unsupported_01`、`v2_err_unsupported_06` |
+| `state`（状态管理层） | 3 | `missing-slot` | `v2_bnd_cjk_adjacent_left`、`v2_bnd_cjk_adjacent_right`、`v2_bnd_digit_prefix` |
+
+这 7 条不是新问题：它们正是规格（`docs/agent-spec.md`）冻结时留下的**已知基线偏差**，
+pytest 里用 strict `xfail` 钉着，对应 SPEC-INTENT-2 与 SPEC-SLOT-1 两条条款。
+
+### 16.3 两套独立机制指向同一批用例
+
+这一节最值得看的一条。**定位规则不知道 pytest 的存在**（它只看 trace），pytest 也不知道
+trace。两条路各算一遍：
+
+```powershell
+D:\Python\python.exe -m pytest -q -k "v2_bnd_status_word_only or v2_bnd_status_no_order or v2_err_unsupported_01 or v2_err_unsupported_06 or v2_bnd_cjk_adjacent_left or v2_bnd_cjk_adjacent_right or v2_bnd_digit_prefix" -rxX
+# 1207 deselected, 7 xfailed in 2.88s
+```
+
+| | trace 定位报告 | pytest |
+| --- | --- | --- |
+| 不通过的用例 | 7 条 | 7 条（strict `xfail`） |
+| 用例清单 | 逐字相同 | 逐字相同 |
+| 归类 | `reasoning` 4 / `state` 3 | SPEC-INTENT-2 4 / SPEC-SLOT-1 3 |
+
+**两套机制指向同一批用例，而且是同一批理由。** 只看一边，「定位规则写得对不对」只能靠人肉
+抽查；两边一对，至少能说：这 7 条确实是这两层出的事，而不是脚本随机报了一个环节。
+
+定位规则的优先级里有一个刻意的例外：「意图认出来了、槽位没抽到」同样是
+`VALIDATION_ERROR`，但它归 `state / missing-slot` —— 判据是根 span 的 `tool_name` 有没有值
+（`dispatch` 在缺 `order_id` 时会记下本来要调的工具）。第一版把它报成 `request-validation`，
+于是 310 条报告里那 3 条状态缺口的定位**全部指向了错误的代码**。
+
+### 16.4 三个脚本与退出码
+
+| 脚本 | 产物 | 干什么 |
+| --- | --- | --- |
+| `scripts/trace_run.py` | `<out>`（trace）+ `<out>.cases.jsonl`（期望值随行） | 跑用例、落 trace |
+| `scripts/trace_report.py` | `reports/trace-report.md` / `.json` | 判分 + 失败环节聚类 |
+| `scripts/trace_view.py` | `reports/trace-view-demo.html`（自包含、不联网） | 给人看的瀑布图 |
+
+退出码约定：`0` 通过 / `1` 退化或无数据 / `2` 用法或环境问题。**`trace_run.py` 的退出码不
+表达质量** —— 它只回答「有没有跑出 trace」；判质量是 `trace_report.py` 的事（它才有
+`--fail-on-error`）。这一点容易搞错，理由见 §16.6。
+
+期望值刻意**不写进 trace**：trace 描述「发生了什么」，期望值是一把尺子。两个文件一起交给
+`trace_report.py`，证据与断言各归各位。把尺子塞进被测对象的记录里，读的人就再也分不清
+哪一段是证据、哪一段是断言。
+
+### 16.5 真实模型路径的 trace：16 次调用，CNY 0.0057
+
+规则臂的 trace 里没有 `llm.plan`（本来就没调模型）。M8 顺手给 `trace_run.py` 加了
+`--llm --yes`（并给 `build_faulted_agent` 加了可选 `planner`，让故障轮也能走真实模型），
+于是 prompt / 回答 / token / 延迟第一次进了 trace：
+
+```powershell
+D:\Python\python.exe scripts/trace_run.py --cases eval_cases/case_matrix_v2.jsonl --limit 10 --llm --yes --budget 0.2 --out reports/traces-llm-matrix.jsonl
+D:\Python\python.exe scripts/trace_run.py --cases eval_cases/rag_cases.jsonl --limit 6 --llm --yes --budget 0.2 --out reports/traces-llm-rag.jsonl
+```
+
+| 批次 | 用例 | trace | 调用 | 花费 | span 组成 |
+| --- | --- | --- | --- | --- | --- |
+| 矩阵前 10 条 | 10 | 10 | 10 | CNY 0.0036 | turn 10 / node 40 / **llm 10** / tool 10 |
+| 检索前 6 条 | 6 | 6 | 6 | CNY 0.0021 | turn 6 / node 30 / **llm 6** / **retriever 6** |
+
+两次判分都是「不通过 0 条」（退出码 0）。`llm.plan` span 上的实测原话：
+
+```
+model=deepseek-flash  prompt_version=v3  parse=ok  plan_source=llm  latency_ms=3036.3  cached=False
+usage={'prompt_tokens': 203, 'completion_tokens': 16, 'cache_hit_tokens': 0, 'total_tokens': 219}
+user_message='帮我查一下订单 ORD-1001 现在到哪了'
+response='{"intent":"order_status","order_id":"ORD-1001"}'
+system_prompt=<v3 的完整系统 prompt，脱敏后原样保留>
+```
+
+另外三条实测：`latency_ms` 分别是 3036 / 1096 / 3209 / 1132 ms（同一批次里也能差 3 倍）；
+检索那批多出 `retriever.search`（`hits=2`、`doc_ids=['DOC-REFUND-001','DOC-REFUND-002']`、
+`grounded=true`）。「定位到检索 / 推理两类」到这里才有**真实输入**可看。
+
+**顺手补的一道闸**：`--llm` 与 `--budget` 同时用、而模型没有价目时，`UsageLedger` 会抛
+`UnknownModelPriceError` —— 它属于 `LLMError`，会被规划器当成「模型抽风」降级成
+`llm-fallback`，于是整个 run **静默地不再发请求**、一个 token 都不花、通过率还很好看。
+现在这种情况在发请求之前就被拒（退出码 2），与 `compare_versions.py` 同一道闸。
+
+### 16.6 151 / 19 / 7：三个都像「失败数」，只有一个是失败数
+
+同一次运行里能读出三个数，含义完全不同：
+
+| 数字 | 口径 | 含义 |
+| --- | --- | --- |
+| 151 | `trace_run.py` 打印的「带错误码的」 | `audit.error` 非空的轮次。边界 / 异常 / 安全用例本来就**应该**报错（`ORDER_NOT_FOUND`、`VALIDATION_ERROR`、`UNSUPPORTED_INTENT`…） |
+| 19 | trace 的 `status=error` | 有 span 失败的轮次，且**全部是故意注入的故障**（13 条工具 / 检索 + 6 条模型限流，`TOOL_TIMEOUT` / `TOOL_UNAVAILABLE` / `LLMUnavailableError`） |
+| 7 | 判分不通过的用例数 | 唯一能叫「失败」的那个数（§16.2） |
+
+19 条 error trace 的用例**全部通过**：Agent 的正确行为就是「工具坏了要如实报错、限流了要
+降级答对」。把 151 或 19 当成失败数，一跑故障注入就会得出「19 条失败」的错误结论。这条
+口径有测试钉住：`tests/test_trace_run.py::test_a_rate_limited_turn_is_an_error_trace_but_a_passing_case`。
+
+### 16.7 「零行为改变」与 M8 修掉的 5 个真 bug
+
+插桩最大的风险不是记错，而是**把被测系统改掉了**。防线是
+`tests/test_tracing.py::test_instrumentation_does_not_change_behaviour`：同一句话分别用
+「带 tracer」和「不带 tracer」的 Agent 跑一遍，审计记录的每个字段必须相同。没有 tracer 时
+插桩点 yield 一个 `_NullSpan`（`set` / `fail` 全是空操作），业务代码里**不允许**出现
+「有这个 tracer / 没有 tracer」的分支。做不到这一点，「加了可观测性」就变成「换了一个被测
+系统」，M3 之前所有回归数字都要重跑。
+
+M8 在写 trace 的过程中修掉 5 个真 bug（都写进 `docs/tracing.md` §8，也都有测试钉住）：
+
+| bug | 为什么危险 |
+| --- | --- |
+| `prompt_tokens` 被脱敏成 `***` | 键名带 "token" 就替换，**静默删掉了成本指标**。现在有白名单：「带计数提示词的 `*_tokens` 不算凭据」 |
+| 发送失败状态被 dump 改写成 `dry-run:` | `error:RuntimeError` 被随后的 dump 覆盖，调用方再也看不到「真发失败」 |
+| 显式错误码被异常类名盖掉 | `BUDGET_EXCEEDED` 被 `BudgetExceededError` 覆盖，预算熔断被记成「模型抽风」 |
+| 故障注入包在工具外面 → 检索 span 缺失 | 「检索工具超时」那一轮的 trace 里没有任何检索 span，最该看的轮次反而什么都没有。现在检索 span 建在节点里 |
+| 视图不渲染用户文本 | 第一版只画 span 名字，XSS 转义测试「通过」是因为页面里根本没有用户文本 —— 同时也说明它把最该看的藏起来了 |
+
+两条与「假通过」有关：**「通过」的测试可能什么都没测**（第 5 条），而**「失败」的状态码
+可能不是失败**（§16.6）。这两个坑的方向相反，但都得靠人先想到才测得出来。
+
+### 16.8 这一节还没证明的事
+
+| 声明 | 状态 |
+| --- | --- |
+| 有 trace 真的到过 Langfuse 服务 | **没有**。本机无 Docker、无 Langfuse 账号。验证到的是载荷映射（纯函数 `langfuse_payload()`）、dry-run 降级、以及注入假 client 时的调用序列 |
+| `langfuse>=3.0` 的 API 形状（`start_span` / `update` / `end` 的参数名） | **未在真机验证**。适配层写成「出错就降级 + 落盘」，所以猜错不会让评测崩，但会**静默**走 dry-run —— 这是已知风险，不是已解决的问题 |
+| HTML 视图的肉眼效果 | **未逐像素核对**。几何、转义、徽标有测试钉住，浏览器里到底长什么样需要人打开确认 |
+| trace 进了发布冻结产物 | **还没有**。`freeze_release.py` 目前只冻结五项检查的原始报告；把 trace 与定位报告一起冻结属于 M9 |
+| 310 条 trace 覆盖了模型路径 | **只有 16 条**（§16.5）。剩下 294 条是规则臂：能定位状态与工具问题，回答不了 prompt 问题 |
+| 真实模型 trace 的方差 | **未测**。16 条只跑了一次；`--llm --repeat N` 的成本与延迟方差都还是空白（对照 §13.3 / §14.4） |

@@ -8,6 +8,7 @@ from .models import AgentResponse, AgentState, AuditRecord, ErrorCode, Intent, T
 from .order_store import OrderStore
 from .planner import Plan, Planner, RulePlanner, classify_intent, extract_order_id
 from .tools import HumanTicketTool, OrderStatusTool, RefundTool, ToolError
+from .tracing import SpanKind, span
 
 
 def pre_plan_rejection(message: Any, customer_id: Any) -> str | None:
@@ -121,11 +122,28 @@ class EcommerceSupportAgent:
         SPEC-FAULT-6：只有 ToolError 的子类会被转成 tool_failed。其它异常必须继续往上抛，
         因为那是 bug 不是故障 —— 在这一层铺一个 ``except Exception``，等于把所有真实缺陷
         都伪装成「工具今天有点抖」。
+
+        这里同时是工具层**唯一**的插桩点：入参、结果、错误码都记在同一段逻辑里，
+        不会再出现「审计说调了工具、trace 说没调」这种两套记录对不上的情况。
         """
-        try:
-            return tool.execute(**arguments)
-        except ToolError as fault:
-            return ToolResult.fail(fault.error_code, str(fault))
+        tool_name = str(getattr(tool, "name", type(tool).__name__))
+        with span(
+            f"tool.{tool_name}",
+            kind=SpanKind.TOOL,
+            tool=tool_name,
+            arguments=arguments,
+        ) as tool_span:
+            try:
+                outcome = tool.execute(**arguments)
+            except ToolError as fault:
+                tool_span.fail(fault.error_code, str(fault))
+                return ToolResult.fail(fault.error_code, str(fault))
+            tool_span.set(
+                success=outcome.success,
+                error_code=outcome.error_code,
+                result=outcome.data,
+            )
+            return outcome
 
     @staticmethod
     def _execute(
