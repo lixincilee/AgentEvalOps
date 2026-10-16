@@ -16,3 +16,6 @@ dist/
 build/
 .idea/
 .vscode/
+
+# 门禁用的临时候选目录：它是一次检查的中间产物，不是要归档的发布。
+.release-candidate/

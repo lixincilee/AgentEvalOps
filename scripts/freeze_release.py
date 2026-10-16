@@ -96,6 +96,10 @@ def _run(command: Sequence[str], timeout: float) -> dict[str, Any]:
         )
     except subprocess.TimeoutExpired:
         return {"exit_code": 124, "output": f"超时（>{timeout:.0f}s）", "seconds": timeout}
+    except OSError as exc:
+        # 脚本本身不存在（比如在旧 tag 上跑新版冻结器）也要记成一次失败的检查，
+        # 而不是让整个冻结崩掉——"这个检查跑不了" 和 "冻结失败" 是两件事。
+        return {"exit_code": 127, "output": f"启动失败: {exc}", "seconds": 0.0}
     return {
         "exit_code": done.returncode,
         "output": (done.stdout or "") + (done.stderr or ""),
