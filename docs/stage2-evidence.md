@@ -1,4 +1,4 @@
-# 阶段二实测证据（M1 / M2 / M3 / M4）
+# 阶段二实测证据（M1 / M2 / M3 / M4 / M5）
 
 所有数字都来自本机真实调用。原始 JSON 由脚本写入 `reports/`（已被 `.gitignore` 忽略，
 它是运行产物），随时可以重跑生成。
@@ -667,3 +667,124 @@ token 是固定估计值（260 + 30），只是借 `deepseek-flash` 的价目折
 3. **两进程同机**，所以延迟里混了客户端自身的调度开销（§11.2）。
 4. **故障与压测还没合流**：25 条故障用例是顺序跑的，没有在并发下重跑过。降级路径
    （`llm-fallback`）在限流风暴下的表现、写操作在超时下的幂等，都只验证了单请求语义。
+
+## 12. 证据八：CI 回归门禁与发布冻结（tag `v0.7.0`）
+
+到 §11 为止，每一份证据都是**一次**运行的快照。它们回答不了「这一版比上一版好还是坏」，
+因为 `reports/` 被 gitignore 掉了——上一版长什么样，没有地方记得。
+
+这一节补的就是那个比较对象，以及拿它做判断的判据表。
+
+### 12.1 冻结：把「这一版长什么样」写进 git
+
+```powershell
+D:\Python\python.exe scripts/freeze_release.py
+```
+
+五项检查全离线、零成本，跑完写进 `releases/v0.7.0/`：`release.json`（机器读的指标索引）、
+`README.md`（同一份内容的人读版），加上五项检查各自的原始报告。
+
+| 检查 | 耗时 | 结果 |
+| --- | --- | --- |
+| `pytest` | 35.6s | 1061 passed / 0 failed（另有 10 xfailed） |
+| `faults` | 7.7s | 25/25 |
+| `comparison:matrix`（213 行） | 9.2s | v1 96.714% / v3-rules 96.714% |
+| `comparison:rag_multiturn`（120 行） | 9.5s | v1 37.500% / v3-rules 100.000% |
+| `load_test`（mock 臂） | 44.4s | P95 160ms / RPS 144.8 / http 错误率 0 / 任务成功率 100% |
+
+锚点：`tag=v0.7.0`、`commit=d7fe209`、`spec_version=1.3`、`dirty=false`。
+
+两个刻意的约束：
+
+- **脏工作区拒绝冻结**（`git status --porcelain` 非空就退出 2）。指标锚不住版本号，
+  后面的对比全是幻觉。要放行得显式 `--allow-dirty`，而 `dirty=true` 会写进索引。
+- **先写临时目录、全部跑完再搬过去**。否则冻结到一半失败会留下一个半成品
+  `releases/<tag>/`，而它看起来像一份完整的基线。
+
+### 12.2 门禁：两条判据，缺一不可
+
+```powershell
+D:\Python\python.exe scripts/regression_gate.py --candidate .release-candidate --baseline releases/v0.7.0
+```
+
+8 项指标，6 项强制阻断：
+
+| 指标 | 方向 | 绝对下限/上限 | 允许相对基线退化 | 强制 |
+| --- | --- | --- | --- | --- |
+| `pytest.failed` | 越小越好 | 0 | 0 | 是 |
+| `fault.pass_rate` | 越大越好 | ≥ 100% | 0 | 是 |
+| `matrix.v3_rules.pass_rate` | 越大越好 | ≥ 90% | 1 个百分点 | 是 |
+| `rag_multiturn.v3_rules.pass_rate` | 越大越好 | ≥ 90% | 1 个百分点 | 是 |
+| `perf.http_error_rate` | 越小越好 | ≤ 1% | 0.5 个百分点 | 是 |
+| `perf.task_success_rate` | 越大越好 | ≥ 99% | 0.5 个百分点 | 是 |
+| `perf.p95_ms` | 越小越好 | 无 | 相对 50% | **否** |
+| `perf.cost_per_success_cny` | 越小越好 | 无 | 相对 50% | **否** |
+
+- **绝对下限**防的是「基线烂，于是烂变成了标准」：它不管基线多低，指标本身不该跌破线。
+- **相对退化**防的是「从 100% 掉到 91%，但没跌破绝对下限」。
+- 判定顺序是**先绝对下限、再相对退化**：反过来会先报「比基线掉了多少」，而那个数字在
+  指标本身就不可接受时会分散注意力。
+
+两条建议性规则的量纲是**相对**（50%），其余是**绝对**（百分点）。这不是风格差异：
+同一份配置的 P95 单次运行能差 2.2 倍（§11.2），给它写死一个毫秒数的容忍度，
+做出来的就是随机门禁。**还没压出方差就拿来拦版本，拦的是噪声。**
+
+### 12.3 门禁真的会拦：一次注入回归的实测
+
+只证明「门禁会对」是不够的——一个永远放行的脚本也叫「通过」。所以注入一次真实回归：
+把 `RefundTool.refundable_statuses` 从 `{"delivered"}` 改成 `set()`。这很像一次
+「手滑收紧了规则」的改动，改完之后冻结候选、跑门禁：
+
+```
+  [失败] pytest                          36.9s  1010 passed / 51 failed
+  [失败] faults                           4.9s  23/25 条故障用例
+  [通过] comparison:matrix                6.2s  213 行
+  [通过] comparison:rag_multiturn         5.4s  120 行
+```
+
+```
+阻断: pytest.failed: 51 > 绝对上限 0
+阻断: fault.pass_rate: 92.000% < 绝对下限 100.000%
+阻断: matrix.v3_rules.pass_rate: 86.854% < 绝对下限 90.000%
+阻断: rag_multiturn.v3_rules.pass_rate: 比基线退化 6.667% > 容忍 1.000%
+```
+
+四点值得记下来：
+
+1. **两条判据各自都触发过**：前三条是绝对下限，第四条是相对退化。只写一条的表会在这次
+   注入里漏掉一半。
+2. **`rag_multiturn.v3_rules` 从 100% 掉到 93.3%**——单看数字仍然是「93 分，挺好」。
+   只有和基线比，才看得出它是从满分掉下来的。
+3. **日志里有两个「通过」，含义不同，别混。** 冻结输出里的 `[通过] comparison:matrix`
+   说的是**这项检查跑成功了**（子进程退出码 0）；分数合不合格是门禁的判定，同一份候选里
+   `matrix.v3_rules.pass_rate` 就报了阻断。冻结器只负责「测出来、记下来」，判「好不好」
+   是门禁的事——两层分开，才换得来「门禁的判据只有一处定义」。
+4. **演示做完立刻 `git checkout --` 还原**，并确认 `git status` 干净。注入回归这件事本身
+   也要可回退，否则下一次冻结就带着它一起入库了。
+
+### 12.4 CI：三个 job，只有两个阻塞
+
+`.github/workflows/regression.yml`：
+
+| job | 触发 | 干什么 | 阻塞合并 |
+| --- | --- | --- | --- |
+| `test` | push / PR / 手动 / 定时 | `python -m pytest -q` | 是 |
+| `gate` | 同上（`needs: test`） | `freeze_release.py --gate-against releases/v0.7.0` | 是 |
+| `nightly-real` | **只在 `schedule`** | 真实模型四方对比 + 真实并发压测（花钱） | 否 |
+
+`nightly-real` 不阻塞有两重结构保证：它在 PR 上根本不触发（`if: github.event_name ==
+'schedule'`），同时整个 job 标了 `continue-on-error: true`，所以供应商拥塞、限流、
+余额不足都不会把 workflow 弄红。
+
+### 12.5 这一节还没证明的事
+
+1. **这份 workflow 没有在 GitHub 上跑过。** 本机没有 Docker、没有 `gh`，`.github/` 从未被
+   GitHub 读过。做过的是：每条 `run` 命令在本机按同一顺序跑过一遍，YAML 能被
+   `yaml.safe_load` 解析。**「CI 绿了」这件事本身还没有证据。**
+2. **`nightly-real` 一次都没触发过**：真实模型的延迟、吞吐与账单仍然是空白（§11.4）。
+3. **只有一份基线**。所谓「3 个版本回归对比」现在只有 v0.7.0 一份冻结发布；要做出多版本
+   序列，得再冻结两个版本，或者用 `git worktree` 回到旧 tag 补冻（旧 tag 上没有
+   `freeze_release.py`，需要把冻结器指过去）。这是 M6 的事。
+4. **`--skip-load` 会让 `perf.*` 变成「跳过」而不是「失败」**，门禁据此降级为提醒。
+   这个区分是必须的（否则快速门禁永远红），但代价是：**跳过压测的候选，不会有任何性能
+   证据被检查**。报告里 `skipped_checks` 字段会把它写出来。

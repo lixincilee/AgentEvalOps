@@ -32,7 +32,10 @@ AgentEvalOps/
 │   ├── agent-spec.md                  # 行为规格 v1.3（冻结）：… / 多轮会话 / 判分口径 / 故障注入口径（§2.11 §7.3）
 │   ├── stage2-plan.md                 # 阶段二施工图与里程碑
 │   ├── stage2-evidence.md             # 阶段二实测证据与复现命令
+│   ├── ci.md                          # M5：CI 三个 job、门禁判据、本地复刻、"没验证过的部分"
 │   └── bad-cases-v2.md                # v2 的 9 处差异逐条归类与根因
+├── .github/
+│   └── workflows/regression.yml       # M5：test / gate / nightly-real 三个 job
 ├── scripts/
 │   ├── check_env.py                   # 密钥体检（只打印长度与前缀，不泄密）
 │   ├── smoke_llm.py                   # LLM 连通性烟囱测试（--save 可落盘证据）
@@ -40,8 +43,12 @@ AgentEvalOps/
 │   ├── compare_versions.py            # v1 / v2 / v3 三方对比运行器（M3 新增）
 │   ├── gen_case_matrix.py             # 用例矩阵脚手架（只报告偏差，不再定义期望值）
 │   ├── run_faults.py                  # M4：跑故障注入用例集并落盘报告
-│   └── load_test.py                   # M4：起服务 + Locust 压测 + P95/成本汇总 + CI 门禁
+│   ├── load_test.py                   # M4：起服务 + Locust 压测 + P95/成本汇总 + CI 门禁
+│   ├── freeze_release.py              # M5：跑齐离线检查并冻结到 releases/<tag>/
+│   └── regression_gate.py             # M5：候选 vs 基线，按阈值判退化（退出码给 CI 用）
 ├── reports/                           # 运行产物（已 gitignore）：评测报告 JSON，可当 CI 工件
+├── releases/                          # M5：冻结的发布（要提交进 git）——回归门禁的比较对象
+│   └── v0.7.0/                        #   release.json（指标索引）+ 五项检查的原始报告
 ├── perf/                              # M4：压测客户端（服务端本体在 src/agentevalops/service.py）
 │   ├── latency_client.py              # 建模用的假模型：只睡 60ms + 固定 token，不发网络请求
 │   ├── locustfile.py                  # Locust 用户画像与期望表（什么算「任务成功」的唯一来源）
@@ -103,7 +110,9 @@ AgentEvalOps/
     ├── test_version_comparison.py     # M3 v1/v2/v3 三方对比器（离线、零成本）
     ├── test_faults.py                 # M4 故障注入：注入真的生效、口径与规格条款一致
     ├── test_fault_cases.py            # M4 数据驱动：回放 fault_cases.jsonl
-    └── test_service.py                # M4 HTTP 契约：状态码、审计结构、/metrics 记账
+    ├── test_service.py                # M4 HTTP 契约：状态码、审计结构、/metrics 记账
+    ├── test_regression_gate.py        # M5 门禁判据：该拦的拦得住、不该拦的别拦
+    └── test_freeze_release.py         # M5 冻结器：pytest 计数解析、指标拍平、索引渲染
 ```
 
 ## 快速开始
@@ -554,6 +563,74 @@ D:\Python\python.exe scripts/load_test.py --real --yes --users 5 --run-time 30s 
 `服务端自报延迟 (7.2ms)` 之间那 120 多毫秒全是排队——客户端与服务端跑在同一台机器上抢
 同一个 CPU，**这台机器量出来的 P95 含客户端自己的调度开销**，不能读成纯服务端延迟。
 
+## 阶段二 M5：CI 回归门禁 + 发布冻结
+
+前四个里程碑都在回答「这一版怎么样」。M5 回答一个更难的问题：**下一版有没有变坏，
+而且由谁来判、拿什么判？** 两样东西：一份冻结的基线（比较对象），一张判据表（怎么算变坏）。
+
+### 冻结：`releases/<tag>/`
+
+```powershell
+D:\Python\python.exe scripts/freeze_release.py
+```
+
+跑五项检查（全离线、零成本），把原始报告和一份机器可读的指标索引写进 `releases/<tag>/`：
+
+| 检查 | 写进索引的指标 |
+| --- | --- |
+| `pytest`（全量测试） | `pytest.passed` / `pytest.failed` / `pytest.xfailed` |
+| `faults`（25 条故障用例） | `fault.pass_rate` / `fault.cases` |
+| `comparison:matrix`（主矩阵 213 行） | `matrix.v1.pass_rate` / `matrix.v3_rules.pass_rate` |
+| `comparison:rag_multiturn`（检索 + 多轮 120 行） | `rag_multiturn.v1.pass_rate` / `rag_multiturn.v3_rules.pass_rate` |
+| `load_test`（mock 臂压测） | `perf.http_error_rate` / `perf.task_success_rate` / `perf.p95_ms` / `perf.rps` / `perf.cost_per_success_cny` |
+
+`reports/` 是 gitignore 掉的运行产物；`releases/` 正相反——**它必须提交进 git**，
+因为「上个版本长什么样」不能靠记忆。首个基线是 `releases/v0.7.0/`。
+
+**脏工作区会被拒绝冻结**：指标锚不住版本号，之后的对比就都失去了意义。
+
+### 门禁：`scripts/regression_gate.py`
+
+```powershell
+D:\Python\python.exe scripts/regression_gate.py --candidate .release-candidate --baseline releases/v0.7.0
+```
+
+每项指标两条判据，缺一不可：
+
+- **绝对下限**——不管基线多低，指标本身都不该跌破这条线。防的是「基线烂，于是烂变成了标准」。
+- **相对退化**——和基线比允许掉多少。防的是「从 100% 掉到 91%，但没跌破绝对下限」。
+
+8 项指标里 6 项强制阻断，2 项（P95、单次成功成本）**只报不拦**。理由见证据文档 §11.2：
+同一份配置单次运行的 RPS 差 1.7 倍、P95 差 2.2 倍。**还没压出方差就拿来拦版本，拦的是噪声。**
+
+判据表只有一处定义（`scripts/regression_gate.py` 的 `RULES`），阈值写死在脚本里、不接受
+命令行放宽——能被现场放宽的门禁等于没有门禁。
+
+### 实测：门禁真的会拦
+
+把 `RefundTool.refundable_statuses` 从 `{"delivered"}` 改成 `set()`——一个很像「手滑收紧
+规则」的改动——冻结出的候选被拦下 4 条，**两条判据各自触发**：
+
+```
+阻断: pytest.failed: 51 > 绝对上限 0
+阻断: fault.pass_rate: 92.000% < 绝对下限 100.000%
+阻断: matrix.v3_rules.pass_rate: 86.854% < 绝对下限 90.000%
+阻断: rag_multiturn.v3_rules.pass_rate: 比基线退化 6.667% > 容忍 1.000%
+```
+
+### CI：`.github/workflows/regression.yml`
+
+| job | 触发 | 干什么 | 阻塞 PR |
+| --- | --- | --- | --- |
+| `test` | push / PR / 手动 / 定时 | `python -m pytest -q` | 是 |
+| `gate` | 同上（`needs: test`） | `freeze_release.py --gate-against releases/v0.7.0` | 是 |
+| `nightly-real` | **只在定时任务里** | 真实模型对比 + 真实并发压测（会花钱） | 否 |
+
+**诚实说明**：这份 workflow **没有在 GitHub 上真跑过**（本机没有 Docker、也没有 `gh`）。
+它的依据只有两条：每条命令都在本机按同一顺序跑通过，以及 YAML 能被解析。
+还没被验证的结论，`docs/ci.md` 第 6 节列了一张表。真实模型那一格更是整块空白——
+延迟、吞吐、账单都还是建模值。
+
 ## 后续路线图
 
 | 阶段 | 目标 | 关键产出 |
@@ -562,7 +639,8 @@ D:\Python\python.exe scripts/load_test.py --real --yes --users 5 --run-time 30s 
 | **阶段二（进行中）** | 接入 DeepSeek；建立版本 / 运行 / 指标数据模型；用 `LLMPlanner` 替换 `classify_intent` 与槽位抽取（**保持 `AuditRecord` 契约不变**） | `VersionManifest`、`Run`/`RunMetrics`、成本核算与预算熔断、**240 条用例集**、**v1 vs v2 真实对比报告**（`docs/stage2-evidence.md`）、tag `v0.3.0` |
 | **阶段二 M3（已完成，tag `v0.5.0` / `v0.5.1`）** | 接 RAG 检索 + 多轮会话 + LangGraph 编排，产出 **v3**；规格升到 v1.2；用真实模型跑四方对比 | 第 4 个工具 `search_knowledge_base`、意图 `policy_qa`、错误码 `NO_KNOWLEDGE`、`RetrievalRecord` / `SlotRecord`、M3 用例集、四个批次锚定的 v1/v2/v3/v3-rules 对比报告、`v0.5.1` 修掉 v3 兜底路径缺陷 |
 | **阶段二 M4（已完成，tag `v0.6.0`）** | 故障注入用例 + 并发压测 | 规格 v1.3 的 6 条故障条款（SPEC-FAULT-1..6）、**25 条**故障用例（工具超时 / 5xx / 空检索 / 模型限流）、`faults.py` 注入脚手架、可压测 HTTP 服务 `service.py`、Locust 的 P95 / 吞吐 / 错误率与**单次成功任务成本**、CI 双线门禁 |
-| **阶段二 M5（下一步）** | CI 门禁与报告冻结 | GitHub Actions 回归门禁、`releases/<tag>/` 报告归档、Promptfoo / DeepEval / Ragas 分层判分 |
+| **阶段二 M5（已完成，tag `v0.7.0`）** | CI 回归门禁 + 发布冻结 | `regression_gate.py`（8 项指标，绝对下限 + 相对退化两条判据）、`freeze_release.py`（五项检查 → `releases/<tag>/`）、GitHub Actions 三 job（test / gate / nightly-real）、首个冻结基线 `releases/v0.7.0`、注入回归实测被拦下 4 条 |
+| **阶段二 M6（下一步）** | 判分分层与噪声压制 | `--repeat N` 压方差、L3 Ragas / L4 DeepEval / L5 Promptfoo 三层判分、真实模型延迟与账单 |
 
 ### 评测指标（阶段五要算的东西，现在就能算前六项）
 

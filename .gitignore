@@ -18,4 +18,6 @@ build/
 .vscode/
 
 # 门禁用的临时候选目录：它是一次检查的中间产物，不是要归档的发布。
-.release-candidate/
+# 用 .release-candidate* 而不是 .release-candidate/：注入回归演示会写
+# .release-candidate-regression/，漏一个通配就会在 git status 里留噪声。
+.release-candidate*/

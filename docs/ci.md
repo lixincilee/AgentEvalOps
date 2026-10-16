@@ -74,7 +74,7 @@ python scripts/freeze_release.py --out .release-candidate --gate-against release
 
 ## 4. 门禁判据
 
-判据只有一处定义：`scripts/regression_gate.py` 的 `RULES` 表（第 73-90 行）。
+判据只有一处定义：`scripts/regression_gate.py` 的 `RULES` 表（第 75-95 行）。
 下面这张表是逐字抄的，**不是**本节重新解释的版本：
 
 | 指标 | 方向 | 绝对下限 / 上限 | 允许相对基线退化 | 强制？ |
@@ -94,9 +94,10 @@ python scripts/freeze_release.py --out .release-candidate --gate-against release
   「从 100% 掉到 91%，但没跌破绝对下限」。
 - **判定顺序是先绝对下限、再相对退化。** 反过来会先给出「比基线掉了多少」，而那个数字
   在指标本身就不可接受时会分散注意力。
-- **强制规则缺指标 = 阻断。** 本机实测：给一个只含 `pytest.failed` 的候选目录，5 条强制
-  规则全部报「候选里没有这个指标」，2 条建议性规则报提醒。**推论：`gate` job 不能用
-  `--skip-load`** —— 那样 `perf.*` 全部缺失，门禁必然红。
+- **强制规则缺指标 = 阻断；但「这项检查本次没跑」降级为提醒。** 两者必须分开：
+  前者是报告坏了（跑了却没产出这个数），后者是压根没测。所以 `--skip-load` 会在
+  `release.json` 的 `checks[]` 里留一条 `status: "skipped"`，门禁看到它就把该指标的阻断
+  降成提醒。**不这么做，一条会经常误报的门禁等于没有门禁**——它只是训练人忽略它。
 - **`null` 不是 0。** `release.json` 里的 `null` 表示「这次没测出来」；把它当 0 会凭空
   造出一个失败。
 - **基线里没有这个指标时，只判绝对下限**，不拿 0 当基线。
@@ -128,8 +129,8 @@ D:\Python\python.exe scripts/regression_gate.py --candidate .release-candidate -
 D:\Python\python.exe scripts/freeze_release.py --out .release-candidate --allow-dirty --skip-load
 ```
 
-关于第 4 条：它只用于本地快速迭代。`--skip-load` 会让 `perf.*` 指标缺失，
-**拿这样冻结出来的目录去跑门禁必然失败**（见第 4 节）。
+关于第 4 条：它只用于本地快速迭代。`--skip-load` 会让 `perf.*` 指标缺失，但冻结会把
+`load_test` 记成 `status: "skipped"`，门禁据此只给 4 条提醒、不阻断（见第 4 节）。
 
 会花钱的两条（只有你想跑才跑）。它们都要 `--yes`，都会在缺 key 时零成本退出，
 `--budget` 是花费熔断上限（元）：
@@ -152,9 +153,9 @@ D:\Python\python.exe scripts/load_test.py --real --yes --users 5 --run-time 30s 
 | `test` / `gate` 两个 job 会变绿 | **未验证**（同上） |
 | `nightly-real` | **从未触发过**。真实模型的延迟、吞吐与账单都还没取到真值 |
 | 冻结发布里的 `matrix.v2.pass_rate` / `matrix.v3.pass_rate` | 永远是 `n/a`：`freeze_release.py` 只跑 `--offline`（规则臂）。离线模式下模型列是 `None`，不是 0 |
-| `releases/v0.7.0/` 基线 | **写作时还没入库**（`releases/` 目录尚不存在）。也就是说 `gate` job 现在会在读基线那一步失败 —— 这是 M5 的剩余待办，不是 workflow 的 bug。实测报错：`releases\v0.6.0 下没有 release.json：这不是一次冻结发布的目录` |
+| `releases/v0.7.0/` 基线 | **已入库**：随 tag `v0.7.0` 冻结并提交，`gate` job 的执法基线就是它。本机已验证「冻结候选 → 门禁」整条链路通过 |
 | mock 臂压测的 P95 / token | 建模值，报告里标 `provenance: modeled`，不是供应商真值 |
-| 测试条数 | 会随用例增加而变。写作时本机实测 `1059 passed, 10 xfailed`（`python -m pytest -q`） |
+| 测试条数 | 会随用例增加而变。冻结基线时实测 `1061 passed, 10 xfailed`（`python -m pytest -q`） |
 | `.release-candidate/` 能被打包上传 | **未验证**：本机没有 GitHub，验证不了「以点开头的目录」在当前 action 版本下的行为。为了不依赖它，上传步骤显式写了 `include-hidden-files: true` |
 
 ## 7. 已经踩过的坑
@@ -169,13 +170,19 @@ D:\Python\python.exe scripts/load_test.py --real --yes --users 5 --run-time 30s 
    所以 artifact 上传 `.release-candidate/` 和 `reports/`，而 `releases/<tag>/` 走提交。
 3. **脏工作区会拒绝冻结（退出码 2）。** 本机实测输出：`工作区是脏的（有未提交改动），
    拒绝冻结：指标锚不住版本号，之后的对比都没意义。`
-4. **`--skip-load` 会让门禁必然失败**（见第 4 节）。
+4. **`--skip-load` 会让 `perf.*` 变成「跳过」而不是「失败」**，门禁据此降级为提醒
+   （见第 4 节）。
 5. **编码。** 用例与报告全是中文，`scripts/freeze_release.py` 在跑子进程时强制
    `PYTHONUTF8=1` / `PYTHONIOENCODING=utf-8`：Windows 上 locust 会把带中文注释的
    `pyproject.toml` 当默认配置读，GBK 下会炸在解析之前。workflow 里也设了同样的变量。
 6. **退出码 2 不等于失败。** 三个脚本都约定 `2 = 用法 / 环境问题`。CI 日志里看到 2，
    先查环境（工作区脏、缺 `release.json`、缺 key），不要当成质量结论。
-7. **已知毛边：基线目录不存在时 `--gate-against` 会以 traceback 收场。** 门禁在
-   `freeze_release.py` 里是被直接调用的，`load_release` 抛的 `GateUsageError` 没有被捕获，
-   所以退出码是 1（未捕获异常）而不是干净的 2。直接跑 `scripts/regression_gate.py` 则会
-   得到干净的退出码 2 和上面那句提示。
+7. **基线不存在时曾经会吐 traceback（已修）。** 门禁在 `freeze_release.py` 里是被直接
+   调用的，`load_release` 抛的 `GateUsageError` 一开始没被捕获，退出码是误导性的 1。
+   现在会打出「门禁起不来：…」并返回干净的 2。
+8. **门禁真的会拦。** 本机实测：把 `RefundTool.refundable_statuses` 从 `{"delivered"}`
+   改成 `set()`（一个很像「手滑收紧规则」的改动），冻结出的候选被拦下 4 条：
+   `pytest.failed 51 > 0`、`fault.pass_rate 92% < 100%`、
+   `matrix.v3_rules.pass_rate 86.9% < 90%`、
+   `rag_multiturn.v3_rules.pass_rate 比基线退化 6.7% > 容忍 1%`。
+   绝对下限与相对退化**两条判据都各自触发过**。
