@@ -166,7 +166,8 @@ D:\Python\python.exe scripts/load_test.py --real --yes --users 5 --run-time 30s 
 | 冻结发布里的 `matrix.v2.pass_rate` / `matrix.v3.pass_rate` | 永远是 `n/a`：`freeze_release.py` 只跑 `--offline`（规则臂）。离线模式下模型列是 `None`，不是 0 |
 | 执法基线 | **已入库三份**：`releases/v0.6.0/`（M7 补冻）、`releases/v0.7.0/`（M5 首个）、`releases/v0.8.0/`（M6）。`gate` job 的执法基线是最新已冻结版本（现在是 `v0.8.0`），随每次冻结前移。本机已验证「冻结候选 → 门禁」整条链路通过；三版并排报告见 `releases/comparisons/` |
 | mock 臂压测的 P95 / token | 建模值，报告里标 `provenance: modeled`，不是供应商真值 |
-| 测试条数 | 会随用例增加而变。本机 HEAD 实测 `1220 passed, 10 xfailed`；各冻结基线分别是 `v0.6.0` 1025、`v0.7.0` 1061、`v0.8.0` 1121（同一口径：冻结器的收集值） |
+| 测试条数 | 会随用例增加而变。本机 HEAD 实测 `1242 passed, 1 skipped, 10 xfailed`（skip 的是只在判分 venv 里跑的 Ragas / DeepEval 接线测试）；各冻结基线分别是 `v0.6.0` 1025、`v0.7.0` 1061、`v0.8.0` 1121（同一口径：冻结器的收集值） |
+| L3 / L4 / L5 判分进 CI | **没有**。L3 Ragas、L4 DeepEval 要真实 API Key 且会花钱（实测三层合计 CNY 0.3993），L5 Promptfoo 要 Node；三者目前都是手动脚本，不进 `gate` job。CI 门禁仍然只跑离线检查（`docs/judging.md`） |
 | `.release-candidate/` 能被打包上传 | **未验证**：本机没有 GitHub，验证不了「以点开头的目录」在当前 action 版本下的行为。为了不依赖它，上传步骤显式写了 `include-hidden-files: true` |
 | Trace 出口（Langfuse / Opik） | **未验证**：没有任何一份 trace 真的到过 Langfuse 服务（本机无 Docker、无账号），`langfuse>=3.0` 的 API 形状也没在真机上核对过 —— 猜错会**静默**降级成 dry-run。验证到的是载荷映射、dry-run 降级与注入假 client 时的调用序列（`docs/tracing.md` 第 7 节、`docs/stage2-evidence.md` §16.8） |
 

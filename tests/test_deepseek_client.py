@@ -78,6 +78,20 @@ def test_per_call_overrides_win_over_defaults():
     assert provider.requests[0]["max_tokens"] == 32
 
 
+def test_extra_body_is_forwarded_only_when_given():
+    """判分层靠 extra_body 关掉 DeepSeek 思考模式；不能悄悄加给所有调用。"""
+    provider = StubProvider(response=_completion())
+    client = DeepSeekClient(api_key="sk-test", client=provider)
+    client.complete(
+        [ChatMessage.user("u")], extra_body={"thinking": {"type": "disabled"}}
+    )
+    assert provider.requests[0]["extra_body"] == {"thinking": {"type": "disabled"}}
+
+    provider.requests.clear()
+    client.complete([ChatMessage.user("u")])
+    assert "extra_body" not in provider.requests[0]
+
+
 def test_provider_failures_are_wrapped_as_llm_unavailable():
     client = DeepSeekClient(
         api_key="sk-test", client=StubProvider(error=RuntimeError("429 Too Many Requests"))

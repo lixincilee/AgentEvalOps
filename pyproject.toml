@@ -24,6 +24,14 @@ perf = ["locust>=2.20"]
 # M8 的 trace 出口。**可选**且未在本机验证过：没有 Langfuse 账号，也没装这个 SDK。
 # 不装也不影响任何测试与评测：缺它时 LangfuseEmitter 降级成 dry-run（见 docs/tracing.md）。
 trace = ["langfuse>=3.0"]
+# M9 的判分分层：Ragas（L3，RAG 指标）+ DeepEval（L4，LLM-as-a-Judge）。
+# 这两个框架会把 openai 从 2.x 降到 1.x（本机主环境是 2.44）—— **不要装进主解释器**，
+# 否则确定性测试基线的依赖形状就被它们改了。请建独立 venv（见 docs/judging.md）：
+#   python -m venv .venv-judge
+#   .venv-judge\Scripts\pip install -e ".[judge,dev,llm,api]"
+# langchain-community 0.4 拆走了 ragas 0.4 依赖的 vertexai 模块，import 直接炸；
+# 固定 <0.4 是实测能跑通的组合，不是保守。
+judge = ["ragas>=0.4,<0.5", "langchain-community<0.4", "deepeval>=4.3,<5"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

@@ -303,9 +303,14 @@ class MeteredLLMClient:
         *,
         temperature: float | None = None,
         max_tokens: int | None = None,
+        extra_body: Mapping[str, Any] | None = None,
     ) -> LLMResponse:
+        # 只在调用方显式给了 extra_body 时才转发：测试里的 stub 保持旧签名也能用。
         response = self.client.complete(
-            messages, temperature=temperature, max_tokens=max_tokens
+            messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            **({"extra_body": extra_body} if extra_body else {}),
         )
         self.ledger.record(response.model, response.usage)
         self.ledger.assert_within_budget()

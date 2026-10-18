@@ -7,7 +7,7 @@ must keep running with no network and no provider SDK installed.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Protocol, Sequence, runtime_checkable
+from typing import Any, Mapping, Protocol, Sequence, runtime_checkable
 
 
 class LLMError(RuntimeError):
@@ -115,6 +115,7 @@ class LLMClient(Protocol):
         *,
         temperature: float | None = None,
         max_tokens: int | None = None,
+        extra_body: Mapping[str, Any] | None = None,
     ) -> LLMResponse: ...
 
 

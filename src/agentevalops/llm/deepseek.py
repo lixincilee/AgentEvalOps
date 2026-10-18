@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import time
-from typing import Any, Sequence
+from typing import Any, Mapping, Sequence
 
 from .base import (
     ChatMessage,
@@ -74,6 +74,7 @@ class DeepSeekClient:
         *,
         temperature: float | None = None,
         max_tokens: int | None = None,
+        extra_body: Mapping[str, Any] | None = None,
     ) -> LLMResponse:
         client = self._ensure_client()
         started = time.perf_counter()
@@ -83,6 +84,7 @@ class DeepSeekClient:
                 messages=[message.to_dict() for message in messages],
                 temperature=self._temperature if temperature is None else temperature,
                 max_tokens=self._max_tokens if max_tokens is None else max_tokens,
+                **({"extra_body": dict(extra_body)} if extra_body else {}),
             )
         except LLMError:
             # Never double-wrap our own error types.

@@ -34,7 +34,8 @@ AgentEvalOps/
 │   ├── stage2-evidence.md             # 阶段二实测证据与复现命令
 │   ├── ci.md                          # M5：CI 三个 job、门禁判据、本地复刻、"没验证过的部分"
 │   ├── bad-cases-v2.md                # v2 的 9 处差异逐条归类与根因
-│   └── tracing.md                     # M8：trace 口径、Langfuse 映射、失败定位规则
+│   ├── tracing.md                     # M8：trace 口径、Langfuse 映射、失败定位规则
+│   └── judging.md                     # M9：L3/L4/L5 判分分层、依赖隔离与实测
 ├── .github/
 │   └── workflows/regression.yml       # M5：test / gate / nightly-real 三个 job
 ├── scripts/
@@ -49,7 +50,11 @@ AgentEvalOps/
 │   ├── regression_gate.py             # M5：候选 vs 基线，按阈值判退化（退出码给 CI 用）
 │   ├── trace_run.py                   # M8：跑一批用例并落 trace（期望值随行落盘）
 │   ├── trace_report.py                # M8：判分 + 失败环节定位（检索/推理/工具/状态）
-│   └── trace_view.py                  # M8：自包含 HTML 瀑布图（离线可看、可入库）
+│   ├── trace_view.py                  # M8：自包含 HTML 瀑布图（离线可看、可入库）
+│   ├── judge_l3_ragas.py              # M9：Ragas 忠实性 + 上下文精度
+│   ├── judge_l4_deepeval.py           # M9：DeepEval GEval 判分
+│   ├── judge_l5_promptfoo.py          # M9：Promptfoo 红队（确定性断言，不花钱）
+│   └── promptfoo_provider.py          # M9：Promptfoo exec provider（直接 import V3Agent）
 ├── reports/                           # 运行产物（已 gitignore）：评测报告 JSON，可当 CI 工件
 ├── releases/                          # M5：冻结的发布（要提交进 git）——回归门禁的比较对象
 │   ├── v0.6.0/                        #   M7 补冻（v0.6.0 冻结时还没有 freeze_release.py）
@@ -85,6 +90,7 @@ AgentEvalOps/
 │       ├── faults.py                  # M4：故障注入脚手架（生产路径不含任何开关）
 │       ├── service.py                 # M4：把 v3 链路包成 HTTP 门面（/chat /healthz /metrics）
 │       ├── tracing.py                 # M8：一轮一条 trace（span 树 + 脱敏 + JSONL/Langfuse 出口）
+│       ├── judging/                   # M9：三层判分的数据契约与框架适配（base/collect/ragas/deepeval/promptfoo）
 │       ├── llm/                       # 阶段二：base / deepseek / fake / costing
 │       └── data/
 │           ├── __init__.py
@@ -123,7 +129,9 @@ AgentEvalOps/
     ├── test_fault_cases.py            # M4 数据驱动：回放 fault_cases.jsonl
     ├── test_service.py                # M4 HTTP 契约：状态码、审计结构、/metrics 记账
     ├── test_regression_gate.py        # M5 门禁判据：该拦的拦得住、不该拦的别拦
-    └── test_freeze_release.py         # M5 冻结器：pytest 计数解析、指标拍平、索引渲染
+    ├── test_freeze_release.py         # M5 冻结器：pytest 计数解析、指标拍平、索引渲染
+    ├── test_judging_core.py           # M9：判分契约、NaN 口径、L5 config/解析（离线）
+    └── test_judging_frameworks.py     # M9：Ragas / DeepEval 接线（只在 .venv-judge 里跑）
 ```
 
 ## 快速开始
@@ -795,6 +803,33 @@ trace 是要入库、要给人看的。API key、`Bearer` 头、邮箱、手机�
 `prompt_tokens` / `total_tokens` 里带 "token"，第一版脱敏规则把它们也变成了 `***`——
 **静默删掉了成本指标**。现在有白名单钉住：「带计数提示词的 `*_tokens` 不算凭据」。
 
+## 阶段二 M9：判分分层（L3 / L4 / L5）
+
+pytest 能判「状态 / 意图 / 工具名 / 参数 / 错误码」，判不了「回答里的数字是不是资料里真有」、
+「检索块对这个问题有没有用」、「不该发生的事有没有发生」。三层各管一段，输出同一种
+`JudgeReport`：
+
+| 层 | 脚本 | 判什么 | 实测（2026-10-18） |
+| --- | --- | --- | --- |
+| L3 Ragas | `scripts/judge_l3_ragas.py` | 忠实性 + 上下文精度 | 38 条有依据用例，通过率 68.4%，CNY 0.2846 |
+| L4 DeepEval | `scripts/judge_l4_deepeval.py` | GEval 事实性 / 拒答质量 | 48 条，通过率 97.9%，CNY 0.1147 |
+| L5 Promptfoo | `scripts/judge_l5_promptfoo.py` | 46 条安全用例的状态、错误码、泄露标记 | 100%，CNY 0.0000 |
+
+```powershell
+# L3 / L4 需要独立的判分 venv（不要把 ragas / deepeval 装进主解释器）
+.venv-judge\Scripts\python.exe scripts\judge_l3_ragas.py --yes --budget 0.8
+.venv-judge\Scripts\python.exe scripts\judge_l4_deepeval.py --yes --budget 0.5
+
+# L5 需要 Node；固定版本本地安装，不走 npx
+$env:PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD = '1'
+npm install --no-save --prefix .promptfoo promptfoo@0.121.3
+D:\Python\python.exe scripts\judge_l5_promptfoo.py
+```
+
+L3 与 L4 都抓到了同一条真实幻觉（`rag_stale_refund_days`：把旧版政策的「逾期不再受理」
+说成现行规则），两套独立实现指向同一处。口径、依赖隔离、阈值表和「还没证明的事」见
+`docs/judging.md`；证据见 `docs/stage2-evidence.md` §17。
+
 ## 后续路线图
 
 | 阶段 | 目标 | 关键产出 |
@@ -807,7 +842,7 @@ trace 是要入库、要给人看的。API key、`Bearer` 头、邮箱、手机�
 | **阶段二 M6（已完成）** | 噪声压制：把方差本身变成可测量的量 | `load_test.py --repeat N`（每次重启服务）、`compare_versions.py --repeat N`（中位数 + 极差 + 墙头草用例）、`freeze_release.py --repeat N` 把方差写进 `release.json`、门禁报告新增「噪声」列、修掉预算熔断被兜底吞掉的 bug（证据文档 §13 / §14） |
 | **阶段二 M7（已完成）** | 多版本回归 | 补冻 `releases/v0.6.0/`、`releases/comparisons/v0.6.0-v0.7.0-v0.8.0.json`（三版并排、门禁全绿）；CI 执法基线上移到最新已冻结版本 |
 | **阶段二 M8（已完成）** | 可观测性：Trace 层 | `tracing.py`（span 树 + 脱敏 + JSONL / Langfuse 双出口、零行为改变）、`trace_run.py` / `trace_report.py` / `trace_view.py`、失败环节定位规则、`--llm` 真实模型臂（16 条真 trace，CNY 0.0057）、**97 条**新测试（证据 §16） |
-| **阶段二 M9（下一步）** | 判分分层 + 把 trace 纳入发布冻结 | L3 Ragas / L4 DeepEval / L5 Promptfoo 三层判分；`freeze_release.py` 顺带冻结 trace 与定位报告；真实模型的延迟与账单 |
+| **阶段二 M9（进行中）** | 判分分层 + 把 trace 纳入发布冻结 | L3 Ragas / L4 DeepEval / L5 Promptfoo 三层判分已落地（`docs/judging.md` + 真实报告）；剩余：`freeze_release.py` 冻结 trace 与定位报告 |
 
 ### 评测指标（阶段五要算的东西，现在就能算前六项）
 
