@@ -6,16 +6,21 @@
 一句话：CI 不只跑测试。它还要在代码变化时回答一个更难的问题——
 **这套评测本身的分数有没有退化？**
 
-## 1. 三个 job，各管一段
+## 1. 五个 job，各管一段
 
 | job | 什么时候跑 | 干什么 | 阻塞合并吗 |
 | --- | --- | --- | --- |
 | `test` | 每次 push 到 `main`、每个 PR、手动触发、每天定时 | `python -m pytest -q` | 阻塞 |
 | `gate` | 同上（`needs: test`，测试先过） | 冻结候选发布，并和 `releases/v0.8.0`（最新已冻结版本）比 | 阻塞 |
+| `judge-l5` | 同上（`needs: test`） | Promptfoo 跑 46 条安全用例；零模型费用 | 阻塞 |
 | `nightly-real` | **只在定时任务里**（`github.event_name == 'schedule'`） | 真实模型对比 + 真实并发压测 | 不阻塞 |
+| `judge-real` | 定时任务或手动触发 | Ragas / DeepEval 各 2 轮 + 判分门禁；会花钱 | 不阻塞合并（PR 上不触发） |
 
 `nightly-real` 不阻塞合并有两重保险：它**在 PR 上根本不触发**；同时整个 job 标了
 `continue-on-error: true`，所以供应商拥塞、限流、余额不足都不会把 workflow 弄红。
+
+`judge-real` 没有 `continue-on-error`：判分退化应该让这次夜间运行变红、被人看见。
+但它同样在 PR 上不触发，所以不会挡住合并。L5 是确定性的，放在每次 PR 上跑。
 
 ## 2. 触发、并发与权限
 
@@ -113,7 +118,7 @@ python scripts/freeze_release.py --out .release-candidate --gate-against release
 ```powershell
 cd F:\Agent学习\AgentEvalOps
 
-# 装依赖（三个 job 都是这一条）
+# 装依赖（test / gate / judge-l5 用这一条）
 D:\Python\python.exe -m pip install -e ".[dev,llm,api,perf]"
 
 # 1) 全量测试 = test job
@@ -127,10 +132,20 @@ D:\Python\python.exe scripts/regression_gate.py --candidate .release-candidate -
 
 # 4) 本机工作区通常是脏的，冻结会被拒绝；放行要显式加 --allow-dirty
 D:\Python\python.exe scripts/freeze_release.py --out .release-candidate --allow-dirty --skip-load
+
+# 5) L5 红队 = judge-l5 job（需要 Node；固定版本本地安装）
+$env:PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD = '1'
+npm install --no-save --prefix .promptfoo promptfoo@0.121.3
+D:\Python\python.exe scripts/judge_l5_promptfoo.py
+
+# 6) L3/L4 + 判分门禁 = judge-real job（会花钱，需 DEEPSEEK_API_KEY）
+.venv-judge\Scripts\python.exe scripts/judge_l3_ragas.py --repeat 2 --yes --budget 1.2
+.venv-judge\Scripts\python.exe scripts/judge_l4_deepeval.py --repeat 2 --yes --budget 0.7
+D:\Python\python.exe scripts/judge_gate.py --l3 reports/l3-ragas.json --l4 reports/l4-deepeval.json --baseline quality/judge_baseline.json
 ```
 
-trace 这套**还没有进 CI**（属于 M9）。它是纯 Python、不依赖 Docker，本机跑一遍 310 条 trace
-只要约 10 秒：
+trace 这套**还没有进 CI**（M9 的剩余工作）。它是纯 Python、不依赖 Docker，本机跑一遍
+310 条 trace 只要约 10 秒：
 
 ```powershell
 D:\Python\python.exe scripts/trace_run.py --cases eval_cases/case_matrix_v2.jsonl --faults eval_cases/fault_cases.jsonl --multiturn eval_cases/multiturn_cases.jsonl --out reports/traces-full.jsonl
@@ -166,8 +181,10 @@ D:\Python\python.exe scripts/load_test.py --real --yes --users 5 --run-time 30s 
 | 冻结发布里的 `matrix.v2.pass_rate` / `matrix.v3.pass_rate` | 永远是 `n/a`：`freeze_release.py` 只跑 `--offline`（规则臂）。离线模式下模型列是 `None`，不是 0 |
 | 执法基线 | **已入库三份**：`releases/v0.6.0/`（M7 补冻）、`releases/v0.7.0/`（M5 首个）、`releases/v0.8.0/`（M6）。`gate` job 的执法基线是最新已冻结版本（现在是 `v0.8.0`），随每次冻结前移。本机已验证「冻结候选 → 门禁」整条链路通过；三版并排报告见 `releases/comparisons/` |
 | mock 臂压测的 P95 / token | 建模值，报告里标 `provenance: modeled`，不是供应商真值 |
-| 测试条数 | 会随用例增加而变。本机 HEAD 实测 `1242 passed, 1 skipped, 10 xfailed`（skip 的是只在判分 venv 里跑的 Ragas / DeepEval 接线测试）；各冻结基线分别是 `v0.6.0` 1025、`v0.7.0` 1061、`v0.8.0` 1121（同一口径：冻结器的收集值） |
-| L3 / L4 / L5 判分进 CI | **没有**。L3 Ragas、L4 DeepEval 要真实 API Key 且会花钱（实测三层合计 CNY 0.3993），L5 Promptfoo 要 Node；三者目前都是手动脚本，不进 `gate` job。CI 门禁仍然只跑离线检查（`docs/judging.md`） |
+| 测试条数 | 会随用例增加而变。本机 HEAD 实测 `1273 passed, 1 skipped, 10 xfailed`（skip 的是只在判分 venv 里跑的 Ragas / DeepEval 接线测试）；各冻结基线分别是 `v0.6.0` 1025、`v0.7.0` 1061、`v0.8.0` 1121（同一口径：冻结器的收集值） |
+| L3 / L4 / L5 判分进 CI | **workflow 已接线，但 GitHub 上没跑过**。L5 在每次 PR 上跑（零模型费用）；L3/L4 在定时/手动任务里各跑 2 轮，再由 `judge_gate.py` 对比 `quality/judge_baseline.json`。本机验证到的是同一条命令链，不是一次真实的 Actions 运行 |
+| 判分门禁的容忍值 | **来自一轮 3 次重复的实测**。样本量小，容忍值（L3 5 个百分点、L4 3 个百分点）是工程折中，不是统计结论；夜间跑得越多越该收紧 |
+| `judge-real` 的夜间花费 | **上限可算、真值未测**：L3 `--budget 1.2` + L4 `--budget 0.7`，单晚最多 CNY 1.9；实际账单要等 GitHub 跑过才知道 |
 | `.release-candidate/` 能被打包上传 | **未验证**：本机没有 GitHub，验证不了「以点开头的目录」在当前 action 版本下的行为。为了不依赖它，上传步骤显式写了 `include-hidden-files: true` |
 | Trace 出口（Langfuse / Opik） | **未验证**：没有任何一份 trace 真的到过 Langfuse 服务（本机无 Docker、无账号），`langfuse>=3.0` 的 API 形状也没在真机上核对过 —— 猜错会**静默**降级成 dry-run。验证到的是载荷映射、dry-run 降级与注入假 client 时的调用序列（`docs/tracing.md` 第 7 节、`docs/stage2-evidence.md` §16.8） |
 

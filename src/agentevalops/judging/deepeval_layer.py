@@ -18,6 +18,7 @@ from __future__ import annotations
 from typing import Any, Iterable, Mapping, Sequence
 
 from .base import JudgeSample, JudgeScore, judge_score
+from ..llm import BudgetExceededError
 from .llm import JudgeUnavailableError, disabled_thinking_body
 
 LAYER = "L4"
@@ -169,6 +170,8 @@ def evaluate_samples(
                     thresholds=thresholds,
                 )
             )
+        except BudgetExceededError:
+            raise
         except Exception as exc:  # noqa: BLE001
             rows.append(
                 judge_score(

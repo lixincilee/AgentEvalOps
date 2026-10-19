@@ -24,6 +24,7 @@ from .base import (
     JudgeSample,
     JudgeScore,
 )
+from .variance import RepeatReport
 
 __all__ = [
     "DEFAULT_THRESHOLDS",
@@ -31,4 +32,5 @@ __all__ = [
     "JudgeReport",
     "JudgeSample",
     "JudgeScore",
+    "RepeatReport",
 ]

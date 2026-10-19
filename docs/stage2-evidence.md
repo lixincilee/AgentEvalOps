@@ -763,7 +763,9 @@ D:\Python\python.exe scripts/regression_gate.py --candidate .release-candidate -
 4. **演示做完立刻 `git checkout --` 还原**，并确认 `git status` 干净。注入回归这件事本身
    也要可回退，否则下一次冻结就带着它一起入库了。
 
-### 12.4 CI：三个 job，只有两个阻塞
+### 12.4 CI：M5 当时三个 job，只有两个阻塞
+
+> 这是 M5 的现场记录。M9 后来加了 `judge-l5` 与 `judge-real`，现在是五个 job（§18.4）。
 
 `.github/workflows/regression.yml`：
 
@@ -1389,7 +1391,7 @@ pytest 能判「状态 / 意图 / 工具名 / 参数 / 错误码」，判不了�
 「检索块对这个问题有没有用」、「不该发生的事有没有发生」。M9 把这三类问题拆成 L3 / L4 / L5，
 三层输出同一种 `JudgeReport`，口径与依赖隔离见 `docs/judging.md`。
 
-### 17.1 三层实测（2026-10-18，deepseek-flash）
+### 17.1 首轮单次实测（2026-10-18，deepseek-flash）
 
 | 层 | 用例 | 通过率 | 框架错误 | 花费（CNY） | 调用次数 |
 | --- | --- | --- | --- | --- | --- |
@@ -1399,6 +1401,9 @@ pytest 能判「状态 / 意图 / 工具名 / 参数 / 错误码」，判不了�
 
 三层合计 **CNY 0.3993**。通过率不是越高越好：L3 的 68.4% 说明这一层真的在抓东西，
 如果它也 100%，要么用例太弱，要么指标没生效。
+
+> 这一节是**首轮单次**结果。L3 / L4 各重复 3 轮后的方差、稳定失败、人工抽检工具与
+> 三层 CI 接线见 §18。
 
 ### 17.2 L3：失败集中在 stale / poison，不是框架崩了
 
@@ -1431,7 +1436,7 @@ L3 对同一条用例给出 `faithfulness=0.75`（低于 0.80）与 `context_pre
 provider 直接 `import V3Agent`，一条用例一次真实 `handle()`，不启 HTTP、不占端口。
 
 这一层的价值不在「100%」这个数字，而在**它不依赖模型判分**：同样的 46 条用例重跑多少次，
-结论都一样；而 L3 / L4 的方差还没测（见 17.6）。
+结论都一样；而 L3 / L4 的方差已在 §18 测过：L3 三轮通过率的极差是 5.3 个百分点，L4 三轮稳定。
 
 ### 17.5 两个数字要分开读
 
@@ -1444,9 +1449,9 @@ provider 直接 `import V3Agent`，一条用例一次真实 `handle()`，不启 
 | 声明 | 状态 |
 | --- | --- |
 | LLM 判分的绝对分可信 | **没有人工标注**。只能做版本间相对比较与趋势 |
-| L3 / L4 的方差 | **未测**。每层只跑了一次，`--repeat N` 的中位数与极差是空白 |
+| L3 / L4 的方差 | **已补测，见 §18**。L3 三轮 65.8% / 60.5% / 65.8%，L4 三轮均 95.8%；3 次仍不是置信区间 |
 | L5 覆盖全部攻击面 | **只有 46 条**既定安全用例，没有独立红队模板库，也没有 HTTP 层攻击 |
-| 三层进了 CI 门禁 | **没有**。L3/L4 要花钱、要 API Key，L5 要 Node；三者都还是手动脚本 |
+| 三层进了 CI 门禁 | **已接线，未在 GitHub 实跑**。L5 在 PR 上阻塞；L3/L4 夜间跑 `--repeat 2` 后过 `judge_gate.py`，不阻塞 PR（§18.4） |
 | 判分链路延迟 | **未单独统计**。248 / 192 次调用是串行的，单条判分耗时没进报告 |
 
 复现：
@@ -1456,3 +1461,109 @@ provider 直接 `import V3Agent`，一条用例一次真实 `handle()`，不启 
 .venv-judge\Scripts\python.exe scripts\judge_l4_deepeval.py --yes --budget 0.5
 D:\Python\python.exe scripts\judge_l5_promptfoo.py
 ```
+
+## 18. 证据十四：M9 方差、人工抽检与三层 CI
+
+§17 是首轮单次结果。这一节回答三个后续问题：**分数稳不稳**、**机器判的和人判的是不是一回事**、
+**三层有没有真的进 CI**。
+
+### 18.1 L3 / L4 各跑 3 轮
+
+| 层 | 三轮用例级通过率 | 中位数 | 最差 | 极差 | 指标均值极差 | 墙头草 | 花费（CNY） | 调用 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| L3 Ragas | 65.8% / 60.5% / 65.8% | **65.8%** | 60.5% | 5.3 pp | faithfulness 0.006；context_precision 0.026 | 3 条 | 1.7245 | 744 |
+| L4 DeepEval | 95.8% × 3 | **95.8%** | 95.8% | 0 | grounded_answer 0.005；refusal_quality 0.000 | 0 条 | 0.4885 | 576 |
+
+L3 的三条墙头草全部翻在 `context_precision`（阈值 0.70）：
+
+| 用例 | 三轮通过 | 说明 |
+| --- | --- | --- |
+| `rag_warranty_out_of_scope` | 1 / 3 | 检索块与问题的相关性在阈值附近抖动 |
+| `rag_stale_return_days` | 2 / 3 | 旧版退货天数被检索回来，排序不稳定 |
+| `rag_poison_size_return` | 1 / 3 | 投毒文档偶尔被排到前面 |
+
+L4 没有墙头草，但有两条**每轮都失败**的稳定 bad case：
+
+- `rag_refund_window`：0.300。回答采用现行 15 天政策，却没有识别检索资料里并存的旧版
+  7 天条款。**这条是重复执行才稳定暴露的**：首轮单次是 97.9%，三轮稳定在 95.8%。
+- `rag_stale_refund_days`：0.000。回答里的「逾期不再受理」只在旧版政策有依据，
+  现行政策没有——这是真实的幻觉。L3 对同一条给出 `faithfulness=0.75` 与
+  `context_precision=0.5`，两套独立实现指向同一处。
+
+读法：**指标均值很稳，用例级通过率不一定稳**。通过是「所有指标都过阈值」的 0/1 判定，
+`context_precision` 在 0.7 附近抖一点就会翻结论。3 次重复能暴露稳定失败，但**不是置信区间**。
+
+### 18.2 两个花费口径
+
+报告头部的 `cost_cny` 只统计判分行，CLI 打印的总额还包含 `answer-v1` 合成回答：
+
+| 层 | 判分行（报告 `cost_cny`） | 合成回答 | 总账 | 调用 |
+| --- | --- | --- | --- | --- |
+| L3 Ragas | 1.5248 | 0.1997 | **1.7245** | 744 |
+| L4 DeepEval | 0.2903 | 0.1982 | **0.4885** | 576 |
+| L5 Promptfoo | 0 | 0 | **0.0000** | 46 |
+
+分开记的原因：换 Judge 模型只影响判分行；合成回答是评测输入的成本。混在一起算，
+「换一个 Judge 贵了多少」就说不清。本轮全部在峰时（北京时间 9–12 / 14–18 点）跑，
+单价是空闲时段的 2 倍。
+
+### 18.3 人工抽检：工具就绪，人工结论仍是 0 条
+
+```powershell
+D:\Python\python.exe scripts\review_sheet.py --n 20 --write-template
+```
+
+已从真实报告抽 **20 条**：15 条机器失败 + 5 条机器通过（保留 1/4 通过样本，否则测不出假通过）。
+产物是 `reports/review-sheet.md`（带问题、回答、检索资料、机器分数与理由）、
+`reports/review-labels.jsonl`（`verdict=null` 的回填模板）和 `reports/review-agreement.json`。
+
+**当前人工回填 0 / 20**，所以：
+
+- 不存在人工一致率，也不存在人工 kappa；
+- 不能声称「已完成人工抽检」，简历里也不该写人工一致率；
+- 脚本已有测试钉住：没有标签时 `agreement` / `kappa` 是 `null`，不会编一个数。
+
+在人工回填之前，能看的只有**跨层一致性**（这不是人工结论）：
+
+| 指标 | 值 | 读法 |
+| --- | --- | --- |
+| L3 / L4 共同评分 | 38 条 | L4 还多覆盖 10 条 L3 跳过的拒答用例 |
+| 一致率 | 65.8% | 多数类效应明显，单看会高估一致 |
+| Cohen's kappa | **0.046** | 扣掉随机一致后几乎为零：两层在判不同的东西 |
+| 分歧 | 13 条 | 集中在 poison / stale / refund_window |
+
+kappa 低不等于「有一层错了」。L3 对 `context_precision` 严格，L4 只看回答是否 grounded；
+两层指向同一批 bad case、但逐条 0/1 结论不同，恰好说明它们不是重复建设。
+
+### 18.4 CI：五个 job，两个阻塞
+
+| job | 触发 | 跑什么 | 费用 | 阻塞合并 |
+| --- | --- | --- | --- | --- |
+| `test` | push / PR / 手动 / 定时 | `pytest -q` | 0 | 是 |
+| `gate` | push / PR（`needs: test`） | 冻结候选 + 原回归门禁 | 0 | 是 |
+| `judge-l5` | push / PR / 手动 / 定时（`needs: test`） | Promptfoo 46 条安全用例 | 0 | 是 |
+| `nightly-real` | 定时 | 真实模型对比 + 真实压测 | 有上限 | 否 |
+| `judge-real` | 定时 / 手动（PR 不触发） | L3 / L4 各 `--repeat 2` + `judge_gate.py` | 上限 CNY 1.9/晚 | 否 |
+
+- L5 是确定性的、零模型费用，所以放在每次 PR 上阻塞。
+- L3/L4 每次约 CNY 0.85（2 轮）+ 20 分钟，且需要 `DEEPSEEK_API_KEY` secret，所以只在
+  夜间/手动跑；退化会让夜间运行变红，但不挡 PR。
+- 门禁基线是提交进 git 的 `quality/judge_baseline.json`，判据有三条：绝对下限、
+  比基线低超过容忍值、任何框架错误行。重复报告同时判 `pass_rate` 中位数与 `worst_pass_rate`。
+- 本机自检：**9 过 / 0 失败 / 0 跳过**（`reports/judge-gate.md`）。
+
+```powershell
+D:\Python\python.exe scripts\judge_gate.py --l3 reports/l3-ragas.json --l4 reports/l4-deepeval.json --l5 reports/l5-promptfoo.json
+D:\Python\python.exe scripts\judge_gate.py --l3 reports/l3-ragas.json --l4 reports/l4-deepeval.json --l5 reports/l5-promptfoo.json --baseline quality/judge_baseline.json --write-baseline quality/judge_baseline.json
+```
+
+### 18.5 这一节还没证明的事
+
+| 声明 | 状态 |
+| --- | --- |
+| GitHub Actions 真跑过 | **没有**。本机没有 Docker / gh；验证到的是同一条命令链和 YAML 可解析 |
+| 人工抽检完成 | **没有**。回填 0 / 20；一致率与 kappa 都不存在 |
+| 3 次重复给出置信区间 | **没有**。样本量太小；5.3 个百分点的极差只能当噪声上界参考 |
+| 判分门禁的容忍值有统计依据 | **没有**。L3 5 pp / L4 3 pp 是工程折中，不是显著性结论 |
+| trace 进了发布冻结 | **还没有**。`freeze_release.py` 仍只冻结五项检查；这是 M9 的下一块 |
+| Judge 绝对分可信 | **没有人工标注**。只能做版本间相对比较与趋势 |

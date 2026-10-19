@@ -117,6 +117,9 @@ class JudgeReport:
     generated_at: str = ""
     case_set: str = ""
     notes: list[str] = field(default_factory=list)
+    #: 被判分的样本（问题 / 回答 / 资料）。抽检表要给人看原文；只留 case_id 与分数，
+    #: 人没法复核。默认空列表，旧调用方不用改。
+    samples: list[JudgeSample] = field(default_factory=list)
 
     @property
     def framework(self) -> str:
@@ -190,6 +193,7 @@ class JudgeReport:
             "errors": len(self.errored_rows),
             "by_metric": {k: _round_floats(v) for k, v in self.by_metric().items()},
             "notes": list(self.notes),
+            "samples": [sample.to_dict() for sample in self.samples],
             "scores": [row.to_dict() for row in self.rows],
         }
 

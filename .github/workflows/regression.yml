@@ -1,7 +1,8 @@
 # AgentEvalOps 回归门禁。
 #
-# 三个 job 分工：test 管功能，gate 管质量门禁，nightly-real 管真实模型的延迟与账单。
-# 前两个在 push / PR 上跑并阻塞合并；nightly-real 只在定时任务里跑，不阻塞任何人。
+# 五个 job 分工：test 管功能，gate 管离线质量门禁，judge-l5 管安全红队，
+# judge-real 管 L3/L4 判分，nightly-real 管真实模型的延迟与账单。
+# test / gate / judge-l5 在 push / PR 上跑并阻塞合并；两个 real job 只在定时任务里跑。
 #
 # 诚实声明：这份 workflow 还没有在 GitHub 上真跑过（本机没有 Docker，也没有 gh CLI）。
 # 它的正确性来自「每条 run 命令都在本机按同一顺序跑过」+「YAML 能被解析」，
@@ -116,6 +117,48 @@ jobs:
           path: reports/
           if-no-files-found: warn
 
+  judge-l5:
+    name: 判分 L5（Promptfoo，零模型费用）
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: 安装依赖
+        run: python -m pip install -e ".[dev]"
+
+      # 固定版本本地安装：npx 会顺带拉 Playwright 浏览器，L5 用不到浏览器。
+      - name: 安装 Promptfoo
+        run: npm install --no-save --prefix .promptfoo promptfoo@0.121.3
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+          PUPPETEER_SKIP_DOWNLOAD: "1"
+
+      # 46 条 safety 用例，确定性断言，零模型费用；退出码 1 = 有用例没过。
+      - name: L5 红队
+        run: python scripts/judge_l5_promptfoo.py
+
+      - name: 上传 L5 报告
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: judge-l5-reports
+          path: |
+            reports/l5-promptfoo.md
+            reports/l5-promptfoo.json
+            reports/promptfoo.config.json
+            reports/promptfoo-raw.json
+          if-no-files-found: warn
+
   nightly-real:
     name: 夜间真实模型（会花钱）
     # 只在定时任务里跑：PR 上永不触发，所以它结构上就不可能阻塞合并。
@@ -161,4 +204,65 @@ jobs:
         with:
           name: nightly-real-reports
           path: reports/
+          if-no-files-found: warn
+
+  judge-real:
+    name: 判分 L3/L4（真实模型，会花钱）
+    # 和 nightly-real 一样只在定时 / 手动触发：PR 上永不触发，所以不会阻塞合并。
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    needs: test
+    runs-on: ubuntu-latest
+    # L3 两轮约 18 分钟、L4 两轮约 10 分钟，加依赖安装；120 分钟是余量。
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 缓存 pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-judge-${{ hashFiles('pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-judge-
+
+      # 判分框架要独立依赖形状：openai 会从 2.x 降到 1.x，不能塞进 test job。
+      - name: 安装判分依赖
+        run: python -m pip install -e ".[judge,dev,llm]"
+
+      # --repeat 2 是成本与方差的折中：单轮分不清「真退化」与「Judge 抖动」。
+      # --budget 是硬熔断；超过就停，不会把整晚的额度跑光。
+      - name: L3 Ragas（2 轮）
+        run: python scripts/judge_l3_ragas.py --repeat 2 --yes --budget 1.2
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+
+      - name: L4 DeepEval（2 轮）
+        run: python scripts/judge_l4_deepeval.py --repeat 2 --yes --budget 0.7
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+
+      # 判分脚本的退出码只管「本层有没有失败」；跨版本退化由这一条判。
+      - name: 判分门禁
+        run: >-
+          python scripts/judge_gate.py
+          --l3 reports/l3-ragas.json
+          --l4 reports/l4-deepeval.json
+          --baseline quality/judge_baseline.json
+
+      - name: 上传判分报告
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: judge-real-reports
+          path: |
+            reports/l3-ragas.md
+            reports/l3-ragas.json
+            reports/l4-deepeval.md
+            reports/l4-deepeval.json
+            reports/judge-gate.md
+            reports/judge-gate.json
           if-no-files-found: warn

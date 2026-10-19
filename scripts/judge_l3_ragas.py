@@ -29,7 +29,8 @@ from agentevalops.judging.llm import (  # noqa: E402
     build_ledger,
     build_metered_client,
 )
-from agentevalops.llm import resolve_price  # noqa: E402
+from agentevalops.judging.variance import RepeatReport  # noqa: E402
+from agentevalops.llm import BudgetExceededError, resolve_price  # noqa: E402
 
 DEFAULT_CASES = REPO_ROOT / "eval_cases" / "rag_cases.jsonl"
 
@@ -40,6 +41,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--limit", type=int, default=0, help="最多评多少条（0 = 全部）")
     parser.add_argument("--model", default=None, help="判分模型（默认取 settings.model）")
     parser.add_argument("--budget", type=float, default=None, help="花费熔断上限（元）")
+    parser.add_argument("--repeat", type=int, default=1, help="重复次数（量判分方差）")
     parser.add_argument("--yes", action="store_true", help="确认真实调用（会花钱）")
     parser.add_argument("--no-compose", action="store_true",
                         help="不合成回答（直接评 v3 的 message，预期无意义，仅用于对照）")
@@ -69,31 +71,63 @@ def main(argv: list[str] | None = None, *, settings: Settings | None = None) -> 
         )
         return 2
 
+    repeat = max(1, args.repeat)
+    reports: list[JudgeReport] = []
     try:
         cases = load_cases(args.cases)
         if args.limit:
             cases = cases[: args.limit]
         composer_client = None if args.no_compose else build_metered_client(resolved, ledger)
-        samples = collect_rag_samples(
-            cases,
-            composer=(
-                None
-                if composer_client is None
-                else (lambda question, contexts: compose_answer(
-                    question, contexts, composer_client, ledger=ledger
-                ))
-            ),
-        )
-        scored = [sample for sample in samples if sample.contexts]
-        skipped = len(samples) - len(scored)
         judge_client = build_async_openai(resolved, ledger)
         from agentevalops.judging.ragas_layer import DEFAULT_METRICS, build_llm, evaluate_samples
 
         llm = build_llm(model, judge_client)
-        rows = evaluate_samples(scored, llm=llm, metrics=DEFAULT_METRICS, ledger=ledger, judge_model=model)
+        for index in range(repeat):
+            samples = collect_rag_samples(
+                cases,
+                composer=(
+                    None
+                    if composer_client is None
+                    else (lambda question, contexts: compose_answer(
+                        question, contexts, composer_client, ledger=ledger
+                    ))
+                ),
+            )
+            scored = [sample for sample in samples if sample.contexts]
+            skipped = len(samples) - len(scored)
+            rows = evaluate_samples(
+                scored, llm=llm, metrics=DEFAULT_METRICS, ledger=ledger, judge_model=model
+            )
+            reports.append(
+                JudgeReport(
+                    layer="L3",
+                    judge_model=model,
+                    rows=rows,
+                    skipped=skipped,
+                    generated_at=utc_now(),
+                    case_set=str(args.cases.name),
+                    samples=list(scored),
+                )
+            )
+            if repeat > 1 and not args.quiet:
+                print(f"第 {index + 1}/{repeat} 轮：通过率 {reports[-1].pass_rate:.1%}")
     except JudgeUnavailableError as exc:
         print(str(exc), file=sys.stderr)
         return 2
+    except BudgetExceededError as exc:
+        print(f"预算熔断：{exc}。已停止；已完成的轮次会落盘，超支的那轮不写。", file=sys.stderr)
+        if reports:
+            partial = RepeatReport(
+                layer="L3",
+                judge_model=model,
+                case_set=str(args.cases.name),
+                reports=reports,
+                generated_at=utc_now(),
+                notes=[f"预算熔断（{exc}）：只完成 {len(reports)} 轮，结论不完整。"],
+            )
+            _write_repeat(partial, args.out, args.json)
+            print(f"已写部分报告：{args.out}（{len(reports)} 轮）", file=sys.stderr)
+        return 1
 
     notes = [
         "faithfulness / context_precision 都由 LLM 判分，不是人工标注。",
@@ -106,18 +140,29 @@ def main(argv: list[str] | None = None, *, settings: Settings | None = None) -> 
         ),
         "没有检索依据的用例（refuse / 空检索）被跳过：没有上下文就谈不上忠实性，计入 skipped。",
     ]
-    report = JudgeReport(
-        layer="L3",
-        judge_model=model,
-        rows=rows,
-        skipped=skipped,
-        generated_at=utc_now(),
-        case_set=str(args.cases.name),
-        notes=notes,
-    )
+    if repeat > 1:
+        notes.append(f"本报告是 {repeat} 次重复运行：主结论取中位数，最差一次单独列出。")
+        combined = RepeatReport(
+            layer="L3",
+            judge_model=model,
+            case_set=str(args.cases.name),
+            reports=reports,
+            generated_at=utc_now(),
+            notes=notes,
+        )
+        _write_repeat(combined, args.out, args.json)
+        if not args.quiet:
+            print(f"用例 {len(reports[0].case_ids())} 条 × {repeat} 轮 → {len(reports[0].rows)} 个指标行/轮")
+            print(f"通过率  : 中位数 {combined.pass_rate:.1%}（最差 {combined.worst_pass_rate:.1%}）")
+            print(f"花费    : CNY {ledger.cost:.4f}（调用 {ledger.calls} 次）")
+            print(f"报告    : {args.out}")
+        return 0 if all(not report.errored_rows and report.pass_rate == 1.0 for report in reports) else 1
+
+    report = reports[0]
+    report.notes = notes
     _write(report, args.out, args.json)
     if not args.quiet:
-        print(f"用例 {len(scored)} 条（跳过 {skipped} 条无依据样本）→ {len(rows)} 个指标行")
+        print(f"用例 {len(report.case_ids())} 条（跳过 {report.skipped} 条无依据样本）→ {len(report.rows)} 个指标行")
         print(f"通过率  : {report.pass_rate:.1%}（所有指标都过阈值才算通过）")
         print(f"花费    : CNY {ledger.cost:.4f}（调用 {ledger.calls} 次）")
         print(f"报告    : {args.out}")
@@ -125,11 +170,19 @@ def main(argv: list[str] | None = None, *, settings: Settings | None = None) -> 
 
 
 def _write(report: JudgeReport, out: Path, json_path: Path) -> None:
+    _write_payload(report.to_markdown(), report.to_dict(), out, json_path)
+
+
+def _write_repeat(report: RepeatReport, out: Path, json_path: Path) -> None:
+    _write_payload(report.to_markdown(), report.to_dict(), out, json_path)
+
+
+def _write_payload(markdown: str, payload: dict[str, Any], out: Path, json_path: Path) -> None:
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(report.to_markdown(), encoding="utf-8")
+    out.write_text(markdown, encoding="utf-8")
     json_path.parent.mkdir(parents=True, exist_ok=True)
     json_path.write_text(
-        json.dumps(report.to_dict(), ensure_ascii=False, indent=2, allow_nan=False) + "\n",
+        json.dumps(payload, ensure_ascii=False, indent=2, allow_nan=False) + "\n",
         encoding="utf-8",
     )
 

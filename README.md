@@ -32,12 +32,12 @@ AgentEvalOps/
 │   ├── agent-spec.md                  # 行为规格 v1.3（冻结）：… / 多轮会话 / 判分口径 / 故障注入口径（§2.11 §7.3）
 │   ├── stage2-plan.md                 # 阶段二施工图与里程碑
 │   ├── stage2-evidence.md             # 阶段二实测证据与复现命令
-│   ├── ci.md                          # M5：CI 三个 job、门禁判据、本地复刻、"没验证过的部分"
+│   ├── ci.md                          # M5：CI 五个 job、门禁判据、本地复刻、"没验证过的部分"
 │   ├── bad-cases-v2.md                # v2 的 9 处差异逐条归类与根因
 │   ├── tracing.md                     # M8：trace 口径、Langfuse 映射、失败定位规则
 │   └── judging.md                     # M9：L3/L4/L5 判分分层、依赖隔离与实测
 ├── .github/
-│   └── workflows/regression.yml       # M5：test / gate / nightly-real 三个 job
+│   └── workflows/regression.yml       # M5：test / gate / judge-l5 / judge-real / nightly-real 五个 job
 ├── scripts/
 │   ├── check_env.py                   # 密钥体检（只打印长度与前缀，不泄密）
 │   ├── smoke_llm.py                   # LLM 连通性烟囱测试（--save 可落盘证据）
@@ -54,7 +54,11 @@ AgentEvalOps/
 │   ├── judge_l3_ragas.py              # M9：Ragas 忠实性 + 上下文精度
 │   ├── judge_l4_deepeval.py           # M9：DeepEval GEval 判分
 │   ├── judge_l5_promptfoo.py          # M9：Promptfoo 红队（确定性断言，不花钱）
+│   ├── judge_gate.py                  # M9：L3/L4/L5 判分门禁（绝对下限 + 相对基线）
+│   ├── review_sheet.py                # M9：人工抽检表 + 一致率 / kappa
 │   └── promptfoo_provider.py          # M9：Promptfoo exec provider（直接 import V3Agent）
+├── quality/                           # M9：判分门禁的基线（要提交进 git）
+│   └── judge_baseline.json            #   L3/L4/L5 的通过率、最差一次、指标均值
 ├── reports/                           # 运行产物（已 gitignore）：评测报告 JSON，可当 CI 工件
 ├── releases/                          # M5：冻结的发布（要提交进 git）——回归门禁的比较对象
 │   ├── v0.6.0/                        #   M7 补冻（v0.6.0 冻结时还没有 freeze_release.py）
@@ -131,7 +135,10 @@ AgentEvalOps/
     ├── test_regression_gate.py        # M5 门禁判据：该拦的拦得住、不该拦的别拦
     ├── test_freeze_release.py         # M5 冻结器：pytest 计数解析、指标拍平、索引渲染
     ├── test_judging_core.py           # M9：判分契约、NaN 口径、L5 config/解析（离线）
-    └── test_judging_frameworks.py     # M9：Ragas / DeepEval 接线（只在 .venv-judge 里跑）
+    ├── test_judging_frameworks.py     # M9：Ragas / DeepEval 接线（只在 .venv-judge 里跑）
+    ├── test_judging_variance.py       # M9：中位数 / 最差一次 / 墙头草 / 预算熔断
+    ├── test_judging_review.py         # M9：抽检抽样、kappa、跨层一致性
+    └── test_judge_gate.py             # M9：判分门禁的绝对下限与相对退化
 ```
 
 ## 快速开始
@@ -650,6 +657,8 @@ D:\Python\python.exe scripts/regression_gate.py --candidate releases/v0.8.0 --ba
 | --- | --- | --- | --- |
 | `test` | push / PR / 手动 / 定时 | `python -m pytest -q` | 是 |
 | `gate` | 同上（`needs: test`） | `freeze_release.py --gate-against releases/v0.8.0` | 是 |
+| `judge-l5` | push / PR / 手动 / 定时（`needs: test`） | Promptfoo 46 条安全用例（零模型费用） | 是 |
+| `judge-real` | 定时 / 手动（PR 不触发） | L3 / L4 各 2 轮 + 判分门禁（会花钱） | 否 |
 | `nightly-real` | **只在定时任务里** | 真实模型对比 + 真实并发压测（会花钱） | 否 |
 
 **诚实说明**：这份 workflow **没有在 GitHub 上真跑过**（本机没有 Docker、也没有 `gh`）。
@@ -809,26 +818,36 @@ pytest 能判「状态 / 意图 / 工具名 / 参数 / 错误码」，判不了�
 「检索块对这个问题有没有用」、「不该发生的事有没有发生」。三层各管一段，输出同一种
 `JudgeReport`：
 
-| 层 | 脚本 | 判什么 | 实测（2026-10-18） |
+| 层 | 脚本 | 判什么 | 实测（2026-10-19，各 3 轮） |
 | --- | --- | --- | --- |
-| L3 Ragas | `scripts/judge_l3_ragas.py` | 忠实性 + 上下文精度 | 38 条有依据用例，通过率 68.4%，CNY 0.2846 |
-| L4 DeepEval | `scripts/judge_l4_deepeval.py` | GEval 事实性 / 拒答质量 | 48 条，通过率 97.9%，CNY 0.1147 |
+| L3 Ragas | `scripts/judge_l3_ragas.py` | 忠实性 + 上下文精度 | 38 条有依据用例，通过率中位数 65.8%（最差 60.5%），CNY 1.7245 |
+| L4 DeepEval | `scripts/judge_l4_deepeval.py` | GEval 事实性 / 拒答质量 | 48 条，通过率 95.8% × 3，CNY 0.4885 |
 | L5 Promptfoo | `scripts/judge_l5_promptfoo.py` | 46 条安全用例的状态、错误码、泄露标记 | 100%，CNY 0.0000 |
 
 ```powershell
 # L3 / L4 需要独立的判分 venv（不要把 ragas / deepeval 装进主解释器）
-.venv-judge\Scripts\python.exe scripts\judge_l3_ragas.py --yes --budget 0.8
-.venv-judge\Scripts\python.exe scripts\judge_l4_deepeval.py --yes --budget 0.5
+.venv-judge\Scripts\python.exe scripts\judge_l3_ragas.py --yes --budget 1.2 --repeat 3
+.venv-judge\Scripts\python.exe scripts\judge_l4_deepeval.py --yes --budget 0.7 --repeat 3
 
 # L5 需要 Node；固定版本本地安装，不走 npx
 $env:PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD = '1'
 npm install --no-save --prefix .promptfoo promptfoo@0.121.3
 D:\Python\python.exe scripts\judge_l5_promptfoo.py
+
+# 三层报告对比入库基线；再把失败/通过样本抽成人工回填表
+D:\Python\python.exe scripts\judge_gate.py --l3 reports/l3-ragas.json --l4 reports/l4-deepeval.json --l5 reports/l5-promptfoo.json
+D:\Python\python.exe scripts/review_sheet.py --n 20 --write-template
 ```
 
-L3 与 L4 都抓到了同一条真实幻觉（`rag_stale_refund_days`：把旧版政策的「逾期不再受理」
-说成现行规则），两套独立实现指向同一处。口径、依赖隔离、阈值表和「还没证明的事」见
-`docs/judging.md`；证据见 `docs/stage2-evidence.md` §17。
+**3 轮重复改变了结论，而不只是分数**：L3 三轮 65.8% / 60.5% / 65.8%，3 条墙头草全部翻在
+`context_precision`；L4 三轮都 95.8%，并把首轮漏掉的 `rag_refund_window` 稳定地抓了出来。
+两套独立实现都指向 `rag_stale_refund_days` 里的真实幻觉。报告头部的 `cost_cny` 只统计判分行：
+L3 总额 1.7245 = 判分 1.5248 + 合成回答 0.1997；L4 总额 0.4885 = 判分 0.2903 + 合成回答 0.1982。
+
+**人工抽检还没完成**：`reports/review-sheet.md` 已抽 20 条（15 失败 + 5 通过），
+`review-labels.jsonl` 的人工回填是 **0 / 20**，所以现在不存在人工一致率。可先看的是
+**跨层一致性**（不是人工结论）：L3 与 L4 共同 38 条，一致率 65.8%，Cohen's kappa 0.046。
+口径、阈值和「还没证明的事」见 `docs/judging.md`；证据见 `docs/stage2-evidence.md` §17 / §18。
 
 ## 后续路线图
 
@@ -842,7 +861,7 @@ L3 与 L4 都抓到了同一条真实幻觉（`rag_stale_refund_days`：把旧�
 | **阶段二 M6（已完成）** | 噪声压制：把方差本身变成可测量的量 | `load_test.py --repeat N`（每次重启服务）、`compare_versions.py --repeat N`（中位数 + 极差 + 墙头草用例）、`freeze_release.py --repeat N` 把方差写进 `release.json`、门禁报告新增「噪声」列、修掉预算熔断被兜底吞掉的 bug（证据文档 §13 / §14） |
 | **阶段二 M7（已完成）** | 多版本回归 | 补冻 `releases/v0.6.0/`、`releases/comparisons/v0.6.0-v0.7.0-v0.8.0.json`（三版并排、门禁全绿）；CI 执法基线上移到最新已冻结版本 |
 | **阶段二 M8（已完成）** | 可观测性：Trace 层 | `tracing.py`（span 树 + 脱敏 + JSONL / Langfuse 双出口、零行为改变）、`trace_run.py` / `trace_report.py` / `trace_view.py`、失败环节定位规则、`--llm` 真实模型臂（16 条真 trace，CNY 0.0057）、**97 条**新测试（证据 §16） |
-| **阶段二 M9（进行中）** | 判分分层 + 把 trace 纳入发布冻结 | L3 Ragas / L4 DeepEval / L5 Promptfoo 三层判分已落地（`docs/judging.md` + 真实报告）；剩余：`freeze_release.py` 冻结 trace 与定位报告 |
+| **阶段二 M9（进行中）** | 判分分层 + 方差 + 门禁 + 把 trace 纳入发布冻结 | L3/L4 `--repeat 3` 方差、`judge_gate.py` 基线门禁、`review_sheet.py` 抽检工具、CI 五 job（L5 阻塞 PR，L3/L4 夜间；证据 §18）；剩余：人工回填 0/20、`freeze_release.py` 冻结 trace 与判分报告 |
 
 ### 评测指标（阶段五要算的东西，现在就能算前六项）
 

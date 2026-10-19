@@ -22,6 +22,7 @@ from __future__ import annotations
 from typing import Any, Iterable, Mapping, Sequence
 
 from .base import DEFAULT_THRESHOLDS, JudgeSample, JudgeScore, judge_score
+from ..llm import BudgetExceededError
 from .llm import JudgeUnavailableError
 
 LAYER = "L3"
@@ -112,6 +113,8 @@ def evaluate_samples(
                     )
                 )
                 rows[-1] = _with_cost(rows[-1], _delta(ledger, before))
+            except BudgetExceededError:
+                raise
             except Exception as exc:  # noqa: BLE001 - 框架/网络错误要落行，不能吞
                 rows.append(
                     judge_score(

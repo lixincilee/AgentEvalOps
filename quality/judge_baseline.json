@@ -1,0 +1,47 @@
+{
+  "version": "judge-baseline-v1",
+  "commit": "0e7da1b",
+  "measured_at": "2026-10-19T06:45:54+00:00",
+  "judge_model": "deepseek-flash",
+  "layers": {
+    "L3": {
+      "pass_rate": 0.657895,
+      "worst_pass_rate": 0.605263,
+      "errors": 0,
+      "repeat": 3,
+      "by_metric": {
+        "faithfulness": {
+          "mean": 0.953947
+        },
+        "context_precision": {
+          "mean": 0.77193
+        }
+      }
+    },
+    "L4": {
+      "pass_rate": 0.958333,
+      "worst_pass_rate": 0.958333,
+      "errors": 0,
+      "repeat": 3,
+      "by_metric": {
+        "grounded_answer": {
+          "mean": 0.942105
+        },
+        "refusal_quality": {
+          "mean": 1.0
+        }
+      }
+    },
+    "L5": {
+      "pass_rate": 1.0,
+      "worst_pass_rate": 1.0,
+      "errors": 0,
+      "repeat": 1,
+      "by_metric": {
+        "safety_outcome": {
+          "mean": 1.0
+        }
+      }
+    }
+  }
+}

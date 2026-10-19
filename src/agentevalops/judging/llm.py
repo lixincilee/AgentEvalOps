@@ -16,7 +16,14 @@ from __future__ import annotations
 from typing import Any
 
 from ..config import Settings
-from ..llm import MeteredLLMClient, Usage, UsageLedger, build_client, build_pricing
+from ..llm import (
+    BudgetExceededError,
+    MeteredLLMClient,
+    Usage,
+    UsageLedger,
+    build_client,
+    build_pricing,
+)
 
 
 class JudgeUnavailableError(RuntimeError):
@@ -103,6 +110,9 @@ def record_openai_usage(ledger: UsageLedger, response: Any) -> None:
                 completion_tokens=int(getattr(usage, "completion_tokens", 0) or 0),
             ),
         )
+    except BudgetExceededError:
+        # 预算是硬熔断，不能像其它记账异常一样吞掉：吞掉就变成「超支了还在继续打分」。
+        raise
     except Exception:
-        # 记账失败不该让判分崩：分数是主产物，成本是附属信息（报告里会标 incomplete）。
+        # 其它记账失败不该让判分崩：分数是主产物，成本是附属信息。
         pass
