@@ -1382,7 +1382,7 @@ M8 在写 trace 的过程中修掉 5 个真 bug（都写进 `docs/tracing.md` §
 | 有 trace 真的到过 Langfuse 服务 | **没有**。本机无 Docker、无 Langfuse 账号。验证到的是载荷映射（纯函数 `langfuse_payload()`）、dry-run 降级、以及注入假 client 时的调用序列 |
 | `langfuse>=3.0` 的 API 形状（`start_span` / `update` / `end` 的参数名） | **未在真机验证**。适配层写成「出错就降级 + 落盘」，所以猜错不会让评测崩，但会**静默**走 dry-run —— 这是已知风险，不是已解决的问题 |
 | HTML 视图的肉眼效果 | **未逐像素核对**。几何、转义、徽标有测试钉住，浏览器里到底长什么样需要人打开确认 |
-| trace 进了发布冻结产物 | **还没有**。`freeze_release.py` 目前只冻结五项检查的原始报告；把 trace 与定位报告一起冻结属于 M9 |
+| trace 进了发布冻结产物 | **已完成**（M9，tag `v0.9.0`）。`freeze_release.py` 现有七项检查，`releases/v0.9.0/trace/` 含 310 条 trace、定位报告与 HTML 视图 |
 | 310 条 trace 覆盖了模型路径 | **只有 16 条**（§16.5）。剩下 294 条是规则臂：能定位状态与工具问题，回答不了 prompt 问题 |
 | 真实模型 trace 的方差 | **未测**。16 条只跑了一次；`--llm --repeat N` 的成本与延迟方差都还是空白（对照 §13.3 / §14.4） |
 ## 17. 证据十三：M9 判分分层 —— 同一批用例，三种判分口径
@@ -1581,5 +1581,29 @@ D:\Python\python.exe scripts\judge_gate.py --l3 reports/l3-ragas.json --l4 repor
 | 人工抽检完成 | **已完成 20 / 20**。一致率 95%，kappa 0.875；但样本是失败优先的 20 条，不能当总体准确率 |
 | 3 次重复给出置信区间 | **没有**。样本量太小；5.3 个百分点的极差只能当噪声上界参考 |
 | 判分门禁的容忍值有统计依据 | **没有**。L3 5 pp / L4 3 pp 是工程折中，不是显著性结论 |
-| trace 进了发布冻结 | **还没有**。`freeze_release.py` 仍只冻结五项检查；这是 M9 的下一块 |
+| trace 进了发布冻结 | **已完成**（M9）。七项检查全部通过，产物见 `releases/v0.9.0/`：`trace/`（310 条，通过率 97.74%，未定位 0）+ `judge/`（L3 65.8% / L4 95.8% / L5 100%，人工 kappa 0.875） |
 | Judge 绝对分可信 | **只有 20 条偏置人工标注**。可做版本间相对比较；不能把绝对分当客观真值 |
+
+### 18.6 发布冻结：`v0.9.0`
+
+2026-10-19 在干净工作区执行 `scripts/freeze_release.py --tag v0.9.0 --gate-against releases/v0.8.0`。
+冻结器这次不重跑付费的 L3/L4，而是直接把 `reports/` 下已有的多轮报告与人工抽检摘要归档，
+因此 `judge` 检查是秒级。七项检查全部通过：
+
+| 检查 | 结果 | 关键指标 |
+| --- | --- | --- |
+| `pytest` | 通过 | 1278 passed / 0 failed / 1 skipped / 10 xfailed |
+| `faults` | 通过 | 25 / 25 条故障用例 |
+| `comparison:matrix` | 通过 | 213 行 |
+| `comparison:rag_multiturn` | 通过 | 120 行 |
+| `trace` | 通过 | 310 条 trace，7 条不通过，未定位 0，通过率 97.74% |
+| `judge` | 通过 | L3 65.8%（3 轮，最差 60.5%）、L4 95.8%（3 轮）、L5 100%、人工 kappa 0.875 |
+| `load_test` | 通过 | modeled 臂，P95 160ms，任务成功率 100% |
+
+回归门禁对 `v0.8.0` 全部通过，随后打 annotated tag `v0.9.0`（锚定被测代码提交 `4020550`）。
+冻结产物：`releases/v0.9.0/release.json`；`trace/` 下有 `traces.jsonl`、`traces.cases.jsonl`、
+`trace-report.md` / `.json`、`trace-view.html`；`judge/` 下有 L3/L4/L5 的 JSON 与 Markdown、
+`judge_baseline.json`、`review-summary-v1.json`。
+
+**边界**：这仍是本机离线冻结。GitHub Actions 尚未真实运行；Langfuse 出口仍未验证；
+L3/L4 报告是冻结前既有的多轮运行结果，不是冻结时重跑；trace 的模型臂只有 16 条。

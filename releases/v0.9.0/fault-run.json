@@ -1,0 +1,860 @@
+{
+  "by_category": {
+    "fault_empty_retrieval": {
+      "passed": 6,
+      "total": 6
+    },
+    "fault_rate_limit": {
+      "passed": 6,
+      "total": 6
+    },
+    "fault_timeout": {
+      "passed": 7,
+      "total": 7
+    },
+    "fault_unavailable": {
+      "passed": 6,
+      "total": 6
+    }
+  },
+  "case_set_hash": "fa390b4dfb9c623269115ca5b48ca0e7e3ce61c73d6a323d01fc2da611edc54c",
+  "case_set_version": "fault_cases.jsonl",
+  "cases": 25,
+  "code_version": "4020550",
+  "failure_codes": {
+    "NO_KNOWLEDGE": 5,
+    "TOOL_TIMEOUT": 7,
+    "TOOL_UNAVAILABLE": 6,
+    "UNSUPPORTED_INTENT": 1
+  },
+  "generated_at": "2026-10-19T09:22:16+00:00",
+  "injected_by_mode": {
+    "model:rate_limit": 6,
+    "retrieval:empty": 6,
+    "retrieval:timeout": 1,
+    "retrieval:unavailable": 1,
+    "tool:timeout": 6,
+    "tool:unavailable": 5
+  },
+  "kind": "fault_run",
+  "pass_rate": 1.0,
+  "passed": 25,
+  "rate_limited_calls": 7,
+  "rows": [
+    {
+      "case_id": "flt_timeout_status_01",
+      "category": "fault_timeout",
+      "expected": {
+        "error": "TOOL_TIMEOUT",
+        "intent": "order_status",
+        "plan_source": "rules",
+        "state": "tool_failed",
+        "tool": "query_order_status"
+      },
+      "fault": {
+        "mode": "timeout",
+        "target": "tool",
+        "tool_name": "query_order_status"
+      },
+      "judged": [
+        "intent",
+        "state",
+        "tool",
+        "error"
+      ],
+      "mismatched": {},
+      "observed": {
+        "error": "TOOL_TIMEOUT",
+        "intent": "order_status",
+        "plan_source": "rules",
+        "slot_source": "verbatim",
+        "state": "tool_failed",
+        "tool": "query_order_status"
+      },
+      "passed": true,
+      "rate_limited_calls": 0
+    },
+    {
+      "case_id": "flt_timeout_status_02",
+      "category": "fault_timeout",
+      "expected": {
+        "error": "TOOL_TIMEOUT",
+        "intent": "order_status",
+        "plan_source": "rules",
+        "state": "tool_failed",
+        "tool": "query_order_status"
+      },
+      "fault": {
+        "mode": "timeout",
+        "target": "tool",
+        "tool_name": "query_order_status"
+      },
+      "judged": [
+        "intent",
+        "state",
+        "tool",
+        "error"
+      ],
+      "mismatched": {},
+      "observed": {
+        "error": "TOOL_TIMEOUT",
+        "intent": "order_status",
+        "plan_source": "rules",
+        "slot_source": "verbatim",
+        "state": "tool_failed",
+        "tool": "query_order_status"
+      },
+      "passed": true,
+      "rate_limited_calls": 0
+    },
+    {
+      "case_id": "flt_timeout_status_03",
+      "category": "fault_timeout",
+      "expected": {
+        "error": "TOOL_TIMEOUT",
+        "intent": "order_status",
+        "plan_source": "rules",
+        "state": "tool_failed",
+        "tool": "query_order_status"
+      },
+      "fault": {
+        "mode": "timeout",
+        "target": "tool",
+        "tool_name": "query_order_status"
+      },
+      "judged": [
+        "intent",
+        "state",
+        "tool",
+        "error"
+      ],
+      "mismatched": {},
+      "observed": {
+        "error": "TOOL_TIMEOUT",
+        "intent": "order_status",
+        "plan_source": "rules",
+        "slot_source": "verbatim",
+        "state": "tool_failed",
+        "tool": "query_order_status"
+      },
+      "passed": true,
+      "rate_limited_calls": 0
+    },
+    {
+      "case_id": "flt_timeout_refund_04",
+      "category": "fault_timeout",
+      "expected": {
+        "error": "TOOL_TIMEOUT",
+        "intent": "refund",
+        "plan_source": "rules",
+        "state": "tool_failed",
+        "tool": "apply_refund"
+      },
+      "fault": {
+        "mode": "timeout",
+        "target": "tool",
+        "tool_name": "apply_refund"
+      },
+      "judged": [
+        "intent",
+        "state",
+        "tool",
+        "error"
+      ],
+      "mismatched": {},
+      "observed": {
+        "error": "TOOL_TIMEOUT",
+        "intent": "refund",
+        "plan_source": "rules",
+        "slot_source": "verbatim",
+        "state": "tool_failed",
+        "tool": "apply_refund"
+      },
+      "passed": true,
+      "rate_limited_calls": 0
+    },
+    {
+      "case_id": "flt_timeout_refund_05",
+      "category": "fault_timeout",
+      "expected": {
+        "error": "TOOL_TIMEOUT",
+        "intent": "refund",
+        "plan_source": "rules",
+        "state": "tool_failed",
+        "tool": "apply_refund"
+      },
+      "fault": {
+        "mode": "timeout",
+        "target": "tool",
+        "tool_name": "apply_refund"
+      },
+      "judged": [
+        "intent",
+        "state",
+        "tool",
+        "error"
+      ],
+      "mismatched": {},
+      "observed": {
+        "error": "TOOL_TIMEOUT",
+        "intent": "refund",
+        "plan_source": "rules",
+        "slot_source": "verbatim",
+        "state": "tool_failed",
+        "tool": "apply_refund"
+      },
+      "passed": true,
+      "rate_limited_calls": 0
+    },
+    {
+      "case_id": "flt_timeout_ticket_06",
+      "category": "fault_timeout",
+      "expected": {
+        "error": "TOOL_TIMEOUT",
+        "intent": "human_handoff",
+        "plan_source": "rules",
+        "state": "tool_failed",
+        "tool": "create_human_ticket"
+      },
+      "fault": {
+        "mode": "timeout",
+        "target": "tool",
+        "tool_name": "create_human_ticket"
+      },
+      "judged": [
+        "intent",
+        "state",
+        "tool",
+        "error"
+      ],
+      "mismatched": {},
+      "observed": {
+        "error": "TOOL_TIMEOUT",
+        "intent": "human_handoff",
+        "plan_source": "rules",
+        "slot_source": null,
+        "state": "tool_failed",
+        "tool": "create_human_ticket"
+      },
+      "passed": true,
+      "rate_limited_calls": 0
+    },
+    {
+      "case_id": "flt_timeout_retrieval_07",
+      "category": "fault_timeout",
+      "expected": {
+        "error": "TOOL_TIMEOUT",
+        "intent": "policy_qa",
+        "plan_source": "rules",
+        "state": "tool_failed",
+        "tool": "search_knowledge_base"
+      },
+      "fault": {
+        "mode": "timeout",
+        "target": "retrieval"
+      },
+      "judged": [
+        "intent",
+        "state",
+        "tool",
+        "error"
+      ],
+      "mismatched": {},
+      "observed": {
+        "error": "TOOL_TIMEOUT",
+        "intent": "policy_qa",
+        "plan_source": "rules",
+        "slot_source": null,
+        "state": "tool_failed",
+        "tool": "search_knowledge_base"
+      },
+      "passed": true,
+      "rate_limited_calls": 0
+    },
+    {
+      "case_id": "flt_unavail_status_08",
+      "category": "fault_unavailable",
+      "expected": {
+        "error": "TOOL_UNAVAILABLE",
+        "intent": "order_status",
+        "plan_source": "rules",
+        "state": "tool_failed",
+        "tool": "query_order_status"
+      },
+      "fault": {
+        "mode": "unavailable",
+        "target": "tool",
+        "tool_name": "query_order_status"
+      },
+      "judged": [
+        "intent",
+        "state",
+        "tool",
+        "error"
+      ],
+      "mismatched": {},
+      "observed": {
+        "error": "TOOL_UNAVAILABLE",
+        "intent": "order_status",
+        "plan_source": "rules",
+        "slot_source": "verbatim",
+        "state": "tool_failed",
+        "tool": "query_order_status"
+      },
+      "passed": true,
+      "rate_limited_calls": 0
+    },
+    {
+      "case_id": "flt_unavail_status_09",
+      "category": "fault_unavailable",
+      "expected": {
+        "error": "TOOL_UNAVAILABLE",
+        "intent": "order_status",
+        "plan_source": "rules",
+        "state": "tool_failed",
+        "tool": "query_order_status"
+      },
+      "fault": {
+        "mode": "unavailable",
+        "target": "tool",
+        "tool_name": "query_order_status"
+      },
+      "judged": [
+        "intent",
+        "state",
+        "tool",
+        "error"
+      ],
+      "mismatched": {},
+      "observed": {
+        "error": "TOOL_UNAVAILABLE",
+        "intent": "order_status",
+        "plan_source": "rules",
+        "slot_source": "verbatim",
+        "state": "tool_failed",
+        "tool": "query_order_status"
+      },
+      "passed": true,
+      "rate_limited_calls": 0
+    },
+    {
+      "case_id": "flt_unavail_refund_10",
+      "category": "fault_unavailable",
+      "expected": {
+        "error": "TOOL_UNAVAILABLE",
+        "intent": "refund",
+        "plan_source": "rules",
+        "state": "tool_failed",
+        "tool": "apply_refund"
+      },
+      "fault": {
+        "mode": "unavailable",
+        "target": "tool",
+        "tool_name": "apply_refund"
+      },
+      "judged": [
+        "intent",
+        "state",
+        "tool",
+        "error"
+      ],
+      "mismatched": {},
+      "observed": {
+        "error": "TOOL_UNAVAILABLE",
+        "intent": "refund",
+        "plan_source": "rules",
+        "slot_source": "verbatim",
+        "state": "tool_failed",
+        "tool": "apply_refund"
+      },
+      "passed": true,
+      "rate_limited_calls": 0
+    },
+    {
+      "case_id": "flt_unavail_refund_11",
+      "category": "fault_unavailable",
+      "expected": {
+        "error": "TOOL_UNAVAILABLE",
+        "intent": "refund",
+        "plan_source": "rules",
+        "state": "tool_failed",
+        "tool": "apply_refund"
+      },
+      "fault": {
+        "mode": "unavailable",
+        "target": "tool",
+        "tool_name": "apply_refund"
+      },
+      "judged": [
+        "intent",
+        "state",
+        "tool",
+        "error"
+      ],
+      "mismatched": {},
+      "observed": {
+        "error": "TOOL_UNAVAILABLE",
+        "intent": "refund",
+        "plan_source": "rules",
+        "slot_source": "verbatim",
+        "state": "tool_failed",
+        "tool": "apply_refund"
+      },
+      "passed": true,
+      "rate_limited_calls": 0
+    },
+    {
+      "case_id": "flt_unavail_ticket_12",
+      "category": "fault_unavailable",
+      "expected": {
+        "error": "TOOL_UNAVAILABLE",
+        "intent": "human_handoff",
+        "plan_source": "rules",
+        "state": "tool_failed",
+        "tool": "create_human_ticket"
+      },
+      "fault": {
+        "mode": "unavailable",
+        "target": "tool",
+        "tool_name": "create_human_ticket"
+      },
+      "judged": [
+        "intent",
+        "state",
+        "tool",
+        "error"
+      ],
+      "mismatched": {},
+      "observed": {
+        "error": "TOOL_UNAVAILABLE",
+        "intent": "human_handoff",
+        "plan_source": "rules",
+        "slot_source": null,
+        "state": "tool_failed",
+        "tool": "create_human_ticket"
+      },
+      "passed": true,
+      "rate_limited_calls": 0
+    },
+    {
+      "case_id": "flt_unavail_retrieval_13",
+      "category": "fault_unavailable",
+      "expected": {
+        "error": "TOOL_UNAVAILABLE",
+        "intent": "policy_qa",
+        "plan_source": "rules",
+        "state": "tool_failed",
+        "tool": "search_knowledge_base"
+      },
+      "fault": {
+        "mode": "unavailable",
+        "target": "retrieval"
+      },
+      "judged": [
+        "intent",
+        "state",
+        "tool",
+        "error"
+      ],
+      "mismatched": {},
+      "observed": {
+        "error": "TOOL_UNAVAILABLE",
+        "intent": "policy_qa",
+        "plan_source": "rules",
+        "slot_source": null,
+        "state": "tool_failed",
+        "tool": "search_knowledge_base"
+      },
+      "passed": true,
+      "rate_limited_calls": 0
+    },
+    {
+      "case_id": "flt_empty_retrieval_14",
+      "category": "fault_empty_retrieval",
+      "expected": {
+        "error": "NO_KNOWLEDGE",
+        "intent": "policy_qa",
+        "plan_source": "rules",
+        "state": "no_action",
+        "tool": null
+      },
+      "fault": {
+        "mode": "empty",
+        "target": "retrieval"
+      },
+      "judged": [
+        "intent",
+        "state",
+        "tool",
+        "error"
+      ],
+      "mismatched": {},
+      "observed": {
+        "error": "NO_KNOWLEDGE",
+        "intent": "policy_qa",
+        "plan_source": "rules",
+        "slot_source": null,
+        "state": "no_action",
+        "tool": null
+      },
+      "passed": true,
+      "rate_limited_calls": 0
+    },
+    {
+      "case_id": "flt_empty_retrieval_15",
+      "category": "fault_empty_retrieval",
+      "expected": {
+        "error": "NO_KNOWLEDGE",
+        "intent": "policy_qa",
+        "plan_source": "rules",
+        "state": "no_action",
+        "tool": null
+      },
+      "fault": {
+        "mode": "empty",
+        "target": "retrieval"
+      },
+      "judged": [
+        "intent",
+        "state",
+        "tool",
+        "error"
+      ],
+      "mismatched": {},
+      "observed": {
+        "error": "NO_KNOWLEDGE",
+        "intent": "policy_qa",
+        "plan_source": "rules",
+        "slot_source": null,
+        "state": "no_action",
+        "tool": null
+      },
+      "passed": true,
+      "rate_limited_calls": 0
+    },
+    {
+      "case_id": "flt_empty_retrieval_16",
+      "category": "fault_empty_retrieval",
+      "expected": {
+        "error": "NO_KNOWLEDGE",
+        "intent": "policy_qa",
+        "plan_source": "rules",
+        "state": "no_action",
+        "tool": null
+      },
+      "fault": {
+        "mode": "empty",
+        "target": "retrieval"
+      },
+      "judged": [
+        "intent",
+        "state",
+        "tool",
+        "error"
+      ],
+      "mismatched": {},
+      "observed": {
+        "error": "NO_KNOWLEDGE",
+        "intent": "policy_qa",
+        "plan_source": "rules",
+        "slot_source": null,
+        "state": "no_action",
+        "tool": null
+      },
+      "passed": true,
+      "rate_limited_calls": 0
+    },
+    {
+      "case_id": "flt_empty_retrieval_17",
+      "category": "fault_empty_retrieval",
+      "expected": {
+        "error": "NO_KNOWLEDGE",
+        "intent": "policy_qa",
+        "plan_source": "rules",
+        "state": "no_action",
+        "tool": null
+      },
+      "fault": {
+        "mode": "empty",
+        "target": "retrieval"
+      },
+      "judged": [
+        "intent",
+        "state",
+        "tool",
+        "error"
+      ],
+      "mismatched": {},
+      "observed": {
+        "error": "NO_KNOWLEDGE",
+        "intent": "policy_qa",
+        "plan_source": "rules",
+        "slot_source": null,
+        "state": "no_action",
+        "tool": null
+      },
+      "passed": true,
+      "rate_limited_calls": 0
+    },
+    {
+      "case_id": "flt_empty_retrieval_18",
+      "category": "fault_empty_retrieval",
+      "expected": {
+        "error": null,
+        "intent": "refund",
+        "plan_source": "rules",
+        "slot_source": "inherited",
+        "state": "tool_completed",
+        "tool": "apply_refund"
+      },
+      "fault": {
+        "mode": "empty",
+        "target": "retrieval"
+      },
+      "judged": [
+        "intent",
+        "state",
+        "tool",
+        "error"
+      ],
+      "mismatched": {},
+      "observed": {
+        "error": null,
+        "intent": "refund",
+        "plan_source": "rules",
+        "slot_source": "inherited",
+        "state": "tool_completed",
+        "tool": "apply_refund"
+      },
+      "passed": true,
+      "rate_limited_calls": 0
+    },
+    {
+      "case_id": "flt_empty_retrieval_19",
+      "category": "fault_empty_retrieval",
+      "expected": {
+        "error": "NO_KNOWLEDGE",
+        "intent": "policy_qa",
+        "plan_source": "rules",
+        "slot_source": null,
+        "state": "no_action",
+        "tool": null
+      },
+      "fault": {
+        "mode": "empty",
+        "target": "retrieval"
+      },
+      "judged": [
+        "intent",
+        "state",
+        "tool",
+        "error"
+      ],
+      "mismatched": {},
+      "observed": {
+        "error": "NO_KNOWLEDGE",
+        "intent": "policy_qa",
+        "plan_source": "rules",
+        "slot_source": null,
+        "state": "no_action",
+        "tool": null
+      },
+      "passed": true,
+      "rate_limited_calls": 0
+    },
+    {
+      "case_id": "flt_ratelimit_status_20",
+      "category": "fault_rate_limit",
+      "expected": {
+        "error": null,
+        "intent": "order_status",
+        "plan_source": "llm-fallback",
+        "state": "tool_completed",
+        "tool": "query_order_status"
+      },
+      "fault": {
+        "mode": "rate_limit",
+        "target": "model"
+      },
+      "judged": [
+        "intent",
+        "state",
+        "tool",
+        "error"
+      ],
+      "mismatched": {},
+      "observed": {
+        "error": null,
+        "intent": "order_status",
+        "plan_source": "llm-fallback",
+        "slot_source": "verbatim",
+        "state": "tool_completed",
+        "tool": "query_order_status"
+      },
+      "passed": true,
+      "rate_limited_calls": 1
+    },
+    {
+      "case_id": "flt_ratelimit_status_21",
+      "category": "fault_rate_limit",
+      "expected": {
+        "error": "UNSUPPORTED_INTENT",
+        "intent": "unknown",
+        "plan_source": "llm-fallback",
+        "state": "no_action",
+        "tool": null
+      },
+      "fault": {
+        "mode": "rate_limit",
+        "target": "model"
+      },
+      "judged": [
+        "intent",
+        "state",
+        "tool",
+        "error"
+      ],
+      "mismatched": {},
+      "observed": {
+        "error": "UNSUPPORTED_INTENT",
+        "intent": "unknown",
+        "plan_source": "llm-fallback",
+        "slot_source": null,
+        "state": "no_action",
+        "tool": null
+      },
+      "passed": true,
+      "rate_limited_calls": 1
+    },
+    {
+      "case_id": "flt_ratelimit_refund_22",
+      "category": "fault_rate_limit",
+      "expected": {
+        "error": null,
+        "intent": "refund",
+        "plan_source": "llm-fallback",
+        "state": "tool_completed",
+        "tool": "apply_refund"
+      },
+      "fault": {
+        "mode": "rate_limit",
+        "target": "model"
+      },
+      "judged": [
+        "intent",
+        "state",
+        "tool",
+        "error"
+      ],
+      "mismatched": {},
+      "observed": {
+        "error": null,
+        "intent": "refund",
+        "plan_source": "llm-fallback",
+        "slot_source": "verbatim",
+        "state": "tool_completed",
+        "tool": "apply_refund"
+      },
+      "passed": true,
+      "rate_limited_calls": 1
+    },
+    {
+      "case_id": "flt_ratelimit_ticket_23",
+      "category": "fault_rate_limit",
+      "expected": {
+        "error": null,
+        "intent": "human_handoff",
+        "plan_source": "llm-fallback",
+        "state": "tool_completed",
+        "tool": "create_human_ticket"
+      },
+      "fault": {
+        "mode": "rate_limit",
+        "target": "model"
+      },
+      "judged": [
+        "intent",
+        "state",
+        "tool",
+        "error"
+      ],
+      "mismatched": {},
+      "observed": {
+        "error": null,
+        "intent": "human_handoff",
+        "plan_source": "llm-fallback",
+        "slot_source": null,
+        "state": "tool_completed",
+        "tool": "create_human_ticket"
+      },
+      "passed": true,
+      "rate_limited_calls": 1
+    },
+    {
+      "case_id": "flt_ratelimit_policy_24",
+      "category": "fault_rate_limit",
+      "expected": {
+        "error": null,
+        "intent": "policy_qa",
+        "plan_source": "llm-fallback",
+        "state": "tool_completed",
+        "tool": "search_knowledge_base"
+      },
+      "fault": {
+        "mode": "rate_limit",
+        "target": "model"
+      },
+      "judged": [
+        "intent",
+        "state",
+        "tool",
+        "error"
+      ],
+      "mismatched": {},
+      "observed": {
+        "error": null,
+        "intent": "policy_qa",
+        "plan_source": "llm-fallback",
+        "slot_source": null,
+        "state": "tool_completed",
+        "tool": "search_knowledge_base"
+      },
+      "passed": true,
+      "rate_limited_calls": 1
+    },
+    {
+      "case_id": "flt_ratelimit_multiturn_25",
+      "category": "fault_rate_limit",
+      "expected": {
+        "error": null,
+        "intent": "policy_qa",
+        "plan_source": "llm-fallback",
+        "slot_source": null,
+        "state": "tool_completed",
+        "tool": "search_knowledge_base"
+      },
+      "fault": {
+        "mode": "rate_limit",
+        "target": "model"
+      },
+      "judged": [
+        "intent",
+        "state",
+        "tool",
+        "error"
+      ],
+      "mismatched": {},
+      "observed": {
+        "error": null,
+        "intent": "policy_qa",
+        "plan_source": "llm-fallback",
+        "slot_source": null,
+        "state": "tool_completed",
+        "tool": "search_knowledge_base"
+      },
+      "passed": true,
+      "rate_limited_calls": 2
+    }
+  ],
+  "spec_version": "1.3"
+}

@@ -11,7 +11,7 @@
 | job | 什么时候跑 | 干什么 | 阻塞合并吗 |
 | --- | --- | --- | --- |
 | `test` | 每次 push 到 `main`、每个 PR、手动触发、每天定时 | `python -m pytest -q` | 阻塞 |
-| `gate` | 同上（`needs: test`，测试先过） | 冻结候选发布（含 trace；PR 跳过付费判分），并和 `releases/v0.8.0`（最新已冻结版本）比 | 阻塞 |
+| `gate` | 同上（`needs: test`，测试先过） | 冻结候选发布（含 trace；PR 跳过付费判分），并和 `releases/v0.9.0`（最新已冻结版本）比 | 阻塞 |
 | `judge-l5` | 同上（`needs: test`） | Promptfoo 跑 46 条安全用例；零模型费用 | 阻塞 |
 | `nightly-real` | **只在定时任务里**（`github.event_name == 'schedule'`） | 真实模型对比 + 真实并发压测 | 不阻塞 |
 | `judge-real` | 定时任务或手动触发 | Ragas / DeepEval 各 2 轮 + 判分门禁；会花钱 | 不阻塞合并（PR 上不触发） |
@@ -45,7 +45,7 @@ on:
 `gate` 只有一条实质命令：
 
 ```
-python scripts/freeze_release.py --out .release-candidate --gate-against releases/v0.8.0 --skip-judge
+python scripts/freeze_release.py --out .release-candidate --gate-against releases/v0.9.0 --skip-judge
 ```
 
 `freeze_release.py` 默认跑七件事，每件都会把原始报告和从报告里抽出来的指标落盘
@@ -128,10 +128,10 @@ D:\Python\python.exe -m pip install -e ".[dev,llm,api,perf]"
 D:\Python\python.exe -m pytest -q
 
 # 2) 冻结候选发布 + 门禁 = gate job
-D:\Python\python.exe scripts/freeze_release.py --out .release-candidate --gate-against releases/v0.8.0
+D:\Python\python.exe scripts/freeze_release.py --out .release-candidate --gate-against releases/v0.9.0
 
 # 3) 只判门禁，不重新冻结（候选目录已存在时用这个，秒级）
-D:\Python\python.exe scripts/regression_gate.py --candidate .release-candidate --baseline releases/v0.8.0
+D:\Python\python.exe scripts/regression_gate.py --candidate .release-candidate --baseline releases/v0.9.0
 
 # 4) 本机工作区通常是脏的，冻结会被拒绝；放行要显式加 --allow-dirty
 D:\Python\python.exe scripts/freeze_release.py --out .release-candidate --allow-dirty --skip-load
@@ -182,7 +182,7 @@ D:\Python\python.exe scripts/load_test.py --real --yes --users 5 --run-time 30s 
 | `test` / `gate` 两个 job 会变绿 | **未验证**（同上） |
 | `nightly-real` | **从未触发过**。真实模型的延迟、吞吐与账单都还没取到真值 |
 | 冻结发布里的 `matrix.v2.pass_rate` / `matrix.v3.pass_rate` | 永远是 `n/a`：`freeze_release.py` 只跑 `--offline`（规则臂）。离线模式下模型列是 `None`，不是 0 |
-| 执法基线 | **已入库三份**：`releases/v0.6.0/`（M7 补冻）、`releases/v0.7.0/`（M5 首个）、`releases/v0.8.0/`（M6）。`gate` job 的执法基线是最新已冻结版本（现在是 `v0.8.0`），随每次冻结前移。本机已验证「冻结候选 → 门禁」整条链路通过；三版并排报告见 `releases/comparisons/` |
+| 执法基线 | **已入库四份**：`releases/v0.6.0/`（M7 补冻）、`releases/v0.7.0/`（M5 首个）、`releases/v0.8.0/`（M6）、`releases/v0.9.0/`（M9，含 trace 与三层判分）。`gate` job 的执法基线是最新已冻结版本（现在是 `v0.9.0`），随每次冻结前移。本机已验证「冻结候选 → 门禁」整条链路通过；三版并排报告见 `releases/comparisons/` |
 | mock 臂压测的 P95 / token | 建模值，报告里标 `provenance: modeled`，不是供应商真值 |
 | 测试条数 | 会随用例增加而变。本机 HEAD 实测 `1278 passed, 1 skipped, 10 xfailed`（skip 的是只在判分 venv 里跑的 Ragas / DeepEval 接线测试）；各冻结基线分别是 `v0.6.0` 1025、`v0.7.0` 1061、`v0.8.0` 1121（同一口径：冻结器的收集值） |
 | L3 / L4 / L5 判分进 CI | **workflow 已接线，但 GitHub 上没跑过**。L5 在每次 PR 上跑（零模型费用）；L3/L4 在定时/手动任务里各跑 2 轮，再由 `judge_gate.py` 对比 `quality/judge_baseline.json`。本机验证到的是同一条命令链，不是一次真实的 Actions 运行 |

@@ -1,0 +1,120 @@
+{
+  "mode": "mock",
+  "arm": "modeled",
+  "provenance": {
+    "latency": "modeled",
+    "tokens": "modeled"
+  },
+  "users": 20,
+  "spawn_rate": 5.0,
+  "run_time": "20s",
+  "host": "http://127.0.0.1:8140",
+  "started_at": "2026-10-19T09:22:49.141534+00:00",
+  "finished_at": "2026-10-19T09:23:16.208692+00:00",
+  "git": {
+    "describe": "v0.8.0-9-g4020550",
+    "commit": "4020550"
+  },
+  "budget_cny": null,
+  "budget_exceeded": false,
+  "requests": 2653,
+  "service_requests": 2653,
+  "rps": 145.516,
+  "http_failures": 0,
+  "http_error_rate": 0.0,
+  "task_total": 2653,
+  "task_expected": 2653,
+  "task_success_rate": 1.0,
+  "tasks": {
+    "total": 2653,
+    "expected": 2653,
+    "unexpected": 0,
+    "task_success_rate": 1.0,
+    "by_outcome": {
+      "tool_completed": 2380,
+      "no_action/NO_KNOWLEDGE": 273
+    },
+    "unexpected_samples": [],
+    "server_latency_ms_avg": 69.198,
+    "server_latency_ms_max": 175.089
+  },
+  "p50_ms": 120,
+  "p95_ms": 160,
+  "p99_ms": 230,
+  "avg_ms": 126.498,
+  "tokens": 769370,
+  "tokens_per_request": 290.0,
+  "cost_cny": 2.01628,
+  "cost_per_request_cny": 0.00076,
+  "cost_per_success_cny": 0.00076,
+  "cost_per_tool_completed_cny": 0.000847176,
+  "cost_complete": true,
+  "terminal_states": {
+    "no_action": 273,
+    "tool_completed": 2380
+  },
+  "error_codes": {
+    "NO_KNOWLEDGE": 273
+  },
+  "service_success_rate": 0.897098,
+  "server_latency_ms_avg": 69.198,
+  "locust": {
+    "requests": 2653,
+    "http_failures": 0,
+    "none_requests": 0,
+    "window_s": 18.232,
+    "requests_delta": 0,
+    "consistent_with_service": true
+  },
+  "service_metrics": {
+    "requests": 2653,
+    "successes": 2380,
+    "failures": 273,
+    "errors": 0,
+    "tokens": 769370,
+    "cost_cny": 2.01628,
+    "success_rate": 0.897098,
+    "cost_per_success_cny": 0.000847176,
+    "cost_complete": true,
+    "unpriced_models": [],
+    "states": {
+      "no_action": 273,
+      "tool_completed": 2380
+    },
+    "error_codes": {
+      "NO_KNOWLEDGE": 273
+    },
+    "cost_per_success": 0.0008471764705882353
+  },
+  "service_metrics_final": {
+    "requests": 2657,
+    "successes": 2384,
+    "failures": 273,
+    "errors": 0,
+    "tokens": 770530,
+    "cost_cny": 2.01932,
+    "success_rate": 0.897253,
+    "cost_per_success_cny": 0.00084703,
+    "cost_complete": true,
+    "unpriced_models": [],
+    "states": {
+      "no_action": 273,
+      "tool_completed": 2384
+    },
+    "error_codes": {
+      "NO_KNOWLEDGE": 273
+    }
+  },
+  "notes": [
+    "locust 停表之后还有 4 次请求落到 /metrics：与 locust 对齐的计数用停表快照（service_metrics），停表后的完整快照存在 service_metrics_final；token 与成本按前者计。"
+  ],
+  "gate": {
+    "passed": true,
+    "http_error_rate": 0.0,
+    "http_error_rate_limit": 0.01,
+    "http_error_rate_ok": true,
+    "task_success_rate": 1.0,
+    "task_success_rate_floor": 0.99,
+    "task_success_rate_ok": true
+  }
+}

@@ -616,9 +616,9 @@ D:\Python\python.exe scripts/freeze_release.py
 
 `reports/` 是 gitignore 掉的运行产物；`releases/` 正相反——**它必须提交进 git**，
 因为「上个版本长什么样」不能靠记忆。已冻结的基线：`releases/v0.6.0/`（M7 补冻）、
-`releases/v0.7.0/`（M5 首个）、`releases/v0.8.0/`（M6；`--repeat 3`，带方差）；
+`releases/v0.7.0/`（M5 首个）、`releases/v0.8.0/`（M6；`--repeat 3`，带方差）、`releases/v0.9.0/`（M9；trace + 三层判分 + 人工抽检）；
 `releases/comparisons/` 存多版本并排报告。CI 门禁的**执法基线 = 最新已冻结版本**
-（现在是 `v0.8.0`），随每次冻结前移。`--baseline` 可以重复传，但**只有最后一条是执法
+（现在是 `v0.9.0`），随每次冻结前移。`--baseline` 可以重复传，但**只有最后一条是执法
 基线**，其余进报告只做并排展示——「多基线」不等于「多判据」。
 
 **脏工作区会被拒绝冻结**：指标锚不住版本号，之后的对比就都失去了意义。
@@ -626,7 +626,7 @@ D:\Python\python.exe scripts/freeze_release.py
 ### 门禁：`scripts/regression_gate.py`
 
 ```powershell
-D:\Python\python.exe scripts/regression_gate.py --candidate .release-candidate --baseline releases/v0.8.0
+D:\Python\python.exe scripts/regression_gate.py --candidate .release-candidate --baseline releases/v0.9.0
 
 # 多版本并排：三条都进报告，但只有最后一条是执法基线
 D:\Python\python.exe scripts/regression_gate.py --candidate releases/v0.8.0 --baseline releases/v0.6.0 --baseline releases/v0.7.0 --out releases/comparisons/v0.6.0-v0.7.0-v0.8.0.json
@@ -660,7 +660,7 @@ D:\Python\python.exe scripts/regression_gate.py --candidate releases/v0.8.0 --ba
 | job | 触发 | 干什么 | 阻塞 PR |
 | --- | --- | --- | --- |
 | `test` | push / PR / 手动 / 定时 | `python -m pytest -q` | 是 |
-| `gate` | 同上（`needs: test`） | `freeze_release.py --gate-against releases/v0.8.0` | 是 |
+| `gate` | 同上（`needs: test`） | `freeze_release.py --gate-against releases/v0.9.0` | 是 |
 | `judge-l5` | push / PR / 手动 / 定时（`needs: test`） | Promptfoo 46 条安全用例（零模型费用） | 是 |
 | `judge-real` | 定时 / 手动（PR 不触发） | L3 / L4 各 2 轮 + 判分门禁（会花钱） | 否 |
 | `nightly-real` | **只在定时任务里** | 真实模型对比 + 真实并发压测（会花钱） | 否 |
@@ -842,7 +842,7 @@ D:\Python\python.exe scripts\judge_l5_promptfoo.py
 D:\Python\python.exe scripts\judge_gate.py --l3 reports/l3-ragas.json --l4 reports/l4-deepeval.json --l5 reports/l5-promptfoo.json
 D:\Python\python.exe scripts/review_sheet.py --n 20 --write-template
 
-# 正式冻结：trace + 三层判分报告 + 人工抽检摘要一起进 releases/<tag>/
+# M9 实际执行的正式冻结（已完成）：trace + 三层判分报告 + 人工抽检摘要一起进 releases/<tag>/
 D:\Python\python.exe scripts/freeze_release.py --tag v0.9.0 --gate-against releases/v0.8.0
 ```
 
@@ -873,7 +873,7 @@ L3 总额 1.7245 = 判分 1.5248 + 合成回答 0.1997；L4 总额 0.4885 = 判�
 | **阶段二 M6（已完成）** | 噪声压制：把方差本身变成可测量的量 | `load_test.py --repeat N`（每次重启服务）、`compare_versions.py --repeat N`（中位数 + 极差 + 墙头草用例）、`freeze_release.py --repeat N` 把方差写进 `release.json`、门禁报告新增「噪声」列、修掉预算熔断被兜底吞掉的 bug（证据文档 §13 / §14） |
 | **阶段二 M7（已完成）** | 多版本回归 | 补冻 `releases/v0.6.0/`、`releases/comparisons/v0.6.0-v0.7.0-v0.8.0.json`（三版并排、门禁全绿）；CI 执法基线上移到最新已冻结版本 |
 | **阶段二 M8（已完成）** | 可观测性：Trace 层 | `tracing.py`（span 树 + 脱敏 + JSONL / Langfuse 双出口、零行为改变）、`trace_run.py` / `trace_report.py` / `trace_view.py`、失败环节定位规则、`--llm` 真实模型臂（16 条真 trace，CNY 0.0057）、**97 条**新测试（证据 §16） |
-| **阶段二 M9（进行中）** | 判分分层 + 方差 + 门禁 + 把 trace 纳入发布冻结 | L3/L4 `--repeat 3` 方差、`judge_gate.py` 基线门禁、20 条人工抽检（一致率 95%，kappa 0.875）、CI 五 job（L5 阻塞 PR，L3/L4 夜间；证据 §18）；剩余：`freeze_release.py` 冻结 trace 与判分报告 |
+| **阶段二 M9（已完成，tag `v0.9.0`）** | 判分分层 + 方差 + 门禁 + 把 trace 纳入发布冻结 | L3/L4 `--repeat 3` 方差、`judge_gate.py` 基线门禁、20 条人工抽检（一致率 95%，kappa 0.875）、CI 五 job（L5 阻塞 PR，L3/L4 夜间；证据 §18）、`freeze_release.py` 七项检查（原五项 + trace + judge）、发布冻结 `releases/v0.9.0/`（310 条 trace / L3 65.8% / L4 95.8% / L5 100%） |
 
 ### 评测指标（阶段五要算的东西，现在就能算前六项）
 
