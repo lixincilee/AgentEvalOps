@@ -243,16 +243,17 @@ jobs:
       # --repeat 2 是成本与方差的折中：单轮分不清「真退化」与「Judge 抖动」。
       # --budget 是硬熔断；超过就停，不会把整晚的额度跑光。
       - name: L3 Ragas（2 轮）
-        run: python scripts/judge_l3_ragas.py --repeat 2 --yes --budget 1.2
+        run: python scripts/judge_l3_ragas.py --repeat 2 --yes --allow-failures --budget 1.2
         env:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
 
       - name: L4 DeepEval（2 轮）
-        run: python scripts/judge_l4_deepeval.py --repeat 2 --yes --budget 0.7
+        run: python scripts/judge_l4_deepeval.py --repeat 2 --yes --allow-failures --budget 0.7
         env:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
 
-      # 判分脚本的退出码只管「本层有没有失败」；跨版本退化由这一条判。
+      # L3/L4 是测量层：--allow-failures 让「指标没达标」不中断流水线，
+      # 但框架报错仍会失败。真正阻断质量退化的判断只在这里。
       - name: 判分门禁
         run: >-
           python scripts/judge_gate.py

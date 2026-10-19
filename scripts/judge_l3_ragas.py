@@ -8,6 +8,8 @@ r"""L3：用 Ragas 给「检索 → 客服话术」打分。
 一次是 **Ragas 判分**（拆陈述、逐条核对）。报告会把两笔分开记。
 
 退出码：``0`` 全部通过 / ``1`` 有指标没过阈值或框架报错 / ``2`` 用法或环境问题。
+加 ``--allow-failures`` 后，指标没达标不算进程失败（仍写报告）；框架报错依旧返回 ``1``。
+CI 用这个模式，把「质量结论」交给 ``judge_gate.py``，避免一层测量失败挡住后面几层。
 """
 
 from __future__ import annotations
@@ -43,6 +45,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--budget", type=float, default=None, help="花费熔断上限（元）")
     parser.add_argument("--repeat", type=int, default=1, help="重复次数（量判分方差）")
     parser.add_argument("--yes", action="store_true", help="确认真实调用（会花钱）")
+    parser.add_argument(
+        "--allow-failures",
+        action="store_true",
+        help="指标没达标也返回 0；框架报错仍返回 1。CI 测量层用。",
+    )
     parser.add_argument("--no-compose", action="store_true",
                         help="不合成回答（直接评 v3 的 message，预期无意义，仅用于对照）")
     parser.add_argument("--out", type=Path, default=REPO_ROOT / "reports" / "l3-ragas.md")
@@ -156,7 +163,7 @@ def main(argv: list[str] | None = None, *, settings: Settings | None = None) -> 
             print(f"通过率  : 中位数 {combined.pass_rate:.1%}（最差 {combined.worst_pass_rate:.1%}）")
             print(f"花费    : CNY {ledger.cost:.4f}（调用 {ledger.calls} 次）")
             print(f"报告    : {args.out}")
-        return 0 if all(not report.errored_rows and report.pass_rate == 1.0 for report in reports) else 1
+        return 0 if _exit_ok(reports, args.allow_failures) else 1
 
     report = reports[0]
     report.notes = notes
@@ -166,7 +173,16 @@ def main(argv: list[str] | None = None, *, settings: Settings | None = None) -> 
         print(f"通过率  : {report.pass_rate:.1%}（所有指标都过阈值才算通过）")
         print(f"花费    : CNY {ledger.cost:.4f}（调用 {ledger.calls} 次）")
         print(f"报告    : {args.out}")
-    return 0 if report.pass_rate == 1.0 and not report.errored_rows else 1
+    return 0 if _exit_ok([report], args.allow_failures) else 1
+
+
+def _exit_ok(reports: list[JudgeReport], allow_failures: bool) -> bool:
+    """框架报错永远算失败；指标未达标只在 ``--allow-failures`` 时放行。"""
+    if any(report.errored_rows for report in reports):
+        return False
+    if allow_failures:
+        return True
+    return all(report.pass_rate == 1.0 for report in reports)
 
 
 def _write(report: JudgeReport, out: Path, json_path: Path) -> None:
