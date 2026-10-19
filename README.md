@@ -667,10 +667,10 @@ D:\Python\python.exe scripts/regression_gate.py --candidate releases/v0.8.0 --ba
 | `judge-real` | 定时 / 手动（PR 不触发） | L3 / L4 各 2 轮 + 判分门禁（会花钱） | 否 |
 | `nightly-real` | **只在定时任务里** | 真实模型对比 + 真实并发压测（会花钱） | 否 |
 
-**诚实说明**：这份 workflow **没有在 GitHub 上真跑过**（本机没有 Docker、也没有 `gh`）。
-它的依据只有两条：每条命令都在本机按同一顺序跑通过，以及 YAML 能被解析。
-还没被验证的结论，`docs/ci.md` 第 6 节列了一张表。真实模型那一格更是整块空白——
-延迟、吞吐、账单都还是建模值。
+**真实运行**：2026-10-19 首次在 GitHub Actions 上跑通（run 39231090257、run 39231799943），
+`test` / `gate` / `judge-l5` 全绿；`judge-real` / `nightly-real` 在 push 上按设计跳过。
+`main` 已开启分支保护：必须走 PR，上述三个 required checks 通过后才能合并；管理员同样受约束，
+禁止强推和删除。真实模型延迟、吞吐与账单仍没有 Actions 记录——付费 job 还没配 secret。
 
 ## 阶段二 M6：`--repeat N` —— 先把噪声压出来，再谈版本对比
 

@@ -147,8 +147,9 @@ D:\Python\python.exe scripts/judge_l5_promptfoo.py
 D:\Python\python.exe scripts/judge_gate.py --l3 reports/l3-ragas.json --l4 reports/l4-deepeval.json --baseline quality/judge_baseline.json
 ```
 
-trace 这套**还没有进 CI**（M9 的剩余工作）。它是纯 Python、不依赖 Docker，本机跑一遍
-310 条 trace 只要约 10 秒：
+trace 这套**已经进 CI**（M9）：`gate` job 的 `freeze_release.py` 会跑主矩阵、25 条故障和
+36 条多轮用例（共 310 条 trace），并把 `trace/` 写进 `.release-candidate/`。
+本机单跑约 10 秒：
 
 ```powershell
 D:\Python\python.exe scripts/trace_run.py --cases eval_cases/case_matrix_v2.jsonl --faults eval_cases/fault_cases.jsonl --multiturn eval_cases/multiturn_cases.jsonl --out reports/traces-full.jsonl
@@ -191,7 +192,29 @@ D:\Python\python.exe scripts/load_test.py --real --yes --users 5 --run-time 30s 
 | `.release-candidate/` 能被打包上传 | **已验证**：首次运行的 `release-candidate` 工件为 160,709 bytes，`include-hidden-files: true` 生效。gate 里原来还上传 `reports/`，但该目录在冻结流程中为空，已移除这条冗余上传 |
 | Trace 出口（Langfuse / Opik） | **未验证**：没有任何一份 trace 真的到过 Langfuse 服务（本机无 Docker、无账号），`langfuse>=3.0` 的 API 形状也没在真机上核对过 —— 猜错会**静默**降级成 dry-run。验证到的是载荷映射、dry-run 降级与注入假 client 时的调用序列（`docs/tracing.md` 第 7 节、`docs/stage2-evidence.md` §16.8） |
 
-## 7. 已经踩过的坑
+## 7. 分支保护
+
+`main` 已开启 GitHub 分支保护（2026-10-19），目标不是“好看”，而是让门禁真的能拦住合并：
+
+| 设置 | 值 |
+| --- | --- |
+| 合并方式 | 必须走 PR；solo 项目要求 0 个批准，但 PR 不能省 |
+| Required checks | `全量测试`、`冻结候选发布 + 回归门禁`、`判分 L5（Promptfoo，零模型费用）` |
+| 分支新鲜度 | PR 分支必须先与 `main` 同步（strict） |
+| 管理员 | 同样受约束（enforce admins） |
+| 强推 / 删除 | 均禁止 |
+
+因此 `git push origin main` 现在会被 GitHub 拒绝（`GH006`）。日常改动：
+
+```powershell
+git switch -c codex/<topic>
+git push -u origin codex/<topic>
+# 在 GitHub 开 PR，等三个 required checks 变绿后再 merge
+```
+
+本节所在的 PR 就是第一次真实验证：`pull_request` 触发三个 job，全绿后才能合并。
+
+## 8. 已经踩过的坑
 
 1. **浅克隆没有 tag。** `freeze_release.py` 用 `git describe --tags` 锚版本号；
    `actions/checkout` 默认 `depth=1`，浅克隆里没有 tag，锚点会退化成 `unknown`。

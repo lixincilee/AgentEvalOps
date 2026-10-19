@@ -132,7 +132,7 @@ D:\Python\python.exe scripts/trace_run.py --cases eval_cases/case_matrix_v2.json
 | 有 trace 真的到过 Langfuse 服务 | **没有**。本机没有 Docker、也没有 Langfuse 账号。验证到的是载荷映射、dry-run 降级、注入假 client 时的调用序列 |
 | `langfuse>=3.0` 的 API 形状（`start_span` / `update` / `end` 的参数名） | **未在真机验证**。适配层写成「出错就降级 + 落盘」，所以猜错也不会让评测崩，但会静默走 dry-run——**这个静默是已知风险** |
 | HTML 视图在浏览器里的实际渲染 | **未逐像素核对**。结构（几何、转义、徽标）有测试钉住，肉眼效果需要在浏览器里打开确认 |
-| trace 进了发布冻结产物 | **还没有**。`freeze_release.py` 目前只冻结五项检查的原始报告；把 trace 与定位报告一起冻结属于 M9 |
+| trace 进了发布冻结产物 | **已完成**（M9，tag `v0.9.0`）。`freeze_release.py` 现在跑七项检查，`releases/v0.9.0/trace/` 含 310 条 trace、定位报告与 HTML 视图 |
 | 真实模型路径的 trace | **跑过了，但只有 16 条**（CNY 0.0057）。`llm.plan` 上带真实 prompt / 回答 / token / 延迟；方差未测（只跑了一次）。其余 294 条是规则臂——能定位状态与工具问题，回答不了 prompt 问题 |
 | `--llm` 的接线（预算闸门、注入客户端也过账本、故障轮用真实规划器） | **有测试钉住**：`tests/test_trace_run.py` 16 条，全程不联网（注入 `ScriptedLLMClient`） |
 
