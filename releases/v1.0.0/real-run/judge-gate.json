@@ -1,0 +1,193 @@
+{
+  "baseline": "quality/judge_baseline.json",
+  "candidates": {
+    "L3": {
+      "layer": "L3",
+      "judge_model": "deepseek-flash",
+      "pass_rate": 0.644737,
+      "worst_pass_rate": 0.605263,
+      "errors": 0,
+      "repeat": 2,
+      "by_metric": {
+        "faithfulness": {
+          "median": 0.925439,
+          "min": 0.901316,
+          "max": 0.949561,
+          "range": 0.048246,
+          "means": [
+            0.901316,
+            0.949561
+          ],
+          "passed": [
+            32,
+            35
+          ],
+          "errors": 0,
+          "mean": 0.925439
+        },
+        "context_precision": {
+          "median": 0.778509,
+          "min": 0.745614,
+          "max": 0.811404,
+          "range": 0.065789,
+          "means": [
+            0.811404,
+            0.745614
+          ],
+          "passed": [
+            28,
+            24
+          ],
+          "errors": 0,
+          "mean": 0.778509
+        }
+      },
+      "source": "reports/l3-ragas.json"
+    },
+    "L4": {
+      "layer": "L4",
+      "judge_model": "deepseek-flash",
+      "pass_rate": 0.958333,
+      "worst_pass_rate": 0.958333,
+      "errors": 0,
+      "repeat": 2,
+      "by_metric": {
+        "grounded_answer": {
+          "median": 0.935526,
+          "min": 0.931579,
+          "max": 0.939474,
+          "range": 0.007895,
+          "means": [
+            0.931579,
+            0.939474
+          ],
+          "passed": [
+            36,
+            36
+          ],
+          "errors": 0,
+          "mean": 0.935526
+        },
+        "refusal_quality": {
+          "median": 1.0,
+          "min": 1.0,
+          "max": 1.0,
+          "range": 0.0,
+          "means": [
+            1.0,
+            1.0
+          ],
+          "passed": [
+            10,
+            10
+          ],
+          "errors": 0,
+          "mean": 1.0
+        }
+      },
+      "source": "reports/l4-deepeval.json"
+    }
+  },
+  "verdicts": [
+    {
+      "layer": "L3",
+      "metric": "pass_rate",
+      "status": "pass",
+      "candidate": 0.644737,
+      "baseline": 0.657895,
+      "bound": 0.6,
+      "tolerance": 0.05,
+      "reason": "通过",
+      "note": "用例级通过率中位数"
+    },
+    {
+      "layer": "L3",
+      "metric": "worst_pass_rate",
+      "status": "pass",
+      "candidate": 0.605263,
+      "baseline": 0.605263,
+      "bound": 0.55,
+      "tolerance": 0.08,
+      "reason": "通过",
+      "note": "三次里最差的一次；极小值容忍更宽"
+    },
+    {
+      "layer": "L3",
+      "metric": "by_metric.faithfulness.mean",
+      "status": "pass",
+      "candidate": 0.925439,
+      "baseline": 0.953947,
+      "bound": 0.85,
+      "tolerance": 0.03,
+      "reason": "通过",
+      "note": "忠实性均值"
+    },
+    {
+      "layer": "L3",
+      "metric": "by_metric.context_precision.mean",
+      "status": "pass",
+      "candidate": 0.778509,
+      "baseline": 0.77193,
+      "bound": 0.65,
+      "tolerance": 0.03,
+      "reason": "通过",
+      "note": "上下文精度均值"
+    },
+    {
+      "layer": "L4",
+      "metric": "pass_rate",
+      "status": "pass",
+      "candidate": 0.958333,
+      "baseline": 0.958333,
+      "bound": 0.9,
+      "tolerance": 0.03,
+      "reason": "通过",
+      "note": "用例级通过率中位数"
+    },
+    {
+      "layer": "L4",
+      "metric": "worst_pass_rate",
+      "status": "pass",
+      "candidate": 0.958333,
+      "baseline": 0.958333,
+      "bound": 0.88,
+      "tolerance": 0.03,
+      "reason": "通过",
+      "note": "三次里最差的一次"
+    },
+    {
+      "layer": "L4",
+      "metric": "by_metric.grounded_answer.mean",
+      "status": "pass",
+      "candidate": 0.935526,
+      "baseline": 0.942105,
+      "bound": 0.85,
+      "tolerance": 0.03,
+      "reason": "通过",
+      "note": "有依据时的 GEval 均值"
+    },
+    {
+      "layer": "L4",
+      "metric": "by_metric.refusal_quality.mean",
+      "status": "pass",
+      "candidate": 1.0,
+      "baseline": 1.0,
+      "bound": 0.85,
+      "tolerance": 0.03,
+      "reason": "通过",
+      "note": "拒答质量均值"
+    },
+    {
+      "layer": "L5",
+      "metric": "pass_rate",
+      "status": "skip",
+      "candidate": null,
+      "baseline": null,
+      "bound": 1.0,
+      "tolerance": 0.0,
+      "reason": "本次未提供这一层"
+    }
+  ],
+  "failed": 0,
+  "skipped": 1
+}

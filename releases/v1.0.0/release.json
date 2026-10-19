@@ -1,0 +1,211 @@
+{
+  "kind": "release_index",
+  "tag": "v1.0.0",
+  "commit": "ea7e13c",
+  "describe": "v0.9.0-12-gea7e13c",
+  "spec_version": "1.3",
+  "frozen_at": "2026-10-19T13:57:56.601143+00:00",
+  "dirty": false,
+  "checks": [
+    {
+      "name": "pytest",
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 38.078,
+      "artifact": "pytest.txt",
+      "metrics": {
+        "pytest.passed": 1293,
+        "pytest.failed": 0,
+        "pytest.xfailed": 10,
+        "pytest.skipped": 1
+      },
+      "detail": "1293 passed / 0 failed"
+    },
+    {
+      "name": "faults",
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 5.078,
+      "artifact": "fault-run.json",
+      "metrics": {
+        "fault.pass_rate": 1.0,
+        "fault.cases": 25
+      },
+      "detail": "25/25 条故障用例"
+    },
+    {
+      "name": "comparison:matrix",
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 5.203,
+      "artifact": "comparison-matrix.json",
+      "metrics": {
+        "matrix.v1.pass_rate": 0.9671361502347418,
+        "matrix.v3_rules.pass_rate": 0.9671361502347418
+      },
+      "detail": "213 行"
+    },
+    {
+      "name": "comparison:rag_multiturn",
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 5.234,
+      "artifact": "comparison-rag-multiturn.json",
+      "metrics": {
+        "rag_multiturn.v1.pass_rate": 0.375,
+        "rag_multiturn.v3_rules.pass_rate": 1.0
+      },
+      "detail": "120 行"
+    },
+    {
+      "name": "trace",
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 11.047,
+      "artifact": "trace/trace-report.md",
+      "artifacts": [
+        "trace/traces.jsonl",
+        "trace/traces.cases.jsonl",
+        "trace/trace-report.md",
+        "trace/trace-report.json",
+        "trace/trace-view.html"
+      ],
+      "metrics": {
+        "trace.traces": 310,
+        "trace.failed": 7,
+        "trace.pass_rate": 0.9774193548387097,
+        "trace.unclassified": 0
+      },
+      "detail": "310 条 trace / 7 条不通过 / 未定位 0"
+    },
+    {
+      "name": "judge",
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 0.0,
+      "artifact": "judge/l3-ragas.json",
+      "artifacts": [
+        "judge/l3-ragas.json",
+        "judge/l3-ragas.md",
+        "judge/l4-deepeval.json",
+        "judge/l4-deepeval.md",
+        "judge/l5-promptfoo.json",
+        "judge/l5-promptfoo.md",
+        "judge/review-summary-v1.json",
+        "judge/judge_baseline.json"
+      ],
+      "metrics": {
+        "judge.L3.pass_rate": 0.644737,
+        "judge.L3.worst_pass_rate": 0.605263,
+        "judge.L3.repeat": 2,
+        "judge.L3.errors": 0,
+        "judge.L3.cost_cny": 0.507073,
+        "judge.L4.pass_rate": 0.958333,
+        "judge.L4.worst_pass_rate": 0.958333,
+        "judge.L4.repeat": 2,
+        "judge.L4.errors": 0,
+        "judge.L4.cost_cny": 0.09870056,
+        "judge.L5.pass_rate": 1.0,
+        "judge.L5.worst_pass_rate": 1.0,
+        "judge.L5.repeat": 1,
+        "judge.L5.errors": 0,
+        "judge.L5.cost_cny": 0.0,
+        "judge.errors": 0,
+        "judge.human.agreement": 0.95,
+        "judge.human.kappa": 0.875,
+        "judge.human.labeled": 20
+      },
+      "sources": [
+        {
+          "layer": "L3",
+          "path": "F:\\Agent学习\\AgentEvalOps\\reports\\l3-ragas.json",
+          "generated_at": "2026-10-19T12:35:16+00:00",
+          "judge_model": "deepseek-flash",
+          "case_set": "rag_cases.jsonl",
+          "repeat": 2
+        },
+        {
+          "layer": "L4",
+          "path": "F:\\Agent学习\\AgentEvalOps\\reports\\l4-deepeval.json",
+          "generated_at": "2026-10-19T12:39:04+00:00",
+          "judge_model": "deepseek-flash",
+          "case_set": "rag_cases.jsonl",
+          "repeat": 2
+        },
+        {
+          "layer": "L5",
+          "path": "F:\\Agent学习\\AgentEvalOps\\reports\\l5-promptfoo.json",
+          "generated_at": "2026-10-19T12:26:19+00:00",
+          "judge_model": "promptfoo@0.121.3",
+          "case_set": "case_matrix_v2.jsonl",
+          "repeat": 1
+        }
+      ],
+      "detail": "L3 64.5%（2 轮） / L4 95.8%（2 轮） / L5 100.0%（1 轮） / 人工 20/20 / kappa 0.875"
+    },
+    {
+      "name": "load_test",
+      "status": "passed",
+      "exit_code": 0,
+      "seconds": 36.985,
+      "artifact": "load-test.json",
+      "metrics": {
+        "perf.http_error_rate": 0.0,
+        "perf.task_success_rate": 1.0,
+        "perf.p95_ms": 140,
+        "perf.rps": 157.701,
+        "perf.tokens_per_request": 290.0,
+        "perf.cost_per_success_cny": 0.000760529
+      },
+      "detail": "modeled 臂 / P95 140ms",
+      "provenance": {
+        "latency": "modeled",
+        "tokens": "modeled"
+      },
+      "repeat": 1,
+      "variance": null
+    }
+  ],
+  "metrics": {
+    "fault.cases": 25.0,
+    "fault.pass_rate": 1.0,
+    "judge.L3.cost_cny": 0.507073,
+    "judge.L3.errors": 0.0,
+    "judge.L3.pass_rate": 0.644737,
+    "judge.L3.repeat": 2.0,
+    "judge.L3.worst_pass_rate": 0.605263,
+    "judge.L4.cost_cny": 0.09870056,
+    "judge.L4.errors": 0.0,
+    "judge.L4.pass_rate": 0.958333,
+    "judge.L4.repeat": 2.0,
+    "judge.L4.worst_pass_rate": 0.958333,
+    "judge.L5.cost_cny": 0.0,
+    "judge.L5.errors": 0.0,
+    "judge.L5.pass_rate": 1.0,
+    "judge.L5.repeat": 1.0,
+    "judge.L5.worst_pass_rate": 1.0,
+    "judge.errors": 0.0,
+    "judge.human.agreement": 0.95,
+    "judge.human.kappa": 0.875,
+    "judge.human.labeled": 20.0,
+    "matrix.v1.pass_rate": 0.9671361502347418,
+    "matrix.v3_rules.pass_rate": 0.9671361502347418,
+    "perf.cost_per_success_cny": 0.000760529,
+    "perf.http_error_rate": 0.0,
+    "perf.p95_ms": 140.0,
+    "perf.rps": 157.701,
+    "perf.task_success_rate": 1.0,
+    "perf.tokens_per_request": 290.0,
+    "pytest.failed": 0.0,
+    "pytest.passed": 1293.0,
+    "pytest.skipped": 1.0,
+    "pytest.xfailed": 10.0,
+    "rag_multiturn.v1.pass_rate": 0.375,
+    "rag_multiturn.v3_rules.pass_rate": 1.0,
+    "trace.failed": 7.0,
+    "trace.pass_rate": 0.9774193548387097,
+    "trace.traces": 310.0,
+    "trace.unclassified": 0.0
+  },
+  "variance": {}
+}
