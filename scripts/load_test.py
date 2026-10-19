@@ -683,20 +683,26 @@ def _run(args, mode: str, arm: str, report_path: Path, tmp: Path) -> int:
     return 1
 
 
-def main(argv: list[str] | None = None) -> int:
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="并发压测：起服务 + locust + 汇总 + 门禁")
     parser.add_argument("--users", type=int, default=20, help="虚拟用户数")
     parser.add_argument("--spawn-rate", type=float, default=5.0, help="加压速率（用户/秒）")
     parser.add_argument("--run-time", default="30s", help="时长，locust 语法（30s / 2m）")
     parser.add_argument("--port", type=int, default=8123, help="服务端口，换一个就能避开占用")
     parser.add_argument("--report", default=None, help="汇总 JSON 路径；给目录则写入 load-test-<UTC>.json")
-    parser.add_argument("--arm", choices=("modeled", "rules"), default=None, help="mock 模式的模型臂")
+    parser.add_argument("--arm", choices=("modeled", "rules", "deepseek"), default=None,
+                        help="模型臂；deepseek 仅供内部 --serve-only 使用")
     parser.add_argument("--real", action="store_true", help="真实调用 DeepSeek：会花钱，需要 --yes")
     parser.add_argument("--yes", action="store_true", help="确认这次真实调用可以花钱")
     parser.add_argument("--budget", type=float, default=None, help="本次运行的花费上限（元）")
     parser.add_argument("--repeat", type=int, default=1,
                         help="重复运行次数（量方差；每次重启服务）")
     parser.add_argument("--serve-only", action="store_true", help="内部用：只把服务起起来")
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = build_parser()
     args = parser.parse_args(argv)
 
     if args.serve_only:
@@ -709,6 +715,9 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     if args.real and args.arm is not None:
         print("--real 与 --arm 互斥：--real 就是真模型臂。")
+        return 2
+    if args.arm == "deepseek":
+        print("--arm deepseek 仅供内部 --serve-only 使用；真实压测请用 --real。")
         return 2
     mode = "real" if args.real else "mock"
     arm = "deepseek" if args.real else (args.arm or "modeled")

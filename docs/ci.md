@@ -13,10 +13,10 @@
 | `test` | 每次 push 到 `main`、每个 PR、手动触发、每天定时 | `python -m pytest -q` | 阻塞 |
 | `gate` | 同上（`needs: test`，测试先过） | 冻结候选发布（含 trace；PR 跳过付费判分），并和 `releases/v0.9.0`（最新已冻结版本）比 | 阻塞 |
 | `judge-l5` | 同上（`needs: test`） | Promptfoo 跑 46 条安全用例；零模型费用 | 阻塞 |
-| `nightly-real` | 定时任务，或手动触发且 `paid_jobs=true` | 真实模型对比 + 真实并发压测 | 不阻塞 |
-| `judge-real` | 定时任务，或手动触发且 `paid_jobs=true` | Ragas / DeepEval 各 2 轮 + 判分门禁；会花钱 | 不阻塞合并（PR 上不触发） |
+| `nightly-real` | 定时任务，或手动触发且 `paid_target=both` | 真实模型对比 + 真实并发压测 | 不阻塞 |
+| `judge-real` | 定时任务，或手动触发且 `paid_target=both` | Ragas / DeepEval 各 2 轮 + 判分门禁；会花钱 | 不阻塞合并（PR 上不触发） |
 
-手动跑付费链路：GitHub → Actions → `regression` → Run workflow，把 `paid_jobs` 设为 `true`。
+手动跑付费链路：GitHub → Actions → `regression` → Run workflow，把 `paid_target` 设为 `both`（或只跑 `judge` / `nightly`）。
 预算上限：`judge-real` 的 L3 1.2 + L4 0.7 = CNY 1.9；`nightly-real` 的对比 0.5 + 压测 0.5 = CNY 1.0。
 
 `nightly-real` 不阻塞合并有两重保险：它**在 PR 上根本不触发**；同时整个 job 标了
