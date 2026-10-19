@@ -12,6 +12,7 @@ reports/
 htmlcov/
 .venv/
 .venv-judge/
+.venv-trace/
 venv/
 # M9：本地固定版本的 promptfoo（npm install --no-save --prefix .promptfoo）。
 # 它是一份可重装的工具，不是源码；固定版本号写在 scripts/judge_l5_promptfoo.py。

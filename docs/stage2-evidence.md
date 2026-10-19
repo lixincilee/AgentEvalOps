@@ -1380,7 +1380,7 @@ M8 在写 trace 的过程中修掉 5 个真 bug（都写进 `docs/tracing.md` §
 | 声明 | 状态 |
 | --- | --- |
 | 有 trace 真的到过 Langfuse 服务 | **没有**。本机无 Docker、无 Langfuse 账号。验证到的是载荷映射（纯函数 `langfuse_payload()`）、dry-run 降级、以及注入假 client 时的调用序列 |
-| `langfuse>=3.0` 的 API 形状（`start_span` / `update` / `end` 的参数名） | **未在真机验证**。适配层写成「出错就降级 + 落盘」，所以猜错不会让评测崩，但会**静默**走 dry-run —— 这是已知风险，不是已解决的问题 |
+| Langfuse SDK 的 API 形状 | **已在 5.0.2 上核对**：入口是 `start_observation`，不是旧版 `start_span`；父子层级用 `trace_context.parent_span_id`。适配层保留旧版回退，真实发送仍未验证 |
 | HTML 视图的肉眼效果 | **未逐像素核对**。几何、转义、徽标有测试钉住，浏览器里到底长什么样需要人打开确认 |
 | trace 进了发布冻结产物 | **已完成**（M9，tag `v0.9.0`）。`freeze_release.py` 现有七项检查，`releases/v0.9.0/trace/` 含 310 条 trace、定位报告与 HTML 视图 |
 | 310 条 trace 覆盖了模型路径 | **只有 16 条**（§16.5）。剩下 294 条是规则臂：能定位状态与工具问题，回答不了 prompt 问题 |

@@ -39,6 +39,9 @@ env:
   PYTHONUTF8: "1"
   PYTHONIOENCODING: "utf-8"
   PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  # 本地 .env 不会进 CI；不显式指定时默认 deepseek-chat 不在价目表里，
+  # 预算熔断会拒绝启动（2026-10-19 nightly-real 的实际失败原因）。
+  DEEPSEEK_MODEL: "deepseek-flash"
 
 jobs:
   test:
