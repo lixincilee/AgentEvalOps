@@ -576,11 +576,15 @@ D:\Python\python.exe scripts/load_test.py --real --yes --users 5 --run-time 30s 
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `modeled`（60ms 建模延迟） | 50 | 2653 | 141.5 | 310 / 480 / 1100 | 74.4 ms | 0.000% | 100.000% | CNY 0.00076 |
 | `rules`（零延迟） | 20 | 1597 | 125.4 | 130 / 220 / 780 | 7.2 ms | 0.000% | 100.000% | CNY 0 |
+| `deepseek`（真实模型，2026-10-19） | 5 | 133 | 4.79 | 1000 / 1300 / 1500 | 1017.6 ms | 0.000% | 100.000% | CNY 0.000625 |
 
-**表里每个数字都是 mock 臂跑出来的**：报告里 `provenance` 写死
-`{"latency": "modeled", "tokens": "modeled"}`——60ms 是 `time.sleep`、token 是固定估计值，
-只是借 `deepseek-flash` 的价目折算成本。它证明「服务端在这套配置下扛得住 50 并发」，
-**不是**「DeepSeek 的产能或报价」。真实的 P95 和真实账单只有 `--real` 一条路，它会花钱。
+前两行是 mock 臂：`provenance` 写死 `{"latency": "modeled", "tokens": "modeled"}`——60ms 是
+`time.sleep`、token 是固定估计值，只是借 `deepseek-flash` 的价目折算成本。它证明「服务端在
+这套配置下扛得住 50 并发」，**不是**「DeepSeek 的产能或报价」。
+
+最后一行是 `nightly-real` 的真实运行（run 39251627592）：`mode: real`、`arm: deepseek`、
+`provenance: {latency: measured, tokens: measured}`，30,182 tokens、花费 CNY 0.083104。
+5 用户 / 30 秒只是**低并发基线**；供应商拥塞窗口会让同一配置的 P95 成倍波动，不能当容量上限。
 
 两个口径必须分开记，这是本轮踩到的坑（详见证据文档 §11.3）：
 
@@ -670,10 +674,12 @@ D:\Python\python.exe scripts/regression_gate.py --candidate releases/v0.8.0 --ba
 手动跑付费链路：Actions → `regression` → Run workflow，把 `paid_target` 设为 `both`（或只跑 `judge` / `nightly`）。
 预算上限：`judge-real` CNY 1.9 + `nightly-real` CNY 1.0。
 
-**真实运行**：2026-10-19 首次在 GitHub Actions 上跑通（run 39231090257、run 39231799943），
-`test` / `gate` / `judge-l5` 全绿；`judge-real` / `nightly-real` 在 push 上按设计跳过。
+**真实运行**：2026-10-19 首次在 GitHub Actions 上跑通（run 39231090257），
+`test` / `gate` / `judge-l5` 全绿；随后配好 `DEEPSEEK_API_KEY`，以 `paid_target=both` 触发
+[run 39251627592](https://github.com/lixincilee/AgentEvalOps/actions/runs/39251627592)，
+`nightly-real` 与 `judge-real` 也全绿，合计花费 CNY 0.7163。
 `main` 已开启分支保护：必须走 PR，上述三个 required checks 通过后才能合并；管理员同样受约束，
-禁止强推和删除。真实模型延迟、吞吐与账单仍没有 Actions 记录——付费 job 还没配 secret。
+禁止强推和删除。真实并发与判分的口径见 `docs/stage2-evidence.md` §18.8。
 
 ## 阶段二 M6：`--repeat N` —— 先把噪声压出来，再谈版本对比
 
@@ -852,7 +858,7 @@ D:\Python\python.exe scripts/review_sheet.py --n 20 --write-template
 D:\Python\python.exe scripts/freeze_release.py --tag v0.9.0 --gate-against releases/v0.8.0
 ```
 
-GitHub Actions 首次真实运行（2026-10-19，[run 39231090257](https://github.com/lixincilee/AgentEvalOps/actions/runs/39231090257)）：`test` / `gate` / `judge-l5` 全绿；`nightly-real` 与 `judge-real` 在 push 上按设计跳过。
+GitHub Actions 首次真实运行（2026-10-19，[run 39231090257](https://github.com/lixincilee/AgentEvalOps/actions/runs/39231090257)）：`test` / `gate` / `judge-l5` 全绿。付费链路随后在 [run 39251627592](https://github.com/lixincilee/AgentEvalOps/actions/runs/39251627592) 跑通：`nightly-real`（真实对比 + 压测）与 `judge-real`（L3 64.5% / L4 95.8% / 门禁 8 项全过）均成功，合计 CNY 0.7163（证据 §18.8）。
 
 **3 轮重复改变了结论，而不只是分数**：L3 三轮 65.8% / 60.5% / 65.8%，3 条墙头草全部翻在
 `context_precision`；L4 三轮都 95.8%，并把首轮漏掉的 `rag_refund_window` 稳定地抓了出来。
@@ -882,6 +888,7 @@ L3 总额 1.7245 = 判分 1.5248 + 合成回答 0.1997；L4 总额 0.4885 = 判�
 | **阶段二 M7（已完成）** | 多版本回归 | 补冻 `releases/v0.6.0/`、`releases/comparisons/v0.6.0-v0.7.0-v0.8.0.json`（三版并排、门禁全绿）；CI 执法基线上移到最新已冻结版本 |
 | **阶段二 M8（已完成）** | 可观测性：Trace 层 | `tracing.py`（span 树 + 脱敏 + JSONL / Langfuse 双出口、零行为改变）、`trace_run.py` / `trace_report.py` / `trace_view.py`、失败环节定位规则、`--llm` 真实模型臂（16 条真 trace，CNY 0.0057）、**97 条**新测试（证据 §16） |
 | **阶段二 M9（已完成，tag `v0.9.0`）** | 判分分层 + 方差 + 门禁 + 把 trace 纳入发布冻结 | L3/L4 `--repeat 3` 方差、`judge_gate.py` 基线门禁、20 条人工抽检（一致率 95%，kappa 0.875）、CI 五 job（L5 阻塞 PR，L3/L4 夜间；证据 §18）、`freeze_release.py` 七项检查（原五项 + trace + judge）、发布冻结 `releases/v0.9.0/`（310 条 trace / L3 65.8% / L4 95.8% / L5 100%） |
+| **阶段二 M10（已完成）** | 付费链路实跑：真实模型判分 + 真实并发 | `DEEPSEEK_API_KEY` secret、`DEEPSEEK_MODEL=deepseek-flash`、`paid_target=both` 手动触发、L3/L4 测量层 `--allow-failures`（PR #5）；run 39251627592：真实对比四臂、133 请求 / P95 1300ms / RPS 4.79 / 成功率 100% / 单次成功 CNY 0.000625、L3 64.5% / L4 95.8% / 门禁 8 项全过，合计 CNY 0.7163（证据 §18.8） |
 
 ### 评测指标（阶段五要算的东西，现在就能算前六项）
 

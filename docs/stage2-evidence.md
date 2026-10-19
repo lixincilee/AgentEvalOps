@@ -345,7 +345,8 @@ completion 2442 tokens——与 run1/run3 一致，说明这 9 条是稳定差�
 | ~~3 个版本回归对比~~ | **已完成**（M7，§15）：补冻 `releases/v0.6.0/`，`releases/comparisons/v0.6.0-v0.7.0-v0.8.0.json` 三版并排、门禁全绿；**但功能指标三版无区分度**，见 §15.6 ① |
 | ~~Langfuse trace~~ | **已完成**（M8，§16）：本机无 Docker / 无账号，做的是**本地 JSONL trace + Langfuse 载荷映射 + dry-run 降级**；没有任何 trace 真的到过 Langfuse 服务（§16.8） |
 | ~~故障注入（25 条）~~ | **已完成**（M4，tag `v0.6.0`）：工具超时 / 工具 500 / 空检索 / 模型限流，25/25 全过（§11.1） |
-| ~~并发压测（Locust/k6）~~ | **已完成**（M4，tag `v0.6.0`）：mock 臂 + modeled 臂，P95 / 吞吐 / 错误率 / 单次成功任务成本都有数（§11.2）；真模型并发仍未跑 |
+| ~~并发压测（Locust/k6）~~ | **已完成**（M4，tag `v0.6.0`；真实模型 2026-10-19）：mock / modeled 臂见 §11.2；`nightly-real` 真模型 133 请求、RPS 4.79、P95 1300ms、成功率 100%、单次成功成本 CNY 0.000625（§18.8） |
+| ~~付费 CI（`judge-real` / `nightly-real`）~~ | **已完成**（2026-10-19，run 39251627592）：L3 64.5% / L4 95.8% / 门禁 8/8 通过，判分花费 CNY 0.6058；真实对比 + 压测花费 CNY 0.1105（§18.8） |
 | ~~`--repeat` 与报告快照入库~~ | **已完成**（M6，tag `v0.8.0`）：三处 `--repeat N`、门禁报告「噪声」列；发布快照冻结到 `releases/<tag>/` 并入库（§13 / §14） |
 
 > 上表之外的提醒：§6 / §7 的报告都产生于 **165 条矩阵**，`case_set_hash` 各自记在 manifest 里。
@@ -618,6 +619,22 @@ token 是固定估计值（260 + 30），只是借 `deepseek-flash` 的价目折
 它证明的是「**服务端**在这套配置下扛得住 50 并发、不丢请求」，**不是**「DeepSeek 的产能
 或报价」。真实的 P95 和真实账单只有 `scripts/load_test.py --real` 一条路，而它会花钱。
 
+**真实模型臂（2026-10-19，`nightly-real`，run 39251627592）**：
+
+| 指标 | 真值 | 口径 |
+| --- | --- | --- |
+| users / run_time | 5 / 30s | `--users 5 --spawn-rate 1` |
+| 请求数 | 133 | locust 与 `/metrics` 对齐后的计数 |
+| RPS | 4.79 | 30 秒窗口 |
+| P50 / P95 / P99 | 1000 / 1300 / 1500 ms | Locust 客户端观测，含同机调度开销 |
+| HTTP 错误率 | 0.000% | 传输层 |
+| 任务成功率 | 100.000% | 期望表口径（`no_action/NO_KNOWLEDGE` 也是正确终态） |
+| 花费 | CNY 0.083104 | 30,182 tokens，按 `deepseek-flash` 价目 |
+| 单次成功任务成本 | CNY 0.000625 | 成本 / 133 个成功任务 |
+
+报告首行是 `mode: real`、`arm: deepseek`、`provenance: {latency: measured, tokens: measured}`。
+这是**低并发基线**（5 用户），不是容量上限；供应商拥塞窗口会显著改变 P95（§7.4）。
+
 两点可以拿来交叉验证的口径：
 
 - `modeled` 臂的服务端自报延迟均值 76.9ms，比 `rules` 臂的 4.3ms 高 72.6ms，量级正好落在
@@ -660,8 +677,9 @@ token 是固定估计值（260 + 30），只是借 `deepseek-flash` 的价目折
 
 ### 11.4 还没能证明的事
 
-1. **真实 P95 / 吞吐 / 成本仍是空白**。上面每一个延迟与 token 都是建模值。`--real` 会花
-   真钱，且供应商有拥塞窗口（§7.4），需要在低并发下先跑一轮拿真实基线。
+1. **真实 P95 / 吞吐 / 成本已有低并发基线，但没有容量结论**。5 用户、30 秒的实测是
+   P95 1300ms / RPS 4.79 / 单次成功 CNY 0.000625；供应商拥塞窗口（§7.4）会让同一配置的
+   延迟成倍波动，要谈容量必须做多档并发并重复。
 2. **只有单进程**。`/metrics` 是进程内计数，`uvicorn --workers N` 会让每个进程各有一份，
    脚本必须逐进程聚合；当前按单进程多线程跑（anyio 线程池默认 40 线程，那也是并发的真实
    上界）。多进程的聚合没做。
@@ -1559,7 +1577,7 @@ kappa 低不等于「有一层错了」。L3 对 `context_precision` 严格，L4
 | `judge-real` | 定时 / 手动（PR 不触发） | L3 / L4 各 `--repeat 2` + `judge_gate.py` | 上限 CNY 1.9/晚 | 否 |
 
 - L5 是确定性的、零模型费用，所以放在每次 PR 上阻塞。
-- L3/L4 每次约 CNY 0.85（2 轮）+ 20 分钟，且需要 `DEEPSEEK_API_KEY` secret，所以只在
+- L3/L4 每次约 CNY 0.61（2 轮，2026-10-19 实测）+ 20 分钟，且需要 `DEEPSEEK_API_KEY` secret，所以只在
   夜间/手动跑；退化会让夜间运行变红，但不挡 PR。
 - 门禁基线是提交进 git 的 `quality/judge_baseline.json`，判据有三条：绝对下限、
   比基线低超过容忍值、任何框架错误行。重复报告同时判 `pass_rate` 中位数与 `worst_pass_rate`。
@@ -1577,7 +1595,7 @@ D:\Python\python.exe scripts\judge_gate.py --l3 reports/l3-ragas.json --l4 repor
 
 | 声明 | 状态 |
 | --- | --- |
-| GitHub Actions 真跑过 | **已跑过**（2026-10-19，[run 39231090257](https://github.com/lixincilee/AgentEvalOps/actions/runs/39231090257)）：`test` / `gate` / `judge-l5` 全绿，173 秒；`nightly-real` / `judge-real` 在 push 上按设计 skipped |
+| GitHub Actions 真跑过 | **已跑过**（2026-10-19）：首次 [run 39231090257](https://github.com/lixincilee/AgentEvalOps/actions/runs/39231090257) 的 `test` / `gate` / `judge-l5` 全绿，173 秒；付费 [run 39251627592](https://github.com/lixincilee/AgentEvalOps/actions/runs/39251627592) 的 `nightly-real` 与 `judge-real` 也全绿（§18.8） |
 | 人工抽检完成 | **已完成 20 / 20**。一致率 95%，kappa 0.875；但样本是失败优先的 20 条，不能当总体准确率 |
 | 3 次重复给出置信区间 | **没有**。样本量太小；5.3 个百分点的极差只能当噪声上界参考 |
 | 判分门禁的容忍值有统计依据 | **没有**。L3 5 pp / L4 3 pp 是工程折中，不是显著性结论 |
@@ -1628,3 +1646,49 @@ L3/L4 报告是冻结前既有的多轮运行结果，不是冻结时重跑；tr
 
 **边界**：付费的 `nightly-real` 与 `judge-real` 仍没有 Actions 运行记录；真实模型延迟、
 账单和 L3/L4 判分在 GitHub Runner 上的行为仍未验证。Node 20 action 的弃用 warning 仍在。
+
+### 18.8 付费链路首次真实运行（2026-10-19）
+
+`DEEPSEEK_API_KEY` 配为仓库 secret，CI 默认模型 `DEEPSEEK_MODEL=deepseek-flash`（`deepseek-chat`
+没有价目，预算熔断会拒绝启动）。手动以 `paid_target=both` 触发
+[run 39251627592](https://github.com/lixincilee/AgentEvalOps/actions/runs/39251627592)，
+锚定提交 `cff5b09`：
+
+| job | 结果 | 关键证据 |
+| --- | --- | --- |
+| `test` | 成功 | 全量 pytest |
+| `nightly-real` | 成功 | 真实四方对比 40 条/臂 + 真实压测 133 请求 |
+| `judge-l5` | 成功 | Promptfoo 46 条安全用例 |
+| `judge-real` | 成功 | L3 两轮、L4 两轮、`judge_gate.py` 八条判据全过 |
+| `gate` | 成功 | 冻结候选 + 回归门禁 |
+
+真实模型四臂（`--llm --limit 40`）：
+
+| 臂 | 通过率 | 模型调用 | 平均延迟 | 花费 (CNY) |
+| --- | --- | --- | --- | --- |
+| `v1` 规则 | 100% | 0 | — | 0 |
+| `v2` LLM 规划 | 97.5% | 40 | 1084 ms | 0.012315 |
+| `v3` LangGraph + RAG + 多轮 | 100% | 40 | 1098 ms | 0.015063 |
+| `v3-rules` | 100% | 0 | — | 0 |
+
+真实压测（5 用户 / 30 秒）：133 请求、RPS 4.79、P50/P95/P99 = 1000/1300/1500 ms、
+HTTP 错误率 0、任务成功率 100%、30,182 tokens、花费 CNY 0.083104、
+单次成功任务成本 CNY 0.000625。详细口径见 §11.2。
+
+判分（`deepseek-flash`，各 2 轮）：
+
+| 层 | 通过率（中位/最差） | 关键指标 | 框架错误 | 花费 (CNY) |
+| --- | --- | --- | --- | --- |
+| L3 Ragas | 64.5% / 60.5% | faithfulness 0.925、context_precision 0.779 | 0 | 0.5071 |
+| L4 DeepEval | 95.8% / 95.8% | grounded_answer 0.936、refusal_quality 1.000 | 0 | 0.0987 |
+
+门禁 8 条全部通过：L3 相对基线 65.8% 低 1.3pp，在 5pp 容忍内；`worst_pass_rate` 60.5%
+与基线持平；L4 与基线一致。本次付费运行合计 **CNY 0.7163**（判分 0.6058 + 夜间 0.1105）。
+
+这次还修了一个流程 bug：L3/L4 原先在 `pass_rate < 100%` 时返回 1，job 会在门禁之前中断。
+现在 CI 使用 `--allow-failures`：指标没达标仍写报告并返回 0，只有框架错误行才返回 1；
+是否退化由 `judge_gate.py` 判断（PR #5，`cff5b09`）。
+
+**边界**：Langfuse 仍无账号密钥，trace 只验证到本地 JSONL 与 SDK 适配层，没有真实发送；
+L3 两轮通过率相差 7.9pp，说明 38 条样本下单轮分数不足以判退化；5 用户压测只是低并发基线，
+不是容量结论。
