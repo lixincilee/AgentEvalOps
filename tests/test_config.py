@@ -8,6 +8,7 @@ from agentevalops.config import (
     DEFAULT_BASE_URL,
     DEFAULT_MODEL,
     ConfigurationError,
+    load_env_into_environ,
     load_settings,
     parse_dotenv,
 )
@@ -45,6 +46,39 @@ def test_parse_dotenv_handles_quotes_comments_and_export():
     assert parsed["AGENTEVALOPS_TEMPERATURE"] == "0.2"
     assert parsed["SPACED_KEY"] == "spaced value"
     assert "MALFORMED_LINE" not in parsed
+
+
+def test_load_env_into_environ_only_injects_selected_missing_keys(tmp_path):
+    env_file = tmp_path / ".env"
+    env_file.write_text(
+        "\n".join(
+            [
+                "LANGFUSE_PUBLIC_KEY=pk-file",
+                "LANGFUSE_SECRET_KEY=sk-file",
+                "LANGFUSE_HOST=https://cloud.langfuse.com",
+                "DEEPSEEK_API_KEY=sk-deepseek",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    environ = {"LANGFUSE_PUBLIC_KEY": "pk-real"}
+
+    loaded = load_env_into_environ(
+        env_file,
+        environ=environ,
+        keys=("LANGFUSE_PUBLIC_KEY", "LANGFUSE_SECRET_KEY", "LANGFUSE_HOST"),
+    )
+
+    assert loaded == ["LANGFUSE_SECRET_KEY", "LANGFUSE_HOST"]
+    assert environ["LANGFUSE_PUBLIC_KEY"] == "pk-real"  # 真实环境变量优先
+    assert environ["LANGFUSE_SECRET_KEY"] == "sk-file"
+    assert "DEEPSEEK_API_KEY" not in environ  # 只桥接白名单
+
+
+def test_load_env_into_environ_tolerates_missing_file(tmp_path):
+    environ: dict[str, str] = {}
+    assert load_env_into_environ(tmp_path / "missing.env", environ=environ) == []
+    assert environ == {}
 
 
 def test_env_file_is_used_when_the_environment_is_empty(tmp_path):

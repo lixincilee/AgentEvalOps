@@ -99,14 +99,19 @@ D:\Python\python.exe scripts/trace_run.py --cases eval_cases/case_matrix_v2.json
 | `error:<异常类名>` | 发送过程中出错；**不抛**——观测层不该把被测系统搞崩 |
 
 CLI 会从环境变量读取 `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY` / `LANGFUSE_HOST`；
-三项齐备且 SDK 可导入时才走 `live`，否则落盘为 dry-run：
+三项齐备且 SDK 可导入时才走 `live`，否则落盘为 dry-run。`--langfuse` 也会把项目根目录
+`.env` 里的这三项桥接进进程环境（真实环境变量优先），所以可以和 `DEEPSEEK_API_KEY`
+放在同一个已被 `.gitignore` 忽略的文件里：
 
 ```powershell
 $env:LANGFUSE_PUBLIC_KEY = "pk-..."
 $env:LANGFUSE_SECRET_KEY = "sk-..."
 $env:LANGFUSE_HOST = "https://cloud.langfuse.com"
-D:\Python\python.exe scripts/trace_run.py --cases eval_cases/case_matrix_v2.jsonl --limit 3 --langfuse
+.venv-trace\Scripts\python.exe scripts\trace_run.py --cases eval_cases\case_matrix_v2.jsonl --limit 3 --langfuse
 ```
+
+SDK 只装在 `.venv-trace`（`langfuse==5.0.2`）；用系统 Python 跑会得到 `dry-run:no-sdk`。
+不加 `--llm` 时走零成本规则臂，足以验证 trace 是否真的到达 Langfuse。
 
 ## 6. 失败定位规则
 

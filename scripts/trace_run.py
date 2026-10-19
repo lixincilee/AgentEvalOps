@@ -48,7 +48,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from agentevalops.config import Settings, load_settings
+from agentevalops.config import Settings, load_env_into_environ, load_settings
 from agentevalops.faults import build_faulted_agent
 from agentevalops.llm import (
     BudgetExceededError,
@@ -212,6 +212,12 @@ def main(
     真实调用不发，但「规划器接线对不对」必须能在进程里被断言。
     """
     args = build_parser().parse_args(argv)
+    if args.langfuse:
+        # Langfuse SDK 只认进程环境变量；让 .env 里的 LANGFUSE_* 与 DEEPSEEK_API_KEY 同一处配置。
+        load_env_into_environ(
+            REPO_ROOT / ".env",
+            keys=("LANGFUSE_PUBLIC_KEY", "LANGFUSE_SECRET_KEY", "LANGFUSE_HOST"),
+        )
     sources = (*args.cases, *args.faults, *args.multiturn)
     if not sources:
         print("至少要给一个用例集：--cases / --faults / --multiturn", file=sys.stderr)
