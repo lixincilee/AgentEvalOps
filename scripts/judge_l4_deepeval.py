@@ -6,6 +6,7 @@ r"""L4：DeepEval GEval 给「客服话术」打整体分。
 没依据判 ``refusal_quality``。每一行都带 GEval 的评分理由。
 
 退出码同 L3：0 全过 / 1 有失败或错误 / 2 用法或环境。
+加 ``--allow-failures`` 后，指标没达标不算进程失败（仍写报告）；框架报错依旧返回 ``1``。
 """
 
 from __future__ import annotations
@@ -44,6 +45,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--budget", type=float, default=None)
     parser.add_argument("--repeat", type=int, default=1, help="重复次数（量判分方差）")
     parser.add_argument("--yes", action="store_true")
+    parser.add_argument(
+        "--allow-failures",
+        action="store_true",
+        help="指标没达标也返回 0；框架报错仍返回 1。CI 测量层用。",
+    )
     parser.add_argument("--out", type=Path, default=REPO_ROOT / "reports" / "l4-deepeval.md")
     parser.add_argument("--json", type=Path, default=REPO_ROOT / "reports" / "l4-deepeval.json")
     parser.add_argument("--quiet", action="store_true")
@@ -136,7 +142,7 @@ def main(argv: list[str] | None = None, *, settings: Settings | None = None) -> 
             print(f"通过率  : 中位数 {combined.pass_rate:.1%}（最差 {combined.worst_pass_rate:.1%}）")
             print(f"花费    : CNY {ledger.cost:.4f}（调用 {ledger.calls} 次）")
             print(f"报告    : {args.out}")
-        return 0 if all(not report.errored_rows and report.pass_rate == 1.0 for report in reports) else 1
+        return 0 if _exit_ok(reports, args.allow_failures) else 1
 
     report = reports[0]
     report.notes = notes
@@ -146,7 +152,16 @@ def main(argv: list[str] | None = None, *, settings: Settings | None = None) -> 
         print(f"通过率  : {report.pass_rate:.1%}")
         print(f"花费    : CNY {ledger.cost:.4f}（调用 {ledger.calls} 次）")
         print(f"报告    : {args.out}")
-    return 0 if report.pass_rate == 1.0 and not report.errored_rows else 1
+    return 0 if _exit_ok([report], args.allow_failures) else 1
+
+
+def _exit_ok(reports: list[JudgeReport], allow_failures: bool) -> bool:
+    """框架报错永远算失败；指标未达标只在 ``--allow-failures`` 时放行。"""
+    if any(report.errored_rows for report in reports):
+        return False
+    if allow_failures:
+        return True
+    return all(report.pass_rate == 1.0 for report in reports)
 
 
 def _write(report: JudgeReport, out: Path, json_path: Path) -> None:
