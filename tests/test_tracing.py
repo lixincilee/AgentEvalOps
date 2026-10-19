@@ -385,6 +385,41 @@ def test_langfuse_emitter_reads_keys_from_environment(monkeypatch):
     }
 
 
+def test_langfuse_base_url_wins_over_deprecated_host(monkeypatch):
+    """v5 的正式变量是 LANGFUSE_BASE_URL；同时存在时不能让旧的 HOST 抢占区域。"""
+    created: dict[str, str] = {}
+
+    class FakeSpan:
+        id = "span-1"
+
+        def end(self):
+            pass
+
+    class FakeLangfuse:
+        def __init__(self, **kwargs):
+            created.update(kwargs)
+
+        def start_observation(self, **kwargs):
+            return FakeSpan()
+
+        def flush(self):
+            pass
+
+    monkeypatch.setitem(sys.modules, "langfuse", types.SimpleNamespace(Langfuse=FakeLangfuse))
+    monkeypatch.setenv("LANGFUSE_PUBLIC_KEY", "pk-test")
+    monkeypatch.setenv("LANGFUSE_SECRET_KEY", "sk-test")
+    monkeypatch.setenv("LANGFUSE_BASE_URL", "https://jp.cloud.langfuse.com")
+    monkeypatch.setenv("LANGFUSE_HOST", "https://old.example")
+
+    emitter = LangfuseEmitter()
+    tracer = Tracer(MultiEmitter(emitter))
+    with tracer.turn("agent.turn"):
+        pass
+
+    assert emitter.status == "live"
+    assert created["host"] == "https://jp.cloud.langfuse.com"
+
+
 def test_langfuse_emitter_v5_preserves_parent_context():
     calls: list[tuple[str, str | None, dict]] = []
     created = {"n": 0}

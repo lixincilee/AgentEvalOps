@@ -343,7 +343,7 @@ completion 2442 tokens——与 run1/run3 一致，说明这 9 条是稳定差�
 | ~~真实三方对比（v1 / v2 / v3 / v3-rules）~~ | **已完成**（第 10 节）：四个批次、两个 tag（`v0.5.0` / `v0.5.1`）锚定，`is_reproducible=true`，合计花费 CNY 0.542；并抓到 v3 兜底路径的一个真实缺陷 |
 | ~~重复执行 N 次取稳定值~~ | **已完成**（M6，§14）：规则列跑 5 次零噪声；真实模型 `--repeat 3` 实测噪声 2.5pp（CNY 0.0893） |
 | ~~3 个版本回归对比~~ | **已完成**（M7，§15）：补冻 `releases/v0.6.0/`，`releases/comparisons/v0.6.0-v0.7.0-v0.8.0.json` 三版并排、门禁全绿；**但功能指标三版无区分度**，见 §15.6 ① |
-| ~~Langfuse trace~~ | **已完成**（M8，§16）：本机无 Docker / 无账号，做的是**本地 JSONL trace + Langfuse 载荷映射 + dry-run 降级**；没有任何 trace 真的到过 Langfuse 服务（§16.8） |
+| ~~Langfuse trace~~ | **已完成并实发验证**（M8 §16；2026-10-19 补验）：本地 JSONL + Langfuse 载荷映射；3 条规则臂 trace 真实到达 `jp.cloud.langfuse.com`，API 3/3 匹配、父子层级正确（§16.9） |
 | ~~故障注入（25 条）~~ | **已完成**（M4，tag `v0.6.0`）：工具超时 / 工具 500 / 空检索 / 模型限流，25/25 全过（§11.1） |
 | ~~并发压测（Locust/k6）~~ | **已完成**（M4，tag `v0.6.0`；真实模型 2026-10-19）：mock / modeled 臂见 §11.2；`nightly-real` 真模型 133 请求、RPS 4.79、P95 1300ms、成功率 100%、单次成功成本 CNY 0.000625（§18.8） |
 | ~~付费 CI（`judge-real` / `nightly-real`）~~ | **已完成**（2026-10-19，run 39251627592）：L3 64.5% / L4 95.8% / 门禁 8/8 通过，判分花费 CNY 0.6058；真实对比 + 压测花费 CNY 0.1105（§18.8） |
@@ -1232,8 +1232,8 @@ D:\Python\python.exe scripts/regression_gate.py --candidate releases/v0.8.0 --ba
 
 简历上写「使用 Langfuse 记录 Prompt、检索结果、模型响应和工具调用轨迹，将失败案例定位到
 检索、推理、工具或状态管理环节」。这一节把这句话拆成「已经做到的」与「还没做到的」两部分，
-并把后者写清楚——**本机没有 Docker，也没有 Langfuse 账号**，所以没有任何一份 trace 真的到过
-Langfuse 服务（见 §16.8）。
+并把后者写清楚。M8 当时本机没有 Docker、也没有 Langfuse 账号；该边界已于 2026-10-19 补验：
+3 条 trace 真实到达 Langfuse（见 §16.9）。
 
 ### 16.1 310 条 trace：一轮一条
 
@@ -1397,12 +1397,60 @@ M8 在写 trace 的过程中修掉 5 个真 bug（都写进 `docs/tracing.md` §
 
 | 声明 | 状态 |
 | --- | --- |
-| 有 trace 真的到过 Langfuse 服务 | **没有**。本机无 Docker、无 Langfuse 账号。验证到的是载荷映射（纯函数 `langfuse_payload()`）、dry-run 降级、以及注入假 client 时的调用序列 |
-| Langfuse SDK 的 API 形状 | **已在 5.0.2 上核对**：入口是 `start_observation`，不是旧版 `start_span`；父子层级用 `trace_context.parent_span_id`。适配层保留旧版回退，真实发送仍未验证 |
+| 有 trace 真的到过 Langfuse 服务 | **已补验（2026-10-19，§16.9）**：3 条规则臂 trace 到达 `jp.cloud.langfuse.com`，v2 observations API 3/3 匹配；之前只验证过载荷映射、dry-run 降级与假 client 调用序列 |
+| Langfuse SDK 的 API 形状 | **已在 5.0.2 上核对并真实发送**：入口是 `start_observation`；父子层级用 `trace_context.parent_span_id`；区域配置用 `LANGFUSE_BASE_URL`（`LANGFUSE_HOST` 是兼容别名） |
 | HTML 视图的肉眼效果 | **未逐像素核对**。几何、转义、徽标有测试钉住，浏览器里到底长什么样需要人打开确认 |
 | trace 进了发布冻结产物 | **已完成**（M9，tag `v0.9.0`）。`freeze_release.py` 现有七项检查，`releases/v0.9.0/trace/` 含 310 条 trace、定位报告与 HTML 视图 |
 | 310 条 trace 覆盖了模型路径 | **只有 16 条**（§16.5）。剩下 294 条是规则臂：能定位状态与工具问题，回答不了 prompt 问题 |
 | 真实模型 trace 的方差 | **未测**。16 条只跑了一次；`--llm --repeat N` 的成本与延迟方差都还是空白（对照 §13.3 / §14.4） |
+
+### 16.9 真实发送补验（2026-10-19）
+
+项目只读到 `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY` / `LANGFUSE_BASE_URL` 三项环境变量；
+SDK 5.0.2 的正式变量是 `LANGFUSE_BASE_URL`（`LANGFUSE_HOST` 已弃用但仍可识别）。第一次配置用了
+`LANGFUSE_HOST`，而实际区域是 `jp.cloud.langfuse.com`；如果只按默认值发送，trace 会被送到
+错误的区域。适配层现在优先读 `LANGFUSE_BASE_URL`，并把它和另外两项一起从 `.env` 桥接进进程
+环境（真实环境变量优先）。
+
+```powershell
+.venv-trace\Scripts\python.exe scripts\trace_run.py --cases eval_cases\support_cases.jsonl `
+  --limit 3 --langfuse --out reports\traces-langfuse-live.jsonl
+```
+
+输出：
+
+```text
+用例 3 条 → trace 3 条，其中带错误码的 0 条
+Langfuse  : live
+```
+
+验证方式不是「脚本说 live」：先删掉上一轮 dry-run 留下的
+`traces-langfuse-live.langfuse-dryrun.jsonl`，重跑后该文件**没有重新生成**；再用
+`GET /api/public/v2/observations` 查询最近 2 小时，3 条 trace 全部匹配：
+
+| case_id | Langfuse trace id |
+| --- | --- |
+| `status_shipped_zh` | `d3473e97124a9808f651c7ef384a5c2b` |
+| `status_en_lowercase` | `ea7473a9a1514bf23fb89cf14b40e7d3` |
+| `status_delivered_zh` | `51a531af149707d0ad66c0e3dd65f5cc` |
+
+`status_shipped_zh` 的 span 树（API 返回的 type / name / parent）：
+
+| type | name | parent |
+| --- | --- | --- |
+| CHAIN | `agent.turn` | Langfuse trace 根 |
+| CHAIN | `node.plan` | `agent.turn` |
+| CHAIN | `node.validate` | `agent.turn` |
+| CHAIN | `node.dispatch` | `agent.turn` |
+| TOOL | `tool.query_order_status` | `node.dispatch` |
+| CHAIN | `node.respond` | `agent.turn` |
+
+项目 ID `cmvf9rprr002mad0k9ckxaig4`，可直接打开
+[`status_shipped_zh` 的 trace](https://jp.cloud.langfuse.com/project/cmvf9rprr002mad0k9ckxaig4/traces/d3473e97124a9808f651c7ef384a5c2b)。
+
+**边界**：这 3 条是零成本规则臂，证明的是链路与层级，不是模型 span 的质量；Langfuse 新版组织
+已经停用 `/api/public/traces`（返回 410 `LEGACY_API_UNAVAILABLE_FOR_NEW_ORGANIZATION`），
+核对脚本用的是 `/api/public/v2/observations`。UI 的肉眼效果仍建议人工打开一次确认。
 ## 17. 证据十三：M9 判分分层 —— 同一批用例，三种判分口径
 
 pytest 能判「状态 / 意图 / 工具名 / 参数 / 错误码」，判不了「回答里的数字是不是资料里真有」、
@@ -1623,7 +1671,7 @@ D:\Python\python.exe scripts\judge_gate.py --l3 reports/l3-ragas.json --l4 repor
 `trace-report.md` / `.json`、`trace-view.html`；`judge/` 下有 L3/L4/L5 的 JSON 与 Markdown、
 `judge_baseline.json`、`review-summary-v1.json`。
 
-**边界**：这仍是本机离线冻结。冻结时 GitHub Actions 尚未运行（随后已跑通，见 §18.7）；Langfuse 出口仍未验证；
+**边界**：这仍是本机离线冻结。冻结时 GitHub Actions 尚未运行（随后已跑通，见 §18.7）；Langfuse 出口随后已补验（§16.9）；
 L3/L4 报告是冻结前既有的多轮运行结果，不是冻结时重跑；trace 的模型臂只有 16 条。
 
 ### 18.7 GitHub Actions 首次真实运行
@@ -1689,6 +1737,6 @@ HTTP 错误率 0、任务成功率 100%、30,182 tokens、花费 CNY 0.083104、
 现在 CI 使用 `--allow-failures`：指标没达标仍写报告并返回 0，只有框架错误行才返回 1；
 是否退化由 `judge_gate.py` 判断（PR #5，`cff5b09`）。
 
-**边界**：Langfuse 仍无账号密钥，trace 只验证到本地 JSONL 与 SDK 适配层，没有真实发送；
+**边界**：Langfuse 已于同日补验真实发送（§16.9）；
 L3 两轮通过率相差 7.9pp，说明 38 条样本下单轮分数不足以判退化；5 用户压测只是低并发基线，
 不是容量结论。

@@ -216,7 +216,12 @@ def main(
         # Langfuse SDK 只认进程环境变量；让 .env 里的 LANGFUSE_* 与 DEEPSEEK_API_KEY 同一处配置。
         load_env_into_environ(
             REPO_ROOT / ".env",
-            keys=("LANGFUSE_PUBLIC_KEY", "LANGFUSE_SECRET_KEY", "LANGFUSE_HOST"),
+            keys=(
+                "LANGFUSE_PUBLIC_KEY",
+                "LANGFUSE_SECRET_KEY",
+                "LANGFUSE_BASE_URL",
+                "LANGFUSE_HOST",
+            ),
         )
     sources = (*args.cases, *args.faults, *args.multiturn)
     if not sources:

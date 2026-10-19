@@ -193,7 +193,7 @@ D:\Python\python.exe scripts/load_test.py --real --yes --users 5 --run-time 30s 
 | 判分门禁的容忍值 | **来自一轮 3 次重复的实测**。样本量小，容忍值（L3 5 个百分点、L4 3 个百分点）是工程折中，不是统计结论；夜间跑得越多越该收紧 |
 | `judge-real` 的夜间花费 | **已实测**：L3 两轮 CNY 0.5071 + L4 两轮 CNY 0.0987 = CNY 0.6058；上限仍是 L3 `--budget 1.2` + L4 `--budget 0.7` = CNY 1.9 |
 | `.release-candidate/` 能被打包上传 | **已验证**：首次运行的 `release-candidate` 工件为 160,709 bytes，`include-hidden-files: true` 生效。gate 里原来还上传 `reports/`，但该目录在冻结流程中为空，已移除这条冗余上传 |
-| Trace 出口（Langfuse / Opik） | **未验证**：没有任何一份 trace 真的到过 Langfuse 服务（本机无 Docker、无账号），`langfuse>=3.0` 的 API 形状也没在真机上核对过 —— 猜错会**静默**降级成 dry-run。验证到的是载荷映射、dry-run 降级与注入假 client 时的调用序列（`docs/tracing.md` 第 7 节、`docs/stage2-evidence.md` §16.8） |
+| Trace 出口（Langfuse） | **已验证**（2026-10-19）：SDK 5.0.2 + `jp.cloud.langfuse.com`，3 条规则臂 trace 真实到达，`Langfuse: live`，未生成 dry-run 文件；v2 observations API 3/3 匹配，span 父子层级正确。现场记录见 `docs/stage2-evidence.md` §16.9。Opik 仍未接入 |
 
 ## 7. 分支保护
 
