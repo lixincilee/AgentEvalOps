@@ -12,6 +12,8 @@
 from __future__ import annotations
 
 import json
+import sys
+import types
 from pathlib import Path
 
 import pytest
@@ -316,7 +318,9 @@ def test_langfuse_payload_maps_input_output_by_kind():
     assert by_name["llm.plan"]["usage_details"] == {"input": 10, "output": 5, "total": 15}
     assert by_name["llm.plan"]["model"] == "deepseek-flash"
     assert by_name["retriever.search"]["parent_name"] == "agent.turn"
+    assert by_name["retriever.search"]["parent_span_id"] == by_name["agent.turn"]["span_id"]
     assert by_name["agent.turn"]["parent_name"] is None
+    assert by_name["agent.turn"]["parent_span_id"] is None
     assert all(item["metadata"]["case_id"] == "c9" for item in items)
 
 
@@ -334,7 +338,7 @@ def test_langfuse_payload_marks_errors():
 
 def test_langfuse_emitter_dry_run_dumps_the_would_be_payload(tmp_path):
     dump = tmp_path / "dry.jsonl"
-    emitter = LangfuseEmitter(dump_path=dump)
+    emitter = LangfuseEmitter(dump_path=dump, public_key="", secret_key="")
     tracer = Tracer(MultiEmitter(MemoryEmitter(), emitter))
     with tracer.turn("agent.turn"):
         pass
@@ -342,6 +346,80 @@ def test_langfuse_emitter_dry_run_dumps_the_would_be_payload(tmp_path):
     payload = json.loads(dump.read_text(encoding="utf-8"))
     assert payload["reason"] in {"no-sdk", "no-keys"}
     assert payload["would_send"][0]["name"] == "agent.turn"
+
+
+def test_langfuse_emitter_reads_keys_from_environment(monkeypatch):
+    created: dict[str, str] = {}
+
+    class FakeSpan:
+        id = "span-1"
+
+        def end(self):
+            pass
+
+    class FakeLangfuse:
+        def __init__(self, **kwargs):
+            created.update(kwargs)
+
+        def start_observation(self, **kwargs):
+            return FakeSpan()
+
+        def flush(self):
+            pass
+
+    monkeypatch.setitem(sys.modules, "langfuse", types.SimpleNamespace(Langfuse=FakeLangfuse))
+    monkeypatch.setenv("LANGFUSE_PUBLIC_KEY", "pk-test")
+    monkeypatch.setenv("LANGFUSE_SECRET_KEY", "sk-test")
+    monkeypatch.setenv("LANGFUSE_HOST", "https://langfuse.example")
+
+    emitter = LangfuseEmitter()
+    tracer = Tracer(MultiEmitter(emitter))
+    with tracer.turn("agent.turn"):
+        pass
+
+    assert emitter.status == "live"
+    assert created == {
+        "public_key": "pk-test",
+        "secret_key": "sk-test",
+        "host": "https://langfuse.example",
+    }
+
+
+def test_langfuse_emitter_v5_preserves_parent_context():
+    calls: list[tuple[str, str | None, dict]] = []
+    created = {"n": 0}
+
+    class FakeSpan:
+        def __init__(self, name):
+            created["n"] += 1
+            self.id = f"span-{created['n']}"
+
+        def end(self):
+            calls.append(("end", self.id, {}))
+
+    class FakeClient:
+        def start_observation(self, **kwargs):
+            span = FakeSpan(kwargs["name"])
+            calls.append(("start", span.id, kwargs))
+            return span
+
+        def flush(self):
+            calls.append(("flush", None, {}))
+
+    emitter = LangfuseEmitter(client=FakeClient())
+    tracer = Tracer(MultiEmitter(emitter))
+    with tracer.turn("agent.turn"):
+        with tracer.span("tool.query_order_status", kind=SpanKind.TOOL):
+            pass
+
+    starts = [call for call in calls if call[0] == "start"]
+    assert [call[2]["name"] for call in starts] == ["agent.turn", "tool.query_order_status"]
+    root, child = starts
+    assert "parent_span_id" not in root[2]["trace_context"]
+    assert child[2]["trace_context"]["parent_span_id"] == root[1]
+    assert len(root[2]["trace_context"]["trace_id"]) == 32
+    assert root[2]["as_type"] == "chain"
+    assert child[2]["as_type"] == "tool"
 
 
 def test_langfuse_emitter_live_path_uses_the_client():

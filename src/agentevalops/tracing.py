@@ -17,7 +17,9 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
+import os
 import re
 import time
 import uuid
@@ -425,6 +427,8 @@ def langfuse_payload(trace: Trace) -> list[dict[str, Any]]:
             "end_time": (
                 base + timedelta(milliseconds=span.start_ms + span.duration_ms)
             ).isoformat(),
+            "span_id": span.span_id,
+            "parent_span_id": None if parent is None else parent.span_id,
             "parent_name": None if parent is None else parent.name,
             "level": level,
             "status_message": span.error_message,
@@ -463,9 +467,9 @@ class LangfuseEmitter:
         enabled: bool = True,
     ) -> None:
         self._client = client
-        self.public_key = public_key
-        self.secret_key = secret_key
-        self.host = host
+        self.public_key = public_key if public_key is not None else os.environ.get("LANGFUSE_PUBLIC_KEY")
+        self.secret_key = secret_key if secret_key is not None else os.environ.get("LANGFUSE_SECRET_KEY")
+        self.host = host if host is not None else os.environ.get("LANGFUSE_HOST")
         self.dump_path = Path(dump_path) if dump_path else None
         self.enabled = enabled
         self.status = "idle"
@@ -483,11 +487,13 @@ class LangfuseEmitter:
         if not (self.public_key and self.secret_key):
             self.status = "dry-run:no-keys"
             return None
-        self._client = Langfuse(
-            public_key=self.public_key,
-            secret_key=self.secret_key,
-            host=self.host,
-        )
+        client_kwargs: dict[str, Any] = {
+            "public_key": self.public_key,
+            "secret_key": self.secret_key,
+        }
+        if self.host:
+            client_kwargs["host"] = self.host
+        self._client = Langfuse(**client_kwargs)
         return self._client
 
     def _write_dump(self, trace: Trace, reason: str) -> None:
@@ -509,6 +515,82 @@ class LangfuseEmitter:
         with self.dump_path.open("a", encoding="utf-8", newline="\n") as handle:
             handle.write(json.dumps(payload, ensure_ascii=False) + "\n")
 
+    @staticmethod
+    def _observation_type(item: Mapping[str, Any]) -> str:
+        kind = str((item.get("metadata") or {}).get("kind") or "")
+        return {
+            "llm": "generation",
+            "retriever": "retriever",
+            "tool": "tool",
+            "turn": "chain",
+            "node": "chain",
+        }.get(kind, "span")
+
+    @staticmethod
+    def _langfuse_trace_id(trace_id: str) -> str:
+        # Langfuse/OTel 要求 32 位十六进制；项目自己的 trace_id 带 tr_ 前缀，不能直接用。
+        return hashlib.md5(trace_id.encode("utf-8")).hexdigest()
+
+    def _start_observation(self, client: Any, item: Mapping[str, Any], trace_context: Mapping[str, str]) -> Any:
+        if hasattr(client, "start_observation"):
+            return client.start_observation(
+                name=item["name"],
+                as_type=self._observation_type(item),
+                trace_context=trace_context,
+                input=item.get("input"),
+                output=item.get("output"),
+                metadata=item["metadata"],
+                level=item["level"],
+                status_message=item.get("status_message"),
+                usage_details=item.get("usage_details"),
+                model=item.get("model"),
+            )
+        span = client.start_span(
+            name=item["name"],
+            start_time=item["start_time"],
+            input=item.get("input"),
+            output=item.get("output"),
+            metadata=item["metadata"],
+            level=item["level"],
+        )
+        if item.get("status_message"):
+            span.update(status_message=item["status_message"])
+        if item.get("usage_details"):
+            span.update(usage_details=item["usage_details"])
+        return span
+
+    def _emit_items(self, client: Any, items: list[dict[str, Any]], trace_id: str) -> None:
+        by_id = {item["span_id"]: item for item in items}
+        children: dict[str, list[dict[str, Any]]] = {}
+        roots: list[dict[str, Any]] = []
+        for item in items:
+            parent_id = item.get("parent_span_id")
+            if parent_id and parent_id in by_id:
+                children.setdefault(parent_id, []).append(item)
+            else:
+                roots.append(item)
+
+        root_trace_id = self._langfuse_trace_id(trace_id)
+        supports_v5 = hasattr(client, "start_observation")
+
+        def walk(item: dict[str, Any], parent_span_id: str | None) -> None:
+            trace_context = {"trace_id": root_trace_id}
+            if parent_span_id:
+                trace_context["parent_span_id"] = parent_span_id
+            span = self._start_observation(client, item, trace_context)
+            span_id = getattr(span, "id", None)
+            if not isinstance(span_id, str):
+                span_id = None
+            for child in children.get(item["span_id"], []):
+                walk(child, span_id)
+            if supports_v5:
+                span.end()
+            else:
+                span.end(end_time=item["end_time"])
+
+        for root in roots:
+            walk(root, None)
+
     def emit(self, trace: Trace) -> None:
         if not self.enabled:
             self.status = "disabled"
@@ -519,20 +601,7 @@ class LangfuseEmitter:
             self._write_dump(trace, self.status.split(":", 1)[1])
             return
         try:
-            for item in langfuse_payload(trace):
-                span = client.start_span(
-                    name=item["name"],
-                    start_time=item["start_time"],
-                    input=item.get("input"),
-                    output=item.get("output"),
-                    metadata=item["metadata"],
-                    level=item["level"],
-                )
-                if item.get("status_message"):
-                    span.update(status_message=item["status_message"])
-                if item.get("usage_details"):
-                    span.update(usage_details=item["usage_details"])
-                span.end(end_time=item["end_time"])
+            self._emit_items(client, langfuse_payload(trace), trace.trace_id)
             flush = getattr(client, "flush", None)
             if callable(flush):
                 flush()

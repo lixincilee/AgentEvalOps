@@ -810,9 +810,10 @@ dry-run，把「本来要发什么」写进 `<out>.langfuse-dryrun.jsonl`，本�
 钉住）：span 名 → Langfuse span，`retriever.search` 的 query/doc_ids → input/output，
 `llm.plan` 的 usage → `usage_details`。
 
-**诚实说明**：本机没有 Docker、也没有 Langfuse 账号，所以**没有任何一份 trace 真的到过
-Langfuse 服务**。验证到的是：载荷映射、dry-run 降级、以及注入假 client 时的调用序列
-（`tests/test_tracing.py`）。真机连通属于「还没验证过的部分」。
+**诚实说明**：已安装并核对 Langfuse SDK 5.0.2 的 API（`start_observation` + `trace_context`），
+但本机没有 Langfuse 账号/密钥，所以**还没有任何一份 trace 真的到过 Langfuse 服务**。
+验证到的是：载荷映射、dry-run 降级、v5 父子层级构造、以及注入假 client 时的调用序列
+（`tests/test_tracing.py`）。真机连通仍属于「还没验证过的部分」。
 
 ### 脱敏是硬要求
 
