@@ -469,7 +469,12 @@ class LangfuseEmitter:
         self._client = client
         self.public_key = public_key if public_key is not None else os.environ.get("LANGFUSE_PUBLIC_KEY")
         self.secret_key = secret_key if secret_key is not None else os.environ.get("LANGFUSE_SECRET_KEY")
-        self.host = host if host is not None else os.environ.get("LANGFUSE_HOST")
+        # Langfuse v5 的正式变量是 LANGFUSE_BASE_URL；LANGFUSE_HOST 是兼容别名。
+        self.host = (
+            host
+            if host is not None
+            else (os.environ.get("LANGFUSE_BASE_URL") or os.environ.get("LANGFUSE_HOST"))
+        )
         self.dump_path = Path(dump_path) if dump_path else None
         self.enabled = enabled
         self.status = "idle"

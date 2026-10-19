@@ -816,10 +816,12 @@ dry-run，把「本来要发什么」写进 `<out>.langfuse-dryrun.jsonl`，本�
 钉住）：span 名 → Langfuse span，`retriever.search` 的 query/doc_ids → input/output，
 `llm.plan` 的 usage → `usage_details`。
 
-**诚实说明**：已安装并核对 Langfuse SDK 5.0.2 的 API（`start_observation` + `trace_context`），
-但本机没有 Langfuse 账号/密钥，所以**还没有任何一份 trace 真的到过 Langfuse 服务**。
-验证到的是：载荷映射、dry-run 降级、v5 父子层级构造、以及注入假 client 时的调用序列
-（`tests/test_tracing.py`）。真机连通仍属于「还没验证过的部分」。
+**真实发送已验证（2026-10-19）**：Langfuse SDK 5.0.2 + `jp.cloud.langfuse.com`，3 条规则臂
+trace 全部到达（API 3/3 匹配），`Langfuse: live` 且没有生成 dry-run 文件。span 树为
+`agent.turn → node.plan / node.validate / node.dispatch / node.respond`，
+`tool.query_order_status` 挂在 `node.dispatch` 下。v5 的正式变量是 `LANGFUSE_BASE_URL`
+（`LANGFUSE_HOST` 是兼容别名），可以和 `DEEPSEEK_API_KEY` 一起放在 `.env` 里。
+现场证据与 trace 链接见 `docs/stage2-evidence.md` §16.9。
 
 ### 脱敏是硬要求
 

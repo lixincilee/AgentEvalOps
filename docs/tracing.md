@@ -98,7 +98,8 @@ D:\Python\python.exe scripts/trace_run.py --cases eval_cases/case_matrix_v2.json
 | `dry-run:no-sdk` / `dry-run:no-keys` | 不发送，把本来要发的载荷写进 dump 文件 |
 | `error:<异常类名>` | 发送过程中出错；**不抛**——观测层不该把被测系统搞崩 |
 
-CLI 会从环境变量读取 `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY` / `LANGFUSE_HOST`；
+CLI 会从环境变量读取 `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY` / `LANGFUSE_BASE_URL`
+（`LANGFUSE_HOST` 是兼容别名；v5 的正式变量是 `LANGFUSE_BASE_URL`）；
 三项齐备且 SDK 可导入时才走 `live`，否则落盘为 dry-run。`--langfuse` 也会把项目根目录
 `.env` 里的这三项桥接进进程环境（真实环境变量优先），所以可以和 `DEEPSEEK_API_KEY`
 放在同一个已被 `.gitignore` 忽略的文件里：
@@ -106,7 +107,7 @@ CLI 会从环境变量读取 `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY` / `LA
 ```powershell
 $env:LANGFUSE_PUBLIC_KEY = "pk-..."
 $env:LANGFUSE_SECRET_KEY = "sk-..."
-$env:LANGFUSE_HOST = "https://cloud.langfuse.com"
+$env:LANGFUSE_BASE_URL = "https://cloud.langfuse.com"
 .venv-trace\Scripts\python.exe scripts\trace_run.py --cases eval_cases\case_matrix_v2.jsonl --limit 3 --langfuse
 ```
 
@@ -144,8 +145,8 @@ SDK 只装在 `.venv-trace`（`langfuse==5.0.2`）；用系统 Python 跑会得�
 
 | 声明 | 状态 |
 | --- | --- |
-| 有 trace 真的到过 Langfuse 服务 | **还没有**。已安装并核对 SDK 5.0.2，但本机没有 Langfuse 账号/密钥；验证到的是载荷映射、dry-run 降级、注入假 client 时的调用序列 |
-| Langfuse SDK 的 API 形状 | **已核对 5.0.2**：入口是 `start_observation`，父子层级用 `trace_context`（`trace_id` / `parent_span_id`）；旧版 `start_span` 保留为回退。真实服务发送仍未验证 |
+| 有 trace 真的到过 Langfuse 服务 | **已验证（2026-10-19）**：3 条规则臂 trace 到达 `jp.cloud.langfuse.com`，`Langfuse: live`，v2 observations API 3/3 匹配；现场记录见 `docs/stage2-evidence.md` §16.9 |
+| Langfuse SDK 的 API 形状 | **已在 5.0.2 上核对并真实发送**：入口是 `start_observation`，父子层级用 `trace_context`（`trace_id` / `parent_span_id`）；区域用 `LANGFUSE_BASE_URL`（`LANGFUSE_HOST` 为兼容别名） |
 | HTML 视图在浏览器里的实际渲染 | **未逐像素核对**。结构（几何、转义、徽标）有测试钉住，肉眼效果需要在浏览器里打开确认 |
 | trace 进了发布冻结产物 | **已完成**（M9，tag `v0.9.0`）。`freeze_release.py` 现在跑七项检查，`releases/v0.9.0/trace/` 含 310 条 trace、定位报告与 HTML 视图 |
 | 真实模型路径的 trace | **跑过了，但只有 16 条**（CNY 0.0057）。`llm.plan` 上带真实 prompt / 回答 / token / 延迟；方差未测（只跑了一次）。其余 294 条是规则臂——能定位状态与工具问题，回答不了 prompt 问题 |
