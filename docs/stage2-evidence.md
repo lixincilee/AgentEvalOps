@@ -1600,7 +1600,7 @@ D:\Python\python.exe scripts\judge_gate.py --l3 reports/l3-ragas.json --l4 repor
 | `judge` | 通过 | L3 65.8%（3 轮，最差 60.5%）、L4 95.8%（3 轮）、L5 100%、人工 kappa 0.875 |
 | `load_test` | 通过 | modeled 臂，P95 160ms，任务成功率 100% |
 
-回归门禁对 `v0.8.0` 全部通过，随后打 annotated tag `v0.9.0`（锚定被测代码提交 `4020550`）。
+回归门禁对 `v0.8.0` 全部通过，随后打 annotated tag `v0.9.0`（锚定被测代码提交 `4020550`）。`release.json` 的 `describe` 记录的是冻结当时、打 tag 之前的 `v0.8.0-9-g4020550`；`commit` 字段与实际 tag 锚点都是 `4020550`，二者一致。
 冻结产物：`releases/v0.9.0/release.json`；`trace/` 下有 `traces.jsonl`、`traces.cases.jsonl`、
 `trace-report.md` / `.json`、`trace-view.html`；`judge/` 下有 L3/L4/L5 的 JSON 与 Markdown、
 `judge_baseline.json`、`review-summary-v1.json`。
