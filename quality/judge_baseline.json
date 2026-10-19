@@ -1,7 +1,7 @@
 {
   "version": "judge-baseline-v1",
-  "commit": "0e7da1b",
-  "measured_at": "2026-10-19T06:45:54+00:00",
+  "commit": "6bd746e",
+  "measured_at": "2026-10-19T07:01:43+00:00",
   "judge_model": "deepseek-flash",
   "layers": {
     "L3": {
