@@ -1,0 +1,36 @@
+{
+  "case_id": "status_shipped_zh",
+  "trace_id": "39ff1895e6a037d8a50e02872b68635e",
+  "spans": [
+    {
+      "type": "CHAIN",
+      "name": "agent.turn",
+      "parent": "e5809adc20ab5bcb"
+    },
+    {
+      "type": "CHAIN",
+      "name": "node.validate",
+      "parent": "338807e0cec5a9bc"
+    },
+    {
+      "type": "CHAIN",
+      "name": "node.plan",
+      "parent": "338807e0cec5a9bc"
+    },
+    {
+      "type": "CHAIN",
+      "name": "node.dispatch",
+      "parent": "338807e0cec5a9bc"
+    },
+    {
+      "type": "TOOL",
+      "name": "tool.query_order_status",
+      "parent": "a230abd8659bb143"
+    },
+    {
+      "type": "CHAIN",
+      "name": "node.respond",
+      "parent": "338807e0cec5a9bc"
+    }
+  ]
+}

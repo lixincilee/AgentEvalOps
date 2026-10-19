@@ -1,0 +1,21 @@
+{
+  "host": "https://jp.cloud.langfuse.com",
+  "project_id": "cmvf9rprr002mad0k9ckxaig4",
+  "traces": [
+    {
+      "case_id": "status_shipped_zh",
+      "trace_id": "39ff1895e6a037d8a50e02872b68635e",
+      "matched": true
+    },
+    {
+      "case_id": "status_en_lowercase",
+      "trace_id": "39165702d388c696da0cfa7b2b749f49",
+      "matched": true
+    },
+    {
+      "case_id": "status_delivered_zh",
+      "trace_id": "45ebd452cc010149e08a9741c7db7d69",
+      "matched": true
+    }
+  ]
+}

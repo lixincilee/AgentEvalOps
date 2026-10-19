@@ -3,7 +3,7 @@
 [![regression](https://github.com/lixincilee/AgentEvalOps/actions/workflows/regression.yml/badge.svg)](https://github.com/lixincilee/AgentEvalOps/actions/workflows/regression.yml)
 
 > 一个用于练习 **Agent 评测工程（Evaluation Engineering / EvalOps）** 的教学项目。
-> 当前进度 **阶段二 M9（已完成，tag `v0.9.0`）**：确定性 Agent（v1）→ DeepSeek 规划层（v2）→ LangGraph 编排 + 知识库检索 + 多轮会话（v3）→ trace、三层判分与 CI 回归门禁。
+> 当前进度 **阶段二 M11（已完成，tag `v1.0.0`）**：确定性 Agent（v1）→ DeepSeek 规划层（v2）→ LangGraph 编排 + 知识库检索 + 多轮会话（v3）→ trace、三层判分、真实压测与 CI 回归门禁。
 > 三个版本跑在同一批用例、同一判分口径下，产出结构完全相同的 `RunMetrics`，差异才有归因价值。
 
 ## 为什么先做确定性版本
@@ -70,6 +70,7 @@ AgentEvalOps/
 │   ├── v0.7.0/                        #   release.json（指标索引）+ 五项检查的原始报告
 │   ├── v0.8.0/                        #   M6：--repeat 3，release.json 里带方差
 │   ├── v0.9.0/                        #   M9：trace/ + judge/（L3/L4/L5 + 人工抽检摘要）
+│   ├── v1.0.0/                        #   M11：最新冻结 + real-run/（真实模型与 Langfuse 原始证据）
 │   └── comparisons/                   #   M7：多版本并排报告（v0.6.0-v0.7.0-v0.8.0.json）
 ├── perf/                              # M4：压测客户端（服务端本体在 src/agentevalops/service.py）
 │   ├── latency_client.py              # 建模用的假模型：只睡 60ms + 固定 token，不发网络请求
@@ -622,9 +623,9 @@ D:\Python\python.exe scripts/freeze_release.py
 
 `reports/` 是 gitignore 掉的运行产物；`releases/` 正相反——**它必须提交进 git**，
 因为「上个版本长什么样」不能靠记忆。已冻结的基线：`releases/v0.6.0/`（M7 补冻）、
-`releases/v0.7.0/`（M5 首个）、`releases/v0.8.0/`（M6；`--repeat 3`，带方差）、`releases/v0.9.0/`（M9；trace + 三层判分 + 人工抽检）；
+`releases/v0.7.0/`（M5 首个）、`releases/v0.8.0/`（M6；`--repeat 3`，带方差）、`releases/v0.9.0/`（M9；trace + 三层判分 + 人工抽检）、`releases/v1.0.0/`（M11；真实 run + Langfuse 证据）；
 `releases/comparisons/` 存多版本并排报告。CI 门禁的**执法基线 = 最新已冻结版本**
-（现在是 `v0.9.0`），随每次冻结前移。`--baseline` 可以重复传，但**只有最后一条是执法
+（现在是 `v1.0.0`），随每次冻结前移。`--baseline` 可以重复传，但**只有最后一条是执法
 基线**，其余进报告只做并排展示——「多基线」不等于「多判据」。
 
 **脏工作区会被拒绝冻结**：指标锚不住版本号，之后的对比就都失去了意义。
@@ -666,7 +667,7 @@ D:\Python\python.exe scripts/regression_gate.py --candidate releases/v0.8.0 --ba
 | job | 触发 | 干什么 | 阻塞 PR |
 | --- | --- | --- | --- |
 | `test` | push / PR / 手动 / 定时 | `python -m pytest -q` | 是 |
-| `gate` | 同上（`needs: test`） | `freeze_release.py --gate-against releases/v0.9.0` | 是 |
+| `gate` | 同上（`needs: test`） | `freeze_release.py --gate-against releases/v1.0.0` | 是 |
 | `judge-l5` | push / PR / 手动 / 定时（`needs: test`） | Promptfoo 46 条安全用例（零模型费用） | 是 |
 | `judge-real` | 定时 / 手动 `paid_target=both`（PR 不触发） | L3 / L4 各 2 轮 + 判分门禁（会花钱） | 否 |
 | `nightly-real` | 定时 / 手动 `paid_target=both`（PR 不触发） | 真实模型对比 + 真实并发压测（会花钱） | 否 |
@@ -891,6 +892,7 @@ L3 总额 1.7245 = 判分 1.5248 + 合成回答 0.1997；L4 总额 0.4885 = 判�
 | **阶段二 M8（已完成）** | 可观测性：Trace 层 | `tracing.py`（span 树 + 脱敏 + JSONL / Langfuse 双出口、零行为改变）、`trace_run.py` / `trace_report.py` / `trace_view.py`、失败环节定位规则、`--llm` 真实模型臂（16 条真 trace，CNY 0.0057）、**97 条**新测试（证据 §16） |
 | **阶段二 M9（已完成，tag `v0.9.0`）** | 判分分层 + 方差 + 门禁 + 把 trace 纳入发布冻结 | L3/L4 `--repeat 3` 方差、`judge_gate.py` 基线门禁、20 条人工抽检（一致率 95%，kappa 0.875）、CI 五 job（L5 阻塞 PR，L3/L4 夜间；证据 §18）、`freeze_release.py` 七项检查（原五项 + trace + judge）、发布冻结 `releases/v0.9.0/`（310 条 trace / L3 65.8% / L4 95.8% / L5 100%） |
 | **阶段二 M10（已完成）** | 付费链路实跑：真实模型判分 + 真实并发 | `DEEPSEEK_API_KEY` secret、`DEEPSEEK_MODEL=deepseek-flash`、`paid_target=both` 手动触发、L3/L4 测量层 `--allow-failures`（PR #5）；run 39251627592：真实对比四臂、133 请求 / P95 1300ms / RPS 4.79 / 成功率 100% / 单次成功 CNY 0.000625、L3 64.5% / L4 95.8% / 门禁 8 项全过，合计 CNY 0.7163（证据 §18.8） |
+| **阶段二 M11（已完成，tag `v1.0.0`）** | 发布冻结：把真实运行证据锚定到版本 | `releases/v1.0.0/`（七项离线检查全过，对 `v0.9.0` 门禁全绿）、`real-run/`（付费 run 原始报告 + `EVIDENCE.md` / `evidence.json`）、3 条 Langfuse trace 链接与 span 树；CI 执法基线升到 `v1.0.0`（证据 §18.9） |
 
 ### 评测指标（阶段五要算的东西，现在就能算前六项）
 

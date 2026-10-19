@@ -1,0 +1,146 @@
+{
+  "kind": "real_run_evidence",
+  "github": {
+    "repository": "lixincilee/AgentEvalOps",
+    "run_id": 39251627592,
+    "run_url": "https://github.com/lixincilee/AgentEvalOps/actions/runs/39251627592",
+    "head_commit": "cff5b09",
+    "trigger": "workflow_dispatch paid_target=both"
+  },
+  "model": {
+    "provider": "DeepSeek",
+    "name": "deepseek-flash"
+  },
+  "cost_cny": {
+    "judge": 0.605774,
+    "nightly": 0.110482,
+    "total": 0.716256
+  },
+  "judge": {
+    "L3": {
+      "pass_rate": 0.644737,
+      "worst_pass_rate": 0.605263,
+      "repeat": 2,
+      "errors": 0,
+      "cost_cny": 0.507073,
+      "generated_at": "2026-10-19T12:35:16+00:00"
+    },
+    "L4": {
+      "pass_rate": 0.958333,
+      "worst_pass_rate": 0.958333,
+      "repeat": 2,
+      "errors": 0,
+      "cost_cny": 0.09870056,
+      "generated_at": "2026-10-19T12:39:04+00:00"
+    },
+    "L5": {
+      "pass_rate": 1.0,
+      "errors": 0,
+      "cost_cny": 0.0,
+      "generated_at": "2026-10-19T12:26:19+00:00"
+    },
+    "gate": {
+      "failed": 0,
+      "skipped": 1,
+      "verdicts": 9
+    }
+  },
+  "version_comparison": {
+    "v1": {
+      "pass_rate": 1.0,
+      "calls": 0,
+      "avg_latency_ms": 0.0,
+      "cost_cny": 0.0
+    },
+    "v2": {
+      "pass_rate": 0.975,
+      "calls": 40,
+      "avg_latency_ms": 1083.5639062749992,
+      "cost_cny": 0.012315
+    },
+    "v3": {
+      "pass_rate": 1.0,
+      "calls": 40,
+      "avg_latency_ms": 1097.6273912499998,
+      "cost_cny": 0.015063
+    },
+    "v3-rules": {
+      "pass_rate": 1.0,
+      "calls": 0,
+      "avg_latency_ms": 0.0,
+      "cost_cny": 0.0
+    }
+  },
+  "load_test": {
+    "mode": "real",
+    "arm": "deepseek",
+    "users": 5,
+    "run_time": "30s",
+    "requests": 133,
+    "rps": 4.787,
+    "p50_ms": 1000,
+    "p95_ms": 1300,
+    "p99_ms": 1500,
+    "avg_ms": 1020.224,
+    "http_error_rate": 0.0,
+    "task_success_rate": 1.0,
+    "tokens": 30182,
+    "cost_cny": 0.083104,
+    "cost_per_success_cny": 0.000624842,
+    "budget_exceeded": false
+  },
+  "langfuse": {
+    "host": "https://jp.cloud.langfuse.com",
+    "project_id": "cmvf9rprr002mad0k9ckxaig4",
+    "traces": [
+      {
+        "case_id": "status_shipped_zh",
+        "trace_id": "39ff1895e6a037d8a50e02872b68635e",
+        "matched": true
+      },
+      {
+        "case_id": "status_en_lowercase",
+        "trace_id": "39165702d388c696da0cfa7b2b749f49",
+        "matched": true
+      },
+      {
+        "case_id": "status_delivered_zh",
+        "trace_id": "45ebd452cc010149e08a9741c7db7d69",
+        "matched": true
+      }
+    ],
+    "span_tree_case": "status_shipped_zh",
+    "span_tree": [
+      {
+        "type": "CHAIN",
+        "name": "agent.turn",
+        "parent": "e5809adc20ab5bcb"
+      },
+      {
+        "type": "CHAIN",
+        "name": "node.validate",
+        "parent": "338807e0cec5a9bc"
+      },
+      {
+        "type": "CHAIN",
+        "name": "node.plan",
+        "parent": "338807e0cec5a9bc"
+      },
+      {
+        "type": "CHAIN",
+        "name": "node.dispatch",
+        "parent": "338807e0cec5a9bc"
+      },
+      {
+        "type": "TOOL",
+        "name": "tool.query_order_status",
+        "parent": "a230abd8659bb143"
+      },
+      {
+        "type": "CHAIN",
+        "name": "node.respond",
+        "parent": "338807e0cec5a9bc"
+      }
+    ]
+  }
+}

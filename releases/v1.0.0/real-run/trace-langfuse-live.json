@@ -1,0 +1,89 @@
+{
+  "generated_at": "2026-10-19T13:55:37.044215+00:00",
+  "traces": 3,
+  "failed": 0,
+  "stages": {},
+  "verdicts": [
+    {
+      "case_id": "status_shipped_zh",
+      "trace_id": "tr_5b83e579a31f479cb976",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "请查询订单 ORD-1001 的物流状态",
+        "customer_id": "CUST-001",
+        "session_id": null,
+        "intent": "order_status",
+        "state": "tool_completed",
+        "tool_name": "query_order_status",
+        "error_code": null,
+        "response": "request completed",
+        "plan_source": "rules",
+        "slot_order_id": "ORD-1001",
+        "slot_source": "verbatim",
+        "nodes": [
+          "validate",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "status_en_lowercase",
+      "trace_id": "tr_102667de8cf74a389f59",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "What is the status of order ord-2001?",
+        "customer_id": "CUST-002",
+        "session_id": null,
+        "intent": "order_status",
+        "state": "tool_completed",
+        "tool_name": "query_order_status",
+        "error_code": null,
+        "response": "request completed",
+        "plan_source": "rules",
+        "slot_order_id": "ORD-2001",
+        "slot_source": "verbatim",
+        "nodes": [
+          "validate",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "status_delivered_zh",
+      "trace_id": "tr_a1d2e8e6221c4cdb9dd8",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "订单 ORD-1002 到哪了？",
+        "customer_id": "CUST-001",
+        "session_id": null,
+        "intent": "order_status",
+        "state": "tool_completed",
+        "tool_name": "query_order_status",
+        "error_code": null,
+        "response": "request completed",
+        "plan_source": "rules",
+        "slot_order_id": "ORD-1002",
+        "slot_source": "verbatim",
+        "nodes": [
+          "validate",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    }
+  ]
+}

@@ -1430,9 +1430,9 @@ Langfuse  : live
 
 | case_id | Langfuse trace id |
 | --- | --- |
-| `status_shipped_zh` | `d3473e97124a9808f651c7ef384a5c2b` |
-| `status_en_lowercase` | `ea7473a9a1514bf23fb89cf14b40e7d3` |
-| `status_delivered_zh` | `51a531af149707d0ad66c0e3dd65f5cc` |
+| `status_shipped_zh` | `39ff1895e6a037d8a50e02872b68635e` |
+| `status_en_lowercase` | `39165702d388c696da0cfa7b2b749f49` |
+| `status_delivered_zh` | `45ebd452cc010149e08a9741c7db7d69` |
 
 `status_shipped_zh` 的 span 树（API 返回的 type / name / parent）：
 
@@ -1446,7 +1446,7 @@ Langfuse  : live
 | CHAIN | `node.respond` | `agent.turn` |
 
 项目 ID `cmvf9rprr002mad0k9ckxaig4`，可直接打开
-[`status_shipped_zh` 的 trace](https://jp.cloud.langfuse.com/project/cmvf9rprr002mad0k9ckxaig4/traces/d3473e97124a9808f651c7ef384a5c2b)。
+[`status_shipped_zh` 的 trace](https://jp.cloud.langfuse.com/project/cmvf9rprr002mad0k9ckxaig4/traces/39ff1895e6a037d8a50e02872b68635e)。
 
 **边界**：这 3 条是零成本规则臂，证明的是链路与层级，不是模型 span 的质量；Langfuse 新版组织
 已经停用 `/api/public/traces`（返回 410 `LEGACY_API_UNAVAILABLE_FOR_NEW_ORGANIZATION`），
@@ -1740,3 +1740,46 @@ HTTP 错误率 0、任务成功率 100%、30,182 tokens、花费 CNY 0.083104、
 **边界**：Langfuse 已于同日补验真实发送（§16.9）；
 L3 两轮通过率相差 7.9pp，说明 38 条样本下单轮分数不足以判退化；5 用户压测只是低并发基线，
 不是容量结论。
+
+### 18.9 发布冻结 `v1.0.0`（2026-10-19）
+
+在干净工作区执行：
+
+```powershell
+D:\Python\python.exe scripts/freeze_release.py --tag v1.0.0 --gate-against releases/v0.9.0
+```
+
+冻结锚定被测代码 `ea7e13c`（tag 指向该提交；发布文件是随后一个提交，和 `v0.9.0` 的惯例一致）。
+七项离线检查全部通过：
+
+| 检查 | 结果 |
+| --- | --- |
+| `pytest` | 1293 passed / 0 failed / 1 skipped / 10 xfailed |
+| `faults` | 25 / 25 |
+| `comparison:matrix` | 213 行 |
+| `comparison:rag_multiturn` | 120 行 |
+| `trace` | 310 条，7 条不通过，未定位 0，通过率 97.742% |
+| `judge` | L3 64.5%（2 轮，最差 60.5%）/ L4 95.8%（2 轮）/ L5 100% / 人工 kappa 0.875 |
+| `load_test` | modeled 臂，P95 140ms、RPS 157.7、任务成功率 100%、单次成功成本 CNY 0.00076053 |
+
+对 `v0.9.0` 的回归门禁全部通过：功能、故障、RAG/多轮、trace、judge、性能六类指标均无退化。
+
+发布目录里新增了 `real-run/`，把 2026-10-19 付费 run 的原始报告固定下来：
+
+| 文件 | 内容 |
+| --- | --- |
+| `real-run/EVIDENCE.md` | 人读摘要：花费、判分、真实四臂、压测、Langfuse trace 链接 |
+| `real-run/evidence.json` | 同一份证据的机器可读版本 |
+| `real-run/load-test-real.json` | 5 用户 / 30 秒真实压测原始报告 |
+| `real-run/version-comparison-real.json` | 真实四臂对比原始报告 |
+| `real-run/l3-ragas.*` / `l4-deepeval.*` / `l5-promptfoo.*` | 付费 run 的三层判分报告 |
+| `real-run/langfuse-traces.json` / `langfuse-trace-tree.json` | 3/3 API 核对结果与 span 树 |
+| `real-run/traces-langfuse-live.jsonl` / `trace-langfuse-live.*` | 本地 trace 与定位报告 |
+
+真实运行合计 **CNY 0.7163**；真实压测 P95 **1300ms**、RPS **4.787**、任务成功率 **100%**、
+单次成功任务成本 **CNY 0.000625**。Langfuse 3 条 trace 的 ID 与链接见
+`releases/v1.0.0/real-run/EVIDENCE.md`。
+
+**边界**：离线冻结的压测仍是 modeled 臂；真实压测只有 5 用户一档；L3/L4 各 2 轮；
+Langfuse 的 3 条是规则臂，真实模型 span 尚未实发。这些边界不影响“发布锚定 + 原始证据可追溯”，
+但都不能读成容量或统计显著性结论。
