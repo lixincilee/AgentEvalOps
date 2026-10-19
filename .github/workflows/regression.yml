@@ -16,10 +16,15 @@ on:
   pull_request:
   workflow_dispatch:
     inputs:
-      paid_jobs:
-        description: "运行付费真实模型 job（judge-real + nightly-real）"
-        type: boolean
-        default: false
+      paid_target:
+        description: "付费 job：none / both / judge / nightly"
+        type: choice
+        options:
+          - none
+          - both
+          - judge
+          - nightly
+        default: none
   schedule:
     # GitHub 的 cron 只认 UTC：UTC 18:00 = 北京时间次日 02:00。
     - cron: "0 18 * * *"
@@ -163,8 +168,8 @@ jobs:
 
   nightly-real:
     name: 夜间真实模型（会花钱）
-    # 定时任务或手动 dispatch（paid_jobs=true）才跑；PR 上永不触发。
-    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.paid_jobs)
+    # 定时任务或手动 dispatch（paid_target=nightly/both）才跑；PR 上永不触发。
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && (inputs.paid_target == 'both' || inputs.paid_target == 'nightly'))
     runs-on: ubuntu-latest
     timeout-minutes: 30
     # 供应商拥塞、限流、余额不足都不该让整个 workflow 变红：这一格只是夜间情报。
@@ -210,8 +215,8 @@ jobs:
 
   judge-real:
     name: 判分 L3/L4（真实模型，会花钱）
-    # 定时任务或手动 dispatch（paid_jobs=true）才跑；PR 上永不触发。
-    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.paid_jobs)
+    # 定时任务或手动 dispatch（paid_target=judge/both）才跑；PR 上永不触发。
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && (inputs.paid_target == 'both' || inputs.paid_target == 'judge'))
     needs: test
     runs-on: ubuntu-latest
     # L3 两轮约 18 分钟、L4 两轮约 10 分钟，加依赖安装；120 分钟是余量。

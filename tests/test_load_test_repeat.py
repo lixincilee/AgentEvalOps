@@ -33,6 +33,18 @@ def _load(module_name: str, filename: str) -> Any:
 load_test = _load("load_test", "load_test.py")
 
 
+
+def test_parser_accepts_internal_deepseek_arm():
+    args = load_test.build_parser().parse_args(["--serve-only", "--arm", "deepseek"])
+    assert args.arm == "deepseek"
+
+
+def test_public_cli_rejects_deepseek_arm_without_real(capsys):
+    code = load_test.main(["--arm", "deepseek", "--spawn-rate", "1", "--run-time", "1s"])
+    assert code == 2
+    assert "真实压测请用 --real" in capsys.readouterr().out
+
+
 def make_run(
     *,
     requests: int = 1000,

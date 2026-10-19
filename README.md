@@ -664,10 +664,10 @@ D:\Python\python.exe scripts/regression_gate.py --candidate releases/v0.8.0 --ba
 | `test` | push / PR / 手动 / 定时 | `python -m pytest -q` | 是 |
 | `gate` | 同上（`needs: test`） | `freeze_release.py --gate-against releases/v0.9.0` | 是 |
 | `judge-l5` | push / PR / 手动 / 定时（`needs: test`） | Promptfoo 46 条安全用例（零模型费用） | 是 |
-| `judge-real` | 定时 / 手动 `paid_jobs=true`（PR 不触发） | L3 / L4 各 2 轮 + 判分门禁（会花钱） | 否 |
-| `nightly-real` | 定时 / 手动 `paid_jobs=true`（PR 不触发） | 真实模型对比 + 真实并发压测（会花钱） | 否 |
+| `judge-real` | 定时 / 手动 `paid_target=both`（PR 不触发） | L3 / L4 各 2 轮 + 判分门禁（会花钱） | 否 |
+| `nightly-real` | 定时 / 手动 `paid_target=both`（PR 不触发） | 真实模型对比 + 真实并发压测（会花钱） | 否 |
 
-手动跑付费链路：Actions → `regression` → Run workflow，把 `paid_jobs` 设为 `true`。
+手动跑付费链路：Actions → `regression` → Run workflow，把 `paid_target` 设为 `both`（或只跑 `judge` / `nightly`）。
 预算上限：`judge-real` CNY 1.9 + `nightly-real` CNY 1.0。
 
 **真实运行**：2026-10-19 首次在 GitHub Actions 上跑通（run 39231090257、run 39231799943），
