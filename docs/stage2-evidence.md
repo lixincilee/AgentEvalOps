@@ -781,9 +781,9 @@ D:\Python\python.exe scripts/regression_gate.py --candidate .release-candidate -
 
 ### 12.5 这一节还没证明的事
 
-1. **这份 workflow 没有在 GitHub 上跑过。** 本机没有 Docker、没有 `gh`，`.github/` 从未被
-   GitHub 读过。做过的是：每条 `run` 命令在本机按同一顺序跑过一遍，YAML 能被
-   `yaml.safe_load` 解析。**「CI 绿了」这件事本身还没有证据。**
+1. **（M5 当时）这份 workflow 没有在 GitHub 上跑过。** 本机没有 Docker、没有 `gh`，`.github/`
+   从未被 GitHub 读过。做过的是：每条 `run` 命令在本机按同一顺序跑过一遍，YAML 能被
+   `yaml.safe_load` 解析。**M9 已补上真实运行记录，见 §18.5 / §18.7。**
 2. **`nightly-real` 一次都没触发过**：真实模型的延迟、吞吐与账单仍然是空白（§11.4）。
 3. **基线还不够多**。M6 结束时有两份冻结发布（`v0.7.0` / `v0.8.0`，见 §14.5），但
    所谓「3 个版本回归对比」要的是**三个**；第三个可以再往前走一版，也可以用 `git worktree`
@@ -1577,7 +1577,7 @@ D:\Python\python.exe scripts\judge_gate.py --l3 reports/l3-ragas.json --l4 repor
 
 | 声明 | 状态 |
 | --- | --- |
-| GitHub Actions 真跑过 | **没有**。本机没有 Docker / gh；验证到的是同一条命令链和 YAML 可解析 |
+| GitHub Actions 真跑过 | **已跑过**（2026-10-19，[run 39231090257](https://github.com/lixincilee/AgentEvalOps/actions/runs/39231090257)）：`test` / `gate` / `judge-l5` 全绿，173 秒；`nightly-real` / `judge-real` 在 push 上按设计 skipped |
 | 人工抽检完成 | **已完成 20 / 20**。一致率 95%，kappa 0.875；但样本是失败优先的 20 条，不能当总体准确率 |
 | 3 次重复给出置信区间 | **没有**。样本量太小；5.3 个百分点的极差只能当噪声上界参考 |
 | 判分门禁的容忍值有统计依据 | **没有**。L3 5 pp / L4 3 pp 是工程折中，不是显著性结论 |
@@ -1605,5 +1605,26 @@ D:\Python\python.exe scripts\judge_gate.py --l3 reports/l3-ragas.json --l4 repor
 `trace-report.md` / `.json`、`trace-view.html`；`judge/` 下有 L3/L4/L5 的 JSON 与 Markdown、
 `judge_baseline.json`、`review-summary-v1.json`。
 
-**边界**：这仍是本机离线冻结。GitHub Actions 尚未真实运行；Langfuse 出口仍未验证；
+**边界**：这仍是本机离线冻结。冻结时 GitHub Actions 尚未运行（随后已跑通，见 §18.7）；Langfuse 出口仍未验证；
 L3/L4 报告是冻结前既有的多轮运行结果，不是冻结时重跑；trace 的模型臂只有 16 条。
+
+### 18.7 GitHub Actions 首次真实运行
+
+2026-10-19 把仓库推到 `github.com/lixincilee/AgentEvalOps`，push 到 `main` 触发
+[run 39231090257](https://github.com/lixincilee/AgentEvalOps/actions/runs/39231090257)，
+总耗时 173 秒：
+
+| job | 结果 | 证据 |
+| --- | --- | --- |
+| `test` | 成功 | 1278 passed / 1 skipped / 10 xfailed |
+| `gate` | 成功 | pytest 1278 passed、25/25 故障、213 行主矩阵、120 行 RAG/多轮、310 条 trace（未定位 0）、modeled 压测 P95 81ms；对 `releases/v0.9.0` 门禁通过 |
+| `judge-l5` | 成功 | Promptfoo 46 条安全用例；工件 `judge-l5-reports` |
+| `nightly-real` | 跳过 | 只在 `schedule` 触发 |
+| `judge-real` | 跳过 | 只在 `schedule` / `workflow_dispatch` 触发，且需要 `DEEPSEEK_API_KEY` |
+
+工件：`release-candidate`（160,709 bytes）、`judge-l5-reports`（19,932 bytes）。
+首次运行还暴露了一个小问题：gate 里的 `reports/` 在冻结流程中为空，上传步骤只产生 warning；
+已移除这条冗余上传，保留 `.release-candidate/` 作为唯一候选工件。
+
+**边界**：付费的 `nightly-real` 与 `judge-real` 仍没有 Actions 运行记录；真实模型延迟、
+账单和 L3/L4 判分在 GitHub Runner 上的行为仍未验证。Node 20 action 的弃用 warning 仍在。

@@ -1,7 +1,9 @@
 # AgentEvalOps
 
+[![regression](https://github.com/lixincilee/AgentEvalOps/actions/workflows/regression.yml/badge.svg)](https://github.com/lixincilee/AgentEvalOps/actions/workflows/regression.yml)
+
 > 一个用于练习 **Agent 评测工程（Evaluation Engineering / EvalOps）** 的教学项目。
-> 当前进度 **阶段二 M3**：确定性 Agent（v1）→ DeepSeek 规划层（v2）→ **LangGraph 编排 + 知识库检索 + 多轮会话（v3）**。
+> 当前进度 **阶段二 M9（已完成，tag `v0.9.0`）**：确定性 Agent（v1）→ DeepSeek 规划层（v2）→ LangGraph 编排 + 知识库检索 + 多轮会话（v3）→ trace、三层判分与 CI 回归门禁。
 > 三个版本跑在同一批用例、同一判分口径下，产出结构完全相同的 `RunMetrics`，差异才有归因价值。
 
 ## 为什么先做确定性版本
@@ -845,6 +847,8 @@ D:\Python\python.exe scripts/review_sheet.py --n 20 --write-template
 # M9 实际执行的正式冻结（已完成）：trace + 三层判分报告 + 人工抽检摘要一起进 releases/<tag>/
 D:\Python\python.exe scripts/freeze_release.py --tag v0.9.0 --gate-against releases/v0.8.0
 ```
+
+GitHub Actions 首次真实运行（2026-10-19，[run 39231090257](https://github.com/lixincilee/AgentEvalOps/actions/runs/39231090257)）：`test` / `gate` / `judge-l5` 全绿；`nightly-real` 与 `judge-real` 在 push 上按设计跳过。
 
 **3 轮重复改变了结论，而不只是分数**：L3 三轮 65.8% / 60.5% / 65.8%，3 条墙头草全部翻在
 `context_precision`；L4 三轮都 95.8%，并把首轮漏掉的 `rag_refund_window` 稳定地抓了出来。

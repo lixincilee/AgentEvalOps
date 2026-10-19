@@ -178,17 +178,17 @@ D:\Python\python.exe scripts/load_test.py --real --yes --users 5 --run-time 30s 
 
 | 声明 | 状态 |
 | --- | --- |
-| 这份 workflow 能在 GitHub 上跑通 | **未验证**。本机没有 Docker、没有 gh CLI，`.github/` 从未被 GitHub 读过。做过的是：每条 `run` 命令在本机按同一顺序跑过 + YAML 能被 `yaml.safe_load` 解析 |
-| `test` / `gate` 两个 job 会变绿 | **未验证**（同上） |
+| 这份 workflow 能在 GitHub 上跑通 | **已验证**（2026-10-19，[run 39231090257](https://github.com/lixincilee/AgentEvalOps/actions/runs/39231090257)）：`test` / `gate` / `judge-l5` 全绿，总耗时 173 秒。`nightly-real` 与 `judge-real` 在 push 上按设计 skipped |
+| `test` / `gate` 两个 job 会变绿 | **已验证**（同上）：`test` 为 1278 passed / 1 skipped / 10 xfailed；`gate` 的六项离线检查全部通过（`--skip-judge`） |
 | `nightly-real` | **从未触发过**。真实模型的延迟、吞吐与账单都还没取到真值 |
 | 冻结发布里的 `matrix.v2.pass_rate` / `matrix.v3.pass_rate` | 永远是 `n/a`：`freeze_release.py` 只跑 `--offline`（规则臂）。离线模式下模型列是 `None`，不是 0 |
 | 执法基线 | **已入库四份**：`releases/v0.6.0/`（M7 补冻）、`releases/v0.7.0/`（M5 首个）、`releases/v0.8.0/`（M6）、`releases/v0.9.0/`（M9，含 trace 与三层判分）。`gate` job 的执法基线是最新已冻结版本（现在是 `v0.9.0`），随每次冻结前移。本机已验证「冻结候选 → 门禁」整条链路通过；三版并排报告见 `releases/comparisons/` |
 | mock 臂压测的 P95 / token | 建模值，报告里标 `provenance: modeled`，不是供应商真值 |
 | 测试条数 | 会随用例增加而变。本机 HEAD 实测 `1278 passed, 1 skipped, 10 xfailed`（skip 的是只在判分 venv 里跑的 Ragas / DeepEval 接线测试）；各冻结基线分别是 `v0.6.0` 1025、`v0.7.0` 1061、`v0.8.0` 1121（同一口径：冻结器的收集值） |
-| L3 / L4 / L5 判分进 CI | **workflow 已接线，但 GitHub 上没跑过**。L5 在每次 PR 上跑（零模型费用）；L3/L4 在定时/手动任务里各跑 2 轮，再由 `judge_gate.py` 对比 `quality/judge_baseline.json`。本机验证到的是同一条命令链，不是一次真实的 Actions 运行 |
+| L3 / L4 / L5 判分进 CI | **L5 已在 GitHub 上跑通**（2026-10-19）；L3/L4 仍只在定时/手动任务触发，尚未在 Actions 上真实运行。L5 在每次 PR 上跑（零模型费用）；L3/L4 各跑 2 轮，再由 `judge_gate.py` 对比 `quality/judge_baseline.json` |
 | 判分门禁的容忍值 | **来自一轮 3 次重复的实测**。样本量小，容忍值（L3 5 个百分点、L4 3 个百分点）是工程折中，不是统计结论；夜间跑得越多越该收紧 |
 | `judge-real` 的夜间花费 | **上限可算、真值未测**：L3 `--budget 1.2` + L4 `--budget 0.7`，单晚最多 CNY 1.9；实际账单要等 GitHub 跑过才知道 |
-| `.release-candidate/` 能被打包上传 | **未验证**：本机没有 GitHub，验证不了「以点开头的目录」在当前 action 版本下的行为。为了不依赖它，上传步骤显式写了 `include-hidden-files: true` |
+| `.release-candidate/` 能被打包上传 | **已验证**：首次运行的 `release-candidate` 工件为 160,709 bytes，`include-hidden-files: true` 生效。gate 里原来还上传 `reports/`，但该目录在冻结流程中为空，已移除这条冗余上传 |
 | Trace 出口（Langfuse / Opik） | **未验证**：没有任何一份 trace 真的到过 Langfuse 服务（本机无 Docker、无账号），`langfuse>=3.0` 的 API 形状也没在真机上核对过 —— 猜错会**静默**降级成 dry-run。验证到的是载荷映射、dry-run 降级与注入假 client 时的调用序列（`docs/tracing.md` 第 7 节、`docs/stage2-evidence.md` §16.8） |
 
 ## 7. 已经踩过的坑

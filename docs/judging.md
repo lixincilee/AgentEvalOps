@@ -250,7 +250,7 @@ D:\Python\python.exe scripts/judge_gate.py --l3 reports/l3-ragas.json --l4 repor
 | L3 / L4 的**方差** | **各测了 3 次**（§6.4）。结论：通过率稳定、指标均值有小幅波动；但 3 次仍是小样本，不能给置信区间 |
 | 人工抽检真的发生了 | **已完成 20 / 20**（§7）。一致率 95%，kappa 0.875；失败优先样本，不是总体准确率 |
 | L5 覆盖了全部攻击面 | **只有 46 条**既定安全用例。没有独立的 Promptfoo 红队插件、没有越狱模板库、没有 HTTP 层攻击 |
-| 三层进了 CI | **workflow 已接线，GitHub 上没跑过**（§8）。本机验证到的是同一条命令链 |
+| 三层进了 CI | **L5 已在 GitHub Actions 上跑通**（2026-10-19，run 39231090257）；L3/L4 仍只在定时/手动触发，尚未在 Actions 上真实运行 |
 | Ragas 的 `context_precision` 是完整语义精度 | **是代理指标**。`ContextPrecisionWithoutReference` 逐块问「对回答有没有用」，不是人工标注的相关性 |
 | 判分链路的延迟 | **未单独统计**。L3/L4 的调用是串行的，单条用例的判分耗时没有进报告 |
 

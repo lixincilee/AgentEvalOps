@@ -4,9 +4,9 @@
 # judge-real 管 L3/L4 判分，nightly-real 管真实模型的延迟与账单。
 # test / gate / judge-l5 在 push / PR 上跑并阻塞合并；两个 real job 只在定时任务里跑。
 #
-# 诚实声明：这份 workflow 还没有在 GitHub 上真跑过（本机没有 Docker，也没有 gh CLI）。
-# 它的正确性来自「每条 run 命令都在本机按同一顺序跑过」+「YAML 能被解析」，
-# 不是来自一次 CI 运行记录。详见 docs/ci.md 的「没有验证过的部分」。
+# 首次真实运行：2026-10-19（run 39231090257）。test / gate / judge-l5 全绿，
+# nightly-real 与 judge-real 在 push 上按设计跳过；付费链路仍未在 Actions 上验证。
+# 详见 docs/ci.md 的「没有验证过的部分」。
 
 name: regression
 
@@ -110,13 +110,6 @@ jobs:
           include-hidden-files: true
           if-no-files-found: warn
 
-      - name: 上传运行产物
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: reports
-          path: reports/
-          if-no-files-found: warn
 
   judge-l5:
     name: 判分 L5（Promptfoo，零模型费用）
