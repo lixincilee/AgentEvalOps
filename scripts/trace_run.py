@@ -332,7 +332,10 @@ def main(
         if ledger is not None:
             print(f"模型      : 调用 {ledger.calls} 次，花费 {ledger.currency} {ledger.cost:.4f}")
         if langfuse is not None:
-            print(f"Langfuse  : {langfuse.status}（dry-run 载荷：{langfuse.dump_path}）")
+            if langfuse.status == "live":
+                print("Langfuse  : live")
+            else:
+                print(f"Langfuse  : {langfuse.status}（未发送载荷：{langfuse.dump_path}）")
         print(
             "下一步    : D:\\Python\\python.exe scripts/trace_report.py "
             f"--traces {out} --cases {cases_path}"
