@@ -74,7 +74,7 @@ v3 的 `policy_qa` 返回的是 `message="request completed"` + `audit.result` �
 ## 4. 依赖隔离：为什么要有 `.venv-judge`
 
 Ragas 与 DeepEval 会把 `openai` / `numpy` 的版本拖到另一条线上。主解释器（`D:\Python`）
-跑着 **1273 条确定性测试**（外加 10 条已登记的 strict xfail），不能为了两个评测框架改掉依赖形状。所以：
+跑着 **1278 条确定性测试**（外加 10 条已登记的 strict xfail），不能为了两个评测框架改掉依赖形状。所以：
 
 ```powershell
 # 主环境：只跑 pytest，不装 judge
@@ -207,10 +207,16 @@ D:\Python\python.exe scripts/review_sheet.py --n 20 --write-template
 **当前状态（2026-10-19）**：
 
 - 已从真实报告抽 **20 条**（15 条机器失败 + 5 条机器通过；保留 1/4 通过样本，否则测不出假通过），
-  模板在 `reports/review-labels.jsonl`；
-- 人工回填 **0 / 20**。在任何人真正逐条填完之前，项目不声称「已完成人工抽检」，
-  简历里也不该写人工一致率；
-- 可先看的**跨层一致性**（不是人工结论）：L3 与 L4 共同评分 38 条，一致率 65.8%，
+  人工回填 **20 / 20**；
+- 总体一致率 **95%**，Cohen's kappa **0.875**；无假通过，1 条假失败：
+  `L3 / rag_poison_review_wait`（唯一资料是用户评价，回答如实说“资料里没有规则”，
+  Ragas `faithfulness=0.667` 判严了）；
+- 分层：L3 15 条，一致率 93.3%，kappa 0.762，1 条假失败；L4 5 条，一致率 100%，
+  kappa 1.000，0 条假通过 / 假失败；
+- 标签与汇总已固化到 `quality/review-labels-v1.jsonl`、`review-agreement-v1.json`、
+  `review-summary-v1.json`；这是**失败优先的 20 条偏置样本**，机器通过样本只有 5 条，
+  不能当总体准确率，kappa 的置信区间也很宽；
+- **跨层一致性**（不是人工结论）：L3 与 L4 共同评分 38 条，一致率 65.8%，
   Cohen's kappa **0.046**，分歧 13 条。kappa 低说明两层在判不同的东西——L3 对
   `context_precision` 严格，L4 只看回答是否 grounded；这恰好证明两层不是重复建设。
   L4 还多覆盖了 10 条 L3 跳过的拒答用例（L3 没有检索依据就不评分）。
@@ -233,14 +239,16 @@ D:\Python\python.exe scripts/judge_gate.py --l3 reports/l3-ragas.json --l4 repor
   是中位数，`worst_pass_rate` 是最差一次，两者都要过。
 - 为什么 L3/L4 不在 PR 上跑：每次约 CNY 0.85（2 轮）+ 20 分钟，且需要 secret；
   放进 PR 会让每个提交都花钱。L5 是确定性的，所以留在 PR 上。
+- 正式冻结发布时，`freeze_release.py` 会把 L3/L4/L5 报告、`quality/judge_baseline.json`
+  和人工抽检摘要复制到 `releases/<tag>/judge/`；L3/L4 **不重跑**，冻结的是这次发布对应的报告。
 
 ## 9. 这一层还没证明的事
 
 | 声明 | 状态 |
 | --- | --- |
-| LLM 判分的**绝对分**可信 | **没有人工标注**。Ragas / GEval 的分数只能做版本间相对比较与趋势，不能当「这条回答 0.93 分」的客观结论 |
+| LLM 判分的**绝对分**可信 | **只有 20 条偏置人工标注**。可做版本间相对比较与趋势；不能把 Ragas / GEval 的绝对分当「这条回答 0.93 分」的客观结论 |
 | L3 / L4 的**方差** | **各测了 3 次**（§6.4）。结论：通过率稳定、指标均值有小幅波动；但 3 次仍是小样本，不能给置信区间 |
-| 人工抽检真的发生了 | **没有**。抽检表、回填模板与 kappa 脚本已就绪；人工结论仍是 0 条（§7） |
+| 人工抽检真的发生了 | **已完成 20 / 20**（§7）。一致率 95%，kappa 0.875；失败优先样本，不是总体准确率 |
 | L5 覆盖了全部攻击面 | **只有 46 条**既定安全用例。没有独立的 Promptfoo 红队插件、没有越狱模板库、没有 HTTP 层攻击 |
 | 三层进了 CI | **workflow 已接线，GitHub 上没跑过**（§8）。本机验证到的是同一条命令链 |
 | Ragas 的 `context_precision` 是完整语义精度 | **是代理指标**。`ContextPrecisionWithoutReference` 逐块问「对回答有没有用」，不是人工标注的相关性 |

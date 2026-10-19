@@ -11,7 +11,7 @@
 | job | 什么时候跑 | 干什么 | 阻塞合并吗 |
 | --- | --- | --- | --- |
 | `test` | 每次 push 到 `main`、每个 PR、手动触发、每天定时 | `python -m pytest -q` | 阻塞 |
-| `gate` | 同上（`needs: test`，测试先过） | 冻结候选发布，并和 `releases/v0.8.0`（最新已冻结版本）比 | 阻塞 |
+| `gate` | 同上（`needs: test`，测试先过） | 冻结候选发布（含 trace；PR 跳过付费判分），并和 `releases/v0.8.0`（最新已冻结版本）比 | 阻塞 |
 | `judge-l5` | 同上（`needs: test`） | Promptfoo 跑 46 条安全用例；零模型费用 | 阻塞 |
 | `nightly-real` | **只在定时任务里**（`github.event_name == 'schedule'`） | 真实模型对比 + 真实并发压测 | 不阻塞 |
 | `judge-real` | 定时任务或手动触发 | Ragas / DeepEval 各 2 轮 + 判分门禁；会花钱 | 不阻塞合并（PR 上不触发） |
@@ -45,11 +45,12 @@ on:
 `gate` 只有一条实质命令：
 
 ```
-python scripts/freeze_release.py --out .release-candidate --gate-against releases/v0.8.0
+python scripts/freeze_release.py --out .release-candidate --gate-against releases/v0.8.0 --skip-judge
 ```
 
-`freeze_release.py` 会跑五件事，每件都会把原始报告和从报告里抽出来的指标落盘
-（出处：`scripts/freeze_release.py` 的 `main()` 与 `check_*` 函数）：
+`freeze_release.py` 默认跑七件事，每件都会把原始报告和从报告里抽出来的指标落盘
+（出处：`scripts/freeze_release.py` 的 `main()` 与 `check_*` 函数）。CI 的 `gate` 加上
+`--skip-judge`，因为 PR 上没有付费的 L3/L4 报告；本地打正式 tag 时不加，七件事全跑。
 
 | 检查 | 实际命令 | 产物文件 | 写进索引的指标 |
 | --- | --- | --- | --- |
@@ -57,6 +58,8 @@ python scripts/freeze_release.py --out .release-candidate --gate-against release
 | `faults` | `python scripts/run_faults.py --out ...` | `fault-run.json` | `fault.pass_rate` / `fault.cases` |
 | `comparison:matrix` | `python scripts/compare_versions.py --offline --cases eval_cases/case_matrix_v2.jsonl` | `comparison-matrix.json` | `matrix.v1.pass_rate` / `matrix.v3_rules.pass_rate` |
 | `comparison:rag_multiturn` | 同上，用例是 `rag_cases.jsonl` + `multiturn_cases.jsonl` | `comparison-rag-multiturn.json` | `rag_multiturn.v1.pass_rate` / `rag_multiturn.v3_rules.pass_rate` |
+| `trace` | `trace_run.py` + `trace_report.py` + `trace_view.py`（规则臂，零成本） | `trace/traces.jsonl`、`trace/trace-report.md/.json`、`trace/trace-view.html` | `trace.traces` / `trace.failed` / `trace.pass_rate` / `trace.unclassified` |
+| `judge` | 读取 `reports/l3-ragas.json`、`l4-deepeval.json`、`l5-promptfoo.json`，不重跑 L3/L4 | `judge/l3-ragas.*`、`judge/l4-deepeval.*`、`judge/l5-promptfoo.*` | `judge.L3/L4/L5.pass_rate` / `worst_pass_rate` / `errors`；人工抽检摘要 |
 | `load_test` | `python scripts/load_test.py --users 20 --spawn-rate 5 --run-time 20s --port 8140` | `load-test.json` | `perf.http_error_rate` / `perf.task_success_rate` / `perf.p95_ms` / `perf.rps` / `perf.tokens_per_request` / `perf.cost_per_success_cny` |
 
 跑完写出两份索引：`release.json`（机器读的指标索引）和 `README.md`（同一份内容的人读版）。
@@ -181,7 +184,7 @@ D:\Python\python.exe scripts/load_test.py --real --yes --users 5 --run-time 30s 
 | 冻结发布里的 `matrix.v2.pass_rate` / `matrix.v3.pass_rate` | 永远是 `n/a`：`freeze_release.py` 只跑 `--offline`（规则臂）。离线模式下模型列是 `None`，不是 0 |
 | 执法基线 | **已入库三份**：`releases/v0.6.0/`（M7 补冻）、`releases/v0.7.0/`（M5 首个）、`releases/v0.8.0/`（M6）。`gate` job 的执法基线是最新已冻结版本（现在是 `v0.8.0`），随每次冻结前移。本机已验证「冻结候选 → 门禁」整条链路通过；三版并排报告见 `releases/comparisons/` |
 | mock 臂压测的 P95 / token | 建模值，报告里标 `provenance: modeled`，不是供应商真值 |
-| 测试条数 | 会随用例增加而变。本机 HEAD 实测 `1273 passed, 1 skipped, 10 xfailed`（skip 的是只在判分 venv 里跑的 Ragas / DeepEval 接线测试）；各冻结基线分别是 `v0.6.0` 1025、`v0.7.0` 1061、`v0.8.0` 1121（同一口径：冻结器的收集值） |
+| 测试条数 | 会随用例增加而变。本机 HEAD 实测 `1278 passed, 1 skipped, 10 xfailed`（skip 的是只在判分 venv 里跑的 Ragas / DeepEval 接线测试）；各冻结基线分别是 `v0.6.0` 1025、`v0.7.0` 1061、`v0.8.0` 1121（同一口径：冻结器的收集值） |
 | L3 / L4 / L5 判分进 CI | **workflow 已接线，但 GitHub 上没跑过**。L5 在每次 PR 上跑（零模型费用）；L3/L4 在定时/手动任务里各跑 2 轮，再由 `judge_gate.py` 对比 `quality/judge_baseline.json`。本机验证到的是同一条命令链，不是一次真实的 Actions 运行 |
 | 判分门禁的容忍值 | **来自一轮 3 次重复的实测**。样本量小，容忍值（L3 5 个百分点、L4 3 个百分点）是工程折中，不是统计结论；夜间跑得越多越该收紧 |
 | `judge-real` 的夜间花费 | **上限可算、真值未测**：L3 `--budget 1.2` + L4 `--budget 0.7`，单晚最多 CNY 1.9；实际账单要等 GitHub 跑过才知道 |

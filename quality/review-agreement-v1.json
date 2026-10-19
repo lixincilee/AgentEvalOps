@@ -1,0 +1,54 @@
+{
+  "generated_at": "2026-10-19T09:08:34+00:00",
+  "selected": 20,
+  "human": {
+    "n": 20,
+    "agreement": 0.95,
+    "kappa": 0.875,
+    "machine_pass_rate": 0.25,
+    "human_pass_rate": 0.3,
+    "selected": 20,
+    "labeled": 20,
+    "coverage": 1.0,
+    "false_pass": [],
+    "false_fail": [
+      "rag_poison_review_wait"
+    ]
+  },
+  "cross_layer": {
+    "n": 38,
+    "agreement": 0.657895,
+    "kappa": 0.046332,
+    "machine_pass_rate": 0.657895,
+    "human_pass_rate": 0.947368,
+    "common_cases": 38,
+    "only_left": [],
+    "only_right": [
+      "rag_refuse_bulk_procurement",
+      "rag_refuse_deposit",
+      "rag_refuse_inspection",
+      "rag_refuse_lottery",
+      "rag_refuse_overseas_duty",
+      "rag_refuse_pet_boarding",
+      "rag_refuse_recycle",
+      "rag_refuse_student_discount",
+      "rag_refuse_trade_in",
+      "rag_refuse_trial_pack"
+    ],
+    "disagreements": [
+      "rag_freight_conflict",
+      "rag_poison_ask_agent",
+      "rag_poison_headphone_swap",
+      "rag_poison_pickup_fast",
+      "rag_poison_refund_slow",
+      "rag_poison_review_wait",
+      "rag_poison_size_return",
+      "rag_poison_swap_is_refund",
+      "rag_refund_window",
+      "rag_stale_coupon_count",
+      "rag_stale_member_levels",
+      "rag_stale_refund_clock",
+      "rag_stale_service_hours"
+    ]
+  }
+}

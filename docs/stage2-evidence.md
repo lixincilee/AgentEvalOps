@@ -1507,7 +1507,7 @@ L4 没有墙头草，但有两条**每轮都失败**的稳定 bad case：
 「换一个 Judge 贵了多少」就说不清。本轮全部在峰时（北京时间 9–12 / 14–18 点）跑，
 单价是空闲时段的 2 倍。
 
-### 18.3 人工抽检：工具就绪，人工结论仍是 0 条
+### 18.3 人工抽检：20 / 20，一致率 95%，kappa 0.875
 
 ```powershell
 D:\Python\python.exe scripts\review_sheet.py --n 20 --write-template
@@ -1515,15 +1515,28 @@ D:\Python\python.exe scripts\review_sheet.py --n 20 --write-template
 
 已从真实报告抽 **20 条**：15 条机器失败 + 5 条机器通过（保留 1/4 通过样本，否则测不出假通过）。
 产物是 `reports/review-sheet.md`（带问题、回答、检索资料、机器分数与理由）、
-`reports/review-labels.jsonl`（`verdict=null` 的回填模板）和 `reports/review-agreement.json`。
+`reports/review-labels.jsonl`（人工回填）和 `reports/review-agreement.json`。
+人工标签与汇总同时固化到 `quality/review-labels-v1.jsonl`、`review-agreement-v1.json`、
+`review-summary-v1.json`，不依赖被 gitignore 的 `reports/`。
 
-**当前人工回填 0 / 20**，所以：
+| 层 | 样本 | 一致率 | Cohen's kappa | 假通过 | 假失败 |
+| --- | --- | --- | --- | --- | --- |
+| L3 | 15 | 93.3% | 0.762 | 0 | `rag_poison_review_wait` |
+| L4 | 5 | 100% | 1.000 | 0 | 0 |
+| **合计** | **20** | **95%** | **0.875** | **0** | **1** |
 
-- 不存在人工一致率，也不存在人工 kappa；
-- 不能声称「已完成人工抽检」，简历里也不该写人工一致率；
-- 脚本已有测试钉住：没有标签时 `agreement` / `kappa` 是 `null`，不会编一个数。
+唯一一条假失败是 `L3 / rag_poison_review_wait`：检索到的唯一资料是一段用户评价，
+回答如实说「资料里没有说明退款到账规则」，人工判通过；Ragas 的
+`faithfulness=0.667` 把它判成失败。**这是 Judge 过严，不是回答编造**——也正是人工抽检
+要抓的那类偏差。没有发现假通过，但机器通过的样本只有 5 条，假通过检测的统计功效很低。
 
-在人工回填之前，能看的只有**跨层一致性**（这不是人工结论）：
+必须同时读的三条限制：
+
+- 20 条是**失败优先的偏置样本**，不是总体准确率；
+- kappa 的置信区间很宽，不能当显著性结论；
+- 这 20 条只覆盖 L3/L4，不覆盖 L5 安全用例的人工复核。
+
+**跨层一致性**（不是人工结论）：
 
 | 指标 | 值 | 读法 |
 | --- | --- | --- |
@@ -1540,7 +1553,7 @@ kappa 低不等于「有一层错了」。L3 对 `context_precision` 严格，L4
 | job | 触发 | 跑什么 | 费用 | 阻塞合并 |
 | --- | --- | --- | --- | --- |
 | `test` | push / PR / 手动 / 定时 | `pytest -q` | 0 | 是 |
-| `gate` | push / PR（`needs: test`） | 冻结候选 + 原回归门禁 | 0 | 是 |
+| `gate` | push / PR（`needs: test`） | 冻结候选（含 trace；PR 跳过付费判分）+ 原回归门禁 | 0 | 是 |
 | `judge-l5` | push / PR / 手动 / 定时（`needs: test`） | Promptfoo 46 条安全用例 | 0 | 是 |
 | `nightly-real` | 定时 | 真实模型对比 + 真实压测 | 有上限 | 否 |
 | `judge-real` | 定时 / 手动（PR 不触发） | L3 / L4 各 `--repeat 2` + `judge_gate.py` | 上限 CNY 1.9/晚 | 否 |
@@ -1551,6 +1564,9 @@ kappa 低不等于「有一层错了」。L3 对 `context_precision` 严格，L4
 - 门禁基线是提交进 git 的 `quality/judge_baseline.json`，判据有三条：绝对下限、
   比基线低超过容忍值、任何框架错误行。重复报告同时判 `pass_rate` 中位数与 `worst_pass_rate`。
 - 本机自检：**9 过 / 0 失败 / 0 跳过**（`reports/judge-gate.md`）。
+- 正式冻结时，`freeze_release.py` 默认跑七项检查：原五项 + `trace` + `judge`。
+  `trace/` 下是 310 条 trace、失败环节定位和 HTML 视图；`judge/` 下是 L3/L4/L5 报告、
+  门禁基线、人工抽检摘要。PR 的 `gate` 用 `--skip-judge`，因为付费报告不在 PR 上生成。
 
 ```powershell
 D:\Python\python.exe scripts\judge_gate.py --l3 reports/l3-ragas.json --l4 reports/l4-deepeval.json --l5 reports/l5-promptfoo.json
@@ -1562,8 +1578,8 @@ D:\Python\python.exe scripts\judge_gate.py --l3 reports/l3-ragas.json --l4 repor
 | 声明 | 状态 |
 | --- | --- |
 | GitHub Actions 真跑过 | **没有**。本机没有 Docker / gh；验证到的是同一条命令链和 YAML 可解析 |
-| 人工抽检完成 | **没有**。回填 0 / 20；一致率与 kappa 都不存在 |
+| 人工抽检完成 | **已完成 20 / 20**。一致率 95%，kappa 0.875；但样本是失败优先的 20 条，不能当总体准确率 |
 | 3 次重复给出置信区间 | **没有**。样本量太小；5.3 个百分点的极差只能当噪声上界参考 |
 | 判分门禁的容忍值有统计依据 | **没有**。L3 5 pp / L4 3 pp 是工程折中，不是显著性结论 |
 | trace 进了发布冻结 | **还没有**。`freeze_release.py` 仍只冻结五项检查；这是 M9 的下一块 |
-| Judge 绝对分可信 | **没有人工标注**。只能做版本间相对比较与趋势 |
+| Judge 绝对分可信 | **只有 20 条偏置人工标注**。可做版本间相对比较；不能把绝对分当客观真值 |

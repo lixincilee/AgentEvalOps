@@ -39,6 +39,14 @@ BASE_METRICS: dict[str, Any] = {
     "fault.cases": 25,
     "matrix.v3_rules.pass_rate": 0.9671,
     "rag_multiturn.v3_rules.pass_rate": 1.0,
+    "trace.pass_rate": 0.98,
+    "trace.unclassified": 0,
+    "judge.errors": 0,
+    "judge.L3.pass_rate": 0.66,
+    "judge.L3.worst_pass_rate": 0.61,
+    "judge.L4.pass_rate": 0.96,
+    "judge.L4.worst_pass_rate": 0.96,
+    "judge.L5.pass_rate": 1.0,
     "perf.http_error_rate": 0.0,
     "perf.task_success_rate": 1.0,
     "perf.p95_ms": 480.0,
@@ -82,6 +90,24 @@ def test_every_enforced_rule_has_a_criterion() -> None:
 def test_rule_metric_names_are_unique() -> None:
     names = [rule.metric for rule in gate.RULES]
     assert len(names) == len(set(names))
+
+
+def test_trace_unclassified_blocks_even_when_pass_rate_is_high() -> None:
+    """未定位的 trace 是待办：通过率再高，也不能把「不知道坏在哪」当通过。"""
+    verdict = verdict_for("trace.unclassified", 1.0, 0.0)
+    assert verdict.status == "fail"
+    assert "绝对上限" in verdict.reason
+
+
+def test_judge_framework_error_blocks() -> None:
+    """判分框架错误不是低分，是没测出来——必须阻断。"""
+    verdict = verdict_for("judge.errors", 1.0, 0.0)
+    assert verdict.status == "fail"
+
+
+def test_judge_floor_blocks_a_low_deepeval_pass_rate() -> None:
+    assert verdict_for("judge.L4.pass_rate", 0.89, 0.96).status == "fail"
+    assert verdict_for("judge.L4.pass_rate", 0.93, 0.96).status == "pass"
 
 
 def test_gate_passes_when_candidate_equals_baseline(tmp_path: Path) -> None:

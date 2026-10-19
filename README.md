@@ -57,13 +57,17 @@ AgentEvalOps/
 │   ├── judge_gate.py                  # M9：L3/L4/L5 判分门禁（绝对下限 + 相对基线）
 │   ├── review_sheet.py                # M9：人工抽检表 + 一致率 / kappa
 │   └── promptfoo_provider.py          # M9：Promptfoo exec provider（直接 import V3Agent）
-├── quality/                           # M9：判分门禁的基线（要提交进 git）
-│   └── judge_baseline.json            #   L3/L4/L5 的通过率、最差一次、指标均值
+├── quality/                           # M9：要提交进 git 的质量基线
+│   ├── judge_baseline.json            #   L3/L4/L5 的通过率、最差一次、指标均值
+│   ├── review-labels-v1.jsonl         #   20 条人工抽检回填（verdict / note / reviewer）
+│   ├── review-agreement-v1.json       #   人工一致率、kappa、假通过 / 假失败
+│   └── review-summary-v1.json         #   分层汇总、样本设计、限制说明
 ├── reports/                           # 运行产物（已 gitignore）：评测报告 JSON，可当 CI 工件
 ├── releases/                          # M5：冻结的发布（要提交进 git）——回归门禁的比较对象
 │   ├── v0.6.0/                        #   M7 补冻（v0.6.0 冻结时还没有 freeze_release.py）
 │   ├── v0.7.0/                        #   release.json（指标索引）+ 五项检查的原始报告
 │   ├── v0.8.0/                        #   M6：--repeat 3，release.json 里带方差
+│   ├── v0.9.0/                        #   M9：trace/ + judge/（L3/L4/L5 + 人工抽检摘要）
 │   └── comparisons/                   #   M7：多版本并排报告（v0.6.0-v0.7.0-v0.8.0.json）
 ├── perf/                              # M4：压测客户端（服务端本体在 src/agentevalops/service.py）
 │   ├── latency_client.py              # 建模用的假模型：只睡 60ms + 固定 token，不发网络请求
@@ -837,6 +841,9 @@ D:\Python\python.exe scripts\judge_l5_promptfoo.py
 # 三层报告对比入库基线；再把失败/通过样本抽成人工回填表
 D:\Python\python.exe scripts\judge_gate.py --l3 reports/l3-ragas.json --l4 reports/l4-deepeval.json --l5 reports/l5-promptfoo.json
 D:\Python\python.exe scripts/review_sheet.py --n 20 --write-template
+
+# 正式冻结：trace + 三层判分报告 + 人工抽检摘要一起进 releases/<tag>/
+D:\Python\python.exe scripts/freeze_release.py --tag v0.9.0 --gate-against releases/v0.8.0
 ```
 
 **3 轮重复改变了结论，而不只是分数**：L3 三轮 65.8% / 60.5% / 65.8%，3 条墙头草全部翻在
@@ -844,9 +851,14 @@ D:\Python\python.exe scripts/review_sheet.py --n 20 --write-template
 两套独立实现都指向 `rag_stale_refund_days` 里的真实幻觉。报告头部的 `cost_cny` 只统计判分行：
 L3 总额 1.7245 = 判分 1.5248 + 合成回答 0.1997；L4 总额 0.4885 = 判分 0.2903 + 合成回答 0.1982。
 
-**人工抽检还没完成**：`reports/review-sheet.md` 已抽 20 条（15 失败 + 5 通过），
-`review-labels.jsonl` 的人工回填是 **0 / 20**，所以现在不存在人工一致率。可先看的是
-**跨层一致性**（不是人工结论）：L3 与 L4 共同 38 条，一致率 65.8%，Cohen's kappa 0.046。
+**人工抽检已完成（20 / 20）**：从 L3/L4 真实报告抽 20 条（15 失败 + 5 通过），
+人工一致率 **95%**，Cohen's kappa **0.875**；无假通过，1 条假失败
+（`L3 / rag_poison_review_wait`：资料只有用户评价、回答如实说没有规则，Ragas 的
+`faithfulness=0.667` 判严了）。这是失败优先的 20 条偏置样本，不能当总体准确率。
+跨层一致性（不是人工结论）：L3 与 L4 共同 38 条，一致率 65.8%，kappa 0.046。
+人工标签与汇总已固化到 `quality/review-labels-v1.jsonl` / `review-summary-v1.json`。
+正式冻结会把它们和 L3/L4/L5 报告、310 条 trace 一起写进 `releases/v0.9.0/`：
+`trace/` 下是 trace、失败定位和 HTML 视图，`judge/` 下是三层报告与门禁基线。
 口径、阈值和「还没证明的事」见 `docs/judging.md`；证据见 `docs/stage2-evidence.md` §17 / §18。
 
 ## 后续路线图
@@ -861,7 +873,7 @@ L3 总额 1.7245 = 判分 1.5248 + 合成回答 0.1997；L4 总额 0.4885 = 判�
 | **阶段二 M6（已完成）** | 噪声压制：把方差本身变成可测量的量 | `load_test.py --repeat N`（每次重启服务）、`compare_versions.py --repeat N`（中位数 + 极差 + 墙头草用例）、`freeze_release.py --repeat N` 把方差写进 `release.json`、门禁报告新增「噪声」列、修掉预算熔断被兜底吞掉的 bug（证据文档 §13 / §14） |
 | **阶段二 M7（已完成）** | 多版本回归 | 补冻 `releases/v0.6.0/`、`releases/comparisons/v0.6.0-v0.7.0-v0.8.0.json`（三版并排、门禁全绿）；CI 执法基线上移到最新已冻结版本 |
 | **阶段二 M8（已完成）** | 可观测性：Trace 层 | `tracing.py`（span 树 + 脱敏 + JSONL / Langfuse 双出口、零行为改变）、`trace_run.py` / `trace_report.py` / `trace_view.py`、失败环节定位规则、`--llm` 真实模型臂（16 条真 trace，CNY 0.0057）、**97 条**新测试（证据 §16） |
-| **阶段二 M9（进行中）** | 判分分层 + 方差 + 门禁 + 把 trace 纳入发布冻结 | L3/L4 `--repeat 3` 方差、`judge_gate.py` 基线门禁、`review_sheet.py` 抽检工具、CI 五 job（L5 阻塞 PR，L3/L4 夜间；证据 §18）；剩余：人工回填 0/20、`freeze_release.py` 冻结 trace 与判分报告 |
+| **阶段二 M9（进行中）** | 判分分层 + 方差 + 门禁 + 把 trace 纳入发布冻结 | L3/L4 `--repeat 3` 方差、`judge_gate.py` 基线门禁、20 条人工抽检（一致率 95%，kappa 0.875）、CI 五 job（L5 阻塞 PR，L3/L4 夜间；证据 §18）；剩余：`freeze_release.py` 冻结 trace 与判分报告 |
 
 ### 评测指标（阶段五要算的东西，现在就能算前六项）
 

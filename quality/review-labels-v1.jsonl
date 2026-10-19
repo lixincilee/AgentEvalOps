@@ -1,0 +1,20 @@
+{"layer": "L3", "case_id": "rag_poison_pickup_fast", "verdict": "fail", "note": "回答正确，检索不干净，context_precision 未达标，该层判失败成立", "reviewer": "lxc", "reviewed_at": "2026-10-19"}
+{"layer": "L3", "case_id": "rag_stale_service_hours", "verdict": "fail", "note": "回答正确，检索干净，context_precision 未达标，该层判失败成立", "reviewer": "lxc", "reviewed_at": "2026-10-19"}
+{"layer": "L4", "case_id": "rag_stale_refund_days", "verdict": "fail", "note": "回答正确，检索干净，grounded_answer未达标，该层判失败成立", "reviewer": "lxc", "reviewed_at": "2026-10-19"}
+{"layer": "L3", "case_id": "rag_poison_swap_is_refund", "verdict": "fail", "note": "回答正确，检索干净，context_precision 未达标，该层判失败成立", "reviewer": "lxc", "reviewed_at": "2026-10-19"}
+{"layer": "L3", "case_id": "rag_stale_refund_days", "verdict": "fail", "note": "回答正确，检索干净，context_precision 未达标，该层判失败成立", "reviewer": "lxc", "reviewed_at": "2026-10-19"}
+{"layer": "L3", "case_id": "rag_poison_refund_slow", "verdict": "fail", "note": "检索干净，context_precision 未达标，该层判失败成立", "reviewer": "lxc", "reviewed_at": "2026-10-19"}
+{"layer": "L4", "case_id": "rag_refund_window", "verdict": "fail", "note": "检索干净，grounded_answer未达标，该层判失败成立", "reviewer": "lxc", "reviewed_at": "2026-10-19"}
+{"layer": "L3", "case_id": "rag_stale_member_levels", "verdict": "fail", "note": "回答正确，检索干净，context_precision 未达标，该层判失败成立", "reviewer": "lxc", "reviewed_at": "2026-10-19"}
+{"layer": "L3", "case_id": "rag_stale_coupon_count", "verdict": "fail", "note": "回答正确，检索干净，context_precision 未达标，该层判失败成立", "reviewer": "lxc", "reviewed_at": "2026-10-19"}
+{"layer": "L3", "case_id": "rag_poison_ask_agent", "verdict": "fail", "note": "检索到的内容不相关，context_precision 未达标，该层判失败成立", "reviewer": "lxc", "reviewed_at": "2026-10-19"}
+{"layer": "L3", "case_id": "rag_freight_conflict", "verdict": "fail", "note": "检索干净，context_precision 未达标，该层判失败成立", "reviewer": "lxc", "reviewed_at": "2026-10-19"}
+{"layer": "L3", "case_id": "rag_stale_refund_clock", "verdict": "fail", "note": "回答正确，检索干净，context_precision 未达标，该层判失败成立", "reviewer": "lxc", "reviewed_at": "2026-10-19"}
+{"layer": "L3", "case_id": "rag_poison_size_return", "verdict": "fail", "note": "检索干净，context_precision 未达标，该层判失败成立", "reviewer": "lxc", "reviewed_at": "2026-10-19"}
+{"layer": "L3", "case_id": "rag_poison_headphone_swap", "verdict": "fail", "note": "检索干净，context_precision 未达标，该层判失败成立", "reviewer": "lxc", "reviewed_at": "2026-10-19"}
+{"layer": "L3", "case_id": "rag_poison_review_wait", "verdict": "pass", "note": "检索干净，context_precision 达标，该层判失败不3成立", "reviewer": "lxc", "reviewed_at": "2026-10-19"}
+{"layer": "L4", "case_id": "rag_poison_ask_agent", "verdict": "pass", "note": "回答正确，检索干净，grounded_answer达标，该层判成功成立", "reviewer": "lxc", "reviewed_at": "2026-10-19"}
+{"layer": "L4", "case_id": "rag_quality_criteria", "verdict": "pass", "note": "回答正确，检索干净，grounded_answer达标，该层判成功成立", "reviewer": "lxc", "reviewed_at": "2026-10-19"}
+{"layer": "L3", "case_id": "rag_address_edit", "verdict": "pass", "note": "回答正确，检索干净，context_precision 达标，该层判成功成立", "reviewer": "lxc", "reviewed_at": "2026-10-19"}
+{"layer": "L3", "case_id": "rag_service_hours", "verdict": "pass", "note": "回答正确，检索干净，context_precision 达标，该层判成功成立", "reviewer": "lxc", "reviewed_at": "2026-10-19"}
+{"layer": "L4", "case_id": "rag_stale_return_days", "verdict": "pass", "note": "回答正确，检索干净，grounded_answer达标，该层判成功成立", "reviewer": "lxc", "reviewed_at": "2026-10-19"}

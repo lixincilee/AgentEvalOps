@@ -1,0 +1,44 @@
+{
+  "version": "review-v1",
+  "code_commit": "6bd746e",
+  "reviewed_at": "2026-10-19",
+  "reviewer": "lxc",
+  "sample_design": "seed=7, n=20, 15 machine-fail + 5 machine-pass",
+  "selected": 20,
+  "labeled": 20,
+  "agreement": 0.95,
+  "kappa": 0.875,
+  "machine_pass_rate": 0.25,
+  "human_pass_rate": 0.3,
+  "false_pass": [],
+  "false_fail": [
+    "rag_poison_review_wait"
+  ],
+  "by_layer": {
+    "L3": {
+      "n": 15,
+      "agreement": 0.933333,
+      "kappa": 0.761905,
+      "machine_pass_rate": 0.133333,
+      "human_pass_rate": 0.2,
+      "false_pass": [],
+      "false_fail": [
+        "rag_poison_review_wait"
+      ]
+    },
+    "L4": {
+      "n": 5,
+      "agreement": 1.0,
+      "kappa": 1.0,
+      "machine_pass_rate": 0.6,
+      "human_pass_rate": 0.6,
+      "false_pass": [],
+      "false_fail": []
+    }
+  },
+  "caveats": [
+    "20 条是失败优先的偏置样本，不是总体准确率。",
+    "机器通过样本只有 5 条，假通过检测的统计功效很低。",
+    "kappa 的置信区间很宽，不能当显著性结论。"
+  ]
+}

@@ -96,6 +96,7 @@ def test_render_markdown_states_the_version_and_dirtiness() -> None:
         "checks": [
             {"name": "pytest", "status": "passed", "seconds": 16.3, "detail": "1025 passed"},
             {"name": "faults", "status": "failed", "seconds": 9.1, "detail": "24/25"},
+            {"name": "judge", "status": "skipped", "seconds": 0.0, "detail": "--skip-judge"},
         ],
         "metrics": {"fault.pass_rate": 0.96, "perf.p95_ms": None},
     }
@@ -104,12 +105,18 @@ def test_render_markdown_states_the_version_and_dirtiness() -> None:
     assert "1fd5135" in text
     assert "脏" in text
     assert "**失败**" in text
+    assert "跳过" in text
     assert "| `perf.p95_ms` | n/a |" in text
 
 
 def test_case_paths_point_at_real_files() -> None:
     """冻结跑的用例集必须真的存在，否则一到 CI 才发现是断链。"""
-    for relative in (freeze.CASE_MATRIX, freeze.RAG_CASES, freeze.MULTITURN_CASES):
+    for relative in (
+        freeze.CASE_MATRIX,
+        freeze.RAG_CASES,
+        freeze.MULTITURN_CASES,
+        freeze.FAULT_CASES,
+    ):
         assert (REPO_ROOT / relative).is_file(), relative
 
 
@@ -120,3 +127,58 @@ def test_spec_version_is_readable() -> None:
 
 def test_is_dirty_returns_a_bool() -> None:
     assert isinstance(freeze.is_dirty(), bool)
+
+def test_check_judge_copies_reports_and_collects_metrics(tmp_path: Path) -> None:
+    """三层报告必须被复制进发布目录，指标必须能直接喂给回归门禁。"""
+    reports = tmp_path / "reports"
+    reports.mkdir()
+    payloads = {
+        "l3.json": {"layer": "L3", "pass_rate": 0.66, "worst_pass_rate": 0.61,
+                    "repeat": 3, "errors": 0, "cost_cny": 1.5, "generated_at": "t"},
+        "l4.json": {"layer": "L4", "pass_rate": 0.96, "worst_pass_rate": 0.96,
+                    "repeat": 3, "errors": 0, "cost_cny": 0.3, "generated_at": "t"},
+        "l5.json": {"layer": "L5", "pass_rate": 1.0, "repeat": 1,
+                    "errors": 0, "cost_cny": 0.0, "generated_at": "t"},
+    }
+    paths = {}
+    for name, payload in payloads.items():
+        path = reports / name
+        path.write_text(__import__("json").dumps(payload), encoding="utf-8")
+        path.with_suffix(".md").write_text("# report\n", encoding="utf-8")
+        paths[payload["layer"]] = path
+    summary = tmp_path / "review.json"
+    summary.write_text(
+        __import__("json").dumps({"selected": 20, "labeled": 20, "agreement": 0.95, "kappa": 0.875}),
+        encoding="utf-8",
+    )
+
+    out = tmp_path / "release"
+    check = freeze.check_judge(
+        out,
+        l3=paths["L3"],
+        l4=paths["L4"],
+        l5=paths["L5"],
+        review_summary=summary,
+    )
+    assert check["status"] == "passed"
+    assert check["metrics"]["judge.L3.pass_rate"] == 0.66
+    assert check["metrics"]["judge.L4.worst_pass_rate"] == 0.96
+    assert check["metrics"]["judge.errors"] == 0
+    assert check["metrics"]["judge.human.kappa"] == 0.875
+    assert (out / "judge" / "l3-ragas.json").is_file()
+    assert (out / "judge" / "review-summary-v1.json").is_file()
+
+
+def test_check_judge_fails_when_a_layer_is_missing(tmp_path: Path) -> None:
+    l3 = tmp_path / "l3.json"
+    l3.write_text('{"layer": "L3", "pass_rate": 0.6, "repeat": 1, "errors": 0}',
+                  encoding="utf-8")
+    check = freeze.check_judge(
+        tmp_path / "release",
+        l3=l3,
+        l4=tmp_path / "missing-l4.json",
+        l5=tmp_path / "missing-l5.json",
+        review_summary=tmp_path / "missing-review.json",
+    )
+    assert check["status"] == "failed"
+    assert "缺少报告" in check["detail"]
