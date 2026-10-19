@@ -7,7 +7,7 @@ without touching files.
 from __future__ import annotations
 
 import os
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping, MutableMapping
 from dataclasses import dataclass, replace
 from pathlib import Path
 
@@ -51,6 +51,31 @@ def read_dotenv(env_file: Path | None) -> dict[str, str]:
     # them) add one, and a leading BOM would otherwise rename the first key -- silently
     # dropping the API key and looking exactly like "the key was never configured".
     return parse_dotenv(env_file.read_text(encoding="utf-8-sig"))
+
+
+def load_env_into_environ(
+    env_file: Path | None = DEFAULT_ENV_FILE,
+    *,
+    environ: MutableMapping[str, str] | None = None,
+    keys: Iterable[str] | None = None,
+) -> list[str]:
+    """Copy selected ``.env`` entries into ``os.environ`` without overriding it.
+
+    ``Settings`` reads ``.env`` directly, but third-party SDKs (Langfuse) only look at
+    process environment. This bridges that gap while keeping real env vars authoritative.
+    Returns the names that were actually injected, which makes the behaviour testable.
+    """
+    env = os.environ if environ is None else environ
+    allowed = None if keys is None else set(keys)
+    loaded: list[str] = []
+    for key, value in read_dotenv(env_file).items():
+        if allowed is not None and key not in allowed:
+            continue
+        if key in env:
+            continue
+        env[key] = value
+        loaded.append(key)
+    return loaded
 
 
 def _first(*candidates: str | None) -> str | None:
