@@ -94,3 +94,13 @@
 任务仍通过，但通过率掩盖了模型协议问题。
 花费 CNY 0.1297。明细：
 [`langfuse-model-traces/failure-multiturn/EVIDENCE.md`](langfuse-model-traces/failure-multiturn/EVIDENCE.md)。
+
+## 真实模型重复运行方差（2026-10-20）
+
+从 213 条矩阵按 normal / boundary / error / safety 各抽 15 条，固定种子 `20261020`，
+用 `--llm --repeat 3` 背靠背跑 v2 / v3。两列三轮通过率均为 98.3%，极差 0.0pp，
+`flaky_cases` 为空；唯一失败固定为 `v2_err_unsupported_04`。延迟中位数
+v2 969.64ms / v3 1000.48ms，相对极差 12.67% / 5.15%；3 轮合计 CNY 0.129874、
+76,213 tokens、348 次模型调用。这是 60 条分层切片的本轮观测极差，不是置信区间，
+也不代表 213 条总体；RAG 48 条未纳入。明细：
+[`langfuse-model-traces/variance-repeat3/EVIDENCE.md`](langfuse-model-traces/variance-repeat3/EVIDENCE.md)。

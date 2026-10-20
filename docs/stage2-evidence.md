@@ -1402,7 +1402,7 @@ M8 在写 trace 的过程中修掉 5 个真 bug（都写进 `docs/tracing.md` §
 | HTML 视图的肉眼效果 | **未逐像素核对**。几何、转义、徽标有测试钉住，浏览器里到底长什么样需要人打开确认 |
 | trace 进了发布冻结产物 | **已完成**（M9，tag `v0.9.0`）。`freeze_release.py` 现有七项检查，`releases/v0.9.0/trace/` 含 310 条 trace、定位报告与 HTML 视图 |
 | 310 条 trace 覆盖了模型路径 | 冻结集里**只有 16 条**（§16.5）；2026-10-20 另跑 213 条主矩阵 + 72 条多轮模型 trace（§16.11），但 RAG 48 条尚未全量重跑 |
-| 真实模型 trace 的方差 | **未测**。16 条成功切片与 213 条主矩阵都只跑了一次；`--llm --repeat N` 的通过率/延迟方差仍是空白（对照 §13.3 / §14.4） |
+| 真实模型 trace 的方差 | **已补测一组（§16.12）**：60 条四类分层切片 × v2/v3 × 3 次，通过率均为 98.3%、极差 0.0pp，墙头草 0；延迟相对极差 12.67% / 5.15%。这是本轮观测极差，不是置信区间；16 条成功切片与 213 条主矩阵本身仍只跑了一次 |
 | 模型输出可解析率 | **已量化一次**：主矩阵 18/207、多轮 6/72 发生 `llm-fallback`，合计 24/279 个模型调用 turn（§16.11）；任务仍通过，但模型格式问题被兜底掩盖 |
 
 ### 16.9 真实发送补验（2026-10-19）
@@ -1499,7 +1499,7 @@ Langfuse 导出超时导致的重跑，模型调用 CNY 0.0070，未计入有效
 **CNY 0.0179**。
 
 **边界**：16 条只覆盖主矩阵与 RAG 两个切片，不是 310 条全量 trace 的模型臂；只跑了一次，
-模型路径的通过率 / 延迟方差仍未测。Langfuse v2 observations 在 SDK 5.0.2 批量导出时会压缩
+该 16 条切片的通过率 / 延迟方差另见 §16.12。Langfuse v2 observations 在 SDK 5.0.2 批量导出时会压缩
 `startTime` / `endTime`（同一毫秒），`latency` 也常为 `null`，因此证据里的耗时统一取本地
 trace 的 `span.duration_ms`；`llm.plan` 的 span 耗时包含客户端初始化与 SDK 重试，模型调用
 计时另取 `span.attributes.latency_ms`。
@@ -1551,8 +1551,37 @@ span 树 310/310 与本地一致。花费 **CNY 0.1297**。
 [`releases/v1.0.0/real-run/langfuse-model-traces/failure-multiturn/EVIDENCE.md`](../releases/v1.0.0/real-run/langfuse-model-traces/failure-multiturn/EVIDENCE.md)。
 
 **边界**：主矩阵 + 故障 + 多轮是模型臂，RAG 48 条没有全量重跑；3 条失败和 24 条降级都是
-单次运行结果，不能当稳定失败率；模型方差仍未测。状态层那条的定位存在优先级歧义，
+单次运行结果，不能当稳定失败率；模型方差另见 §16.12。状态层那条的定位存在优先级歧义，
 应作为 `trace_report.py` 的改进项。
+
+### 16.12 真实模型重复运行方差（2026-10-20）
+
+§16.10 / §16.11 的模型结果都只跑了一次。本节用一份固定切片补「同一份用例重复跑会不会翻转」：
+从 `eval_cases/case_matrix_v2.jsonl` 的四个类别各随机抽 15 条（种子 `20261020`），
+共 60 条，背靠背跑 3 次 v2 / v3 模型臂。抽中的 case_id、源文件哈希与类别分布见
+`releases/v1.0.0/real-run/langfuse-model-traces/variance-repeat3/variance-slice-60.manifest.json`。
+
+```powershell
+D:\Python\python.exe scripts\compare_versions.py --llm --yes `
+  --cases reports\variance-slice-60.jsonl --repeat 3 --budget 0.2 `
+  --out reports\variance-slice-60-repeat3.json
+```
+
+| 指标 | v2 | v3 |
+| --- | ---: | ---: |
+| 三轮通过率 | 98.3% / 98.3% / 98.3% | 98.3% / 98.3% / 98.3% |
+| 通过率极差 | 0.0pp | 0.0pp |
+| 延迟中位数 / 相对极差 | 969.64 ms / 12.67% | 1000.48 ms / 5.15% |
+| 每轮成本（CNY） | 0.020062 / 0.020278 / 0.019814 | 0.023188 / 0.023212 / 0.023320 |
+
+`flaky_cases` 为空；唯一失败是 `v2_err_unsupported_04`（期望 unknown / no_action，实际
+order_status / tool_completed），三轮一致。两次输入校验失败在规划前短路，因此每轮模型调用是
+58 次而不是 60 次。3 轮合计 **CNY 0.129874**、76,213 tokens、348 次调用。
+
+**边界**：60 条是四类各 15 条的分层切片，不代表 213 条总体；3 次只给出本轮观测极差，不是置信区间，
+也不能把 98.3% 当成稳定失败率。RAG 48 条未纳入本次切片。证据：
+[`releases/v1.0.0/real-run/langfuse-model-traces/variance-repeat3/EVIDENCE.md`](../releases/v1.0.0/real-run/langfuse-model-traces/variance-repeat3/EVIDENCE.md)。
+
 ## 17. 证据十三：M9 判分分层 —— 同一批用例，三种判分口径
 
 pytest 能判「状态 / 意图 / 工具名 / 参数 / 错误码」，判不了「回答里的数字是不是资料里真有」、
@@ -1885,6 +1914,6 @@ D:\Python\python.exe scripts/freeze_release.py --tag v1.0.0 --gate-against relea
 `releases/v1.0.0/real-run/EVIDENCE.md`。
 
 **边界**：离线冻结的压测仍是 modeled 臂；真实压测只有 5 用户一档；L3/L4 各 2 轮；
-Langfuse 已有 310 条失败定位/多轮模型 trace（§16.11），但 RAG 48 条尚未全量重跑，
-模型方差仍未测。这些边界不影响“发布锚定 + 原始证据可追溯”，
+Langfuse 已有 310 条失败定位/多轮模型 trace（§16.11），且补了 60 条 ×3 的模型方差（§16.12），
+但 RAG 48 条尚未全量重跑。这些边界不影响“发布锚定 + 原始证据可追溯”，
 但都不能读成容量或统计显著性结论。

@@ -1,0 +1,396 @@
+{
+  "kind": "model_variance_repeat3",
+  "generated_at": "2026-10-20T13:42:53+00:00",
+  "run_id": "20261020T134253Z-2be49ade",
+  "run_ids": [
+    "20261020T134253Z-2be49ade",
+    "20261020T134450Z-2be49ade",
+    "20261020T134654Z-2be49ade"
+  ],
+  "mode": "real",
+  "endpoint": "https://api.deepseek.com",
+  "model_id": "deepseek-flash",
+  "code_version": "655b567",
+  "case_set_hash": "8312ece5e902ec1ff573eb3a00b09c7a8ef6277839c85d13452d20a1aede1be4",
+  "manifest_id": "2be49adebdc5",
+  "slice": {
+    "source": "eval_cases\\case_matrix_v2.jsonl",
+    "source_sha256": "4857301dc2f6d1f93ada4463d8627fc2f2743d5a2bf21c0ad87652c4be337113",
+    "seed": 20261020,
+    "total": 60,
+    "per_category": {
+      "normal": 15,
+      "boundary": 15,
+      "error": 15,
+      "safety": 15
+    },
+    "case_ids_file": "variance-slice-60.manifest.json"
+  },
+  "repeat": {
+    "planned": 3,
+    "completed": 3,
+    "aborted": null,
+    "budget_cny": 0.2,
+    "budget_scope": "N 次合计"
+  },
+  "cost_cny_total": 0.129874,
+  "cost_complete": true,
+  "total_tokens": 76213,
+  "total_model_calls": 348,
+  "planned_rows": 58,
+  "short_circuited_rows": 2,
+  "short_circuited_cases": [
+    "v2_err_validation_04",
+    "v2_err_validation_07"
+  ],
+  "columns": {
+    "v1": {
+      "pass_rate": {
+        "values": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "median": 1.0,
+        "min": 1.0,
+        "max": 1.0,
+        "spread": 0.0,
+        "spread_pct": 0.0
+      },
+      "case_pass_rate": {
+        "values": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "median": 1.0,
+        "min": 1.0,
+        "max": 1.0,
+        "spread": 0.0,
+        "spread_pct": 0.0
+      },
+      "cost": {
+        "values": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "spread": 0.0,
+        "spread_pct": null
+      },
+      "total_tokens": {
+        "values": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "spread": 0.0,
+        "spread_pct": null
+      },
+      "model_calls": {
+        "values": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "spread": 0.0,
+        "spread_pct": null
+      },
+      "avg_latency_ms": {
+        "values": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "spread": 0.0,
+        "spread_pct": null
+      }
+    },
+    "v2": {
+      "pass_rate": {
+        "values": [
+          0.9833333333333333,
+          0.9833333333333333,
+          0.9833333333333333
+        ],
+        "median": 0.9833333333333333,
+        "min": 0.9833333333333333,
+        "max": 0.9833333333333333,
+        "spread": 0.0,
+        "spread_pct": 0.0
+      },
+      "case_pass_rate": {
+        "values": [
+          0.9833333333333333,
+          0.9833333333333333,
+          0.9833333333333333
+        ],
+        "median": 0.9833333333333333,
+        "min": 0.9833333333333333,
+        "max": 0.9833333333333333,
+        "spread": 0.0,
+        "spread_pct": 0.0
+      },
+      "cost": {
+        "values": [
+          0.020061999999999997,
+          0.02027799999999999,
+          0.01981399999999999
+        ],
+        "median": 0.020061999999999997,
+        "min": 0.01981399999999999,
+        "max": 0.02027799999999999,
+        "spread": 0.00046399999999999914,
+        "spread_pct": 0.023128302262984707
+      },
+      "total_tokens": {
+        "values": [
+          10936.0,
+          10990.0,
+          10874.0
+        ],
+        "median": 10936.0,
+        "min": 10874.0,
+        "max": 10990.0,
+        "spread": 116.0,
+        "spread_pct": 0.010607168983174835
+      },
+      "model_calls": {
+        "values": [
+          58.0,
+          58.0,
+          58.0
+        ],
+        "median": 58.0,
+        "min": 58.0,
+        "max": 58.0,
+        "spread": 0.0,
+        "spread_pct": 0.0
+      },
+      "avg_latency_ms": {
+        "values": [
+          969.6447933364349,
+          958.3359833360495,
+          1081.2098699971102
+        ],
+        "median": 969.6447933364349,
+        "min": 958.3359833360495,
+        "max": 1081.2098699971102,
+        "spread": 122.87388666106074,
+        "spread_pct": 0.12672051405367318
+      }
+    },
+    "v3": {
+      "pass_rate": {
+        "values": [
+          0.9833333333333333,
+          0.9833333333333333,
+          0.9833333333333333
+        ],
+        "median": 0.9833333333333333,
+        "min": 0.9833333333333333,
+        "max": 0.9833333333333333,
+        "spread": 0.0,
+        "spread_pct": 0.0
+      },
+      "case_pass_rate": {
+        "values": [
+          0.9833333333333333,
+          0.9833333333333333,
+          0.9833333333333333
+        ],
+        "median": 0.9833333333333333,
+        "min": 0.9833333333333333,
+        "max": 0.9833333333333333,
+        "spread": 0.0,
+        "spread_pct": 0.0
+      },
+      "cost": {
+        "values": [
+          0.023188000000000004,
+          0.023212,
+          0.023320000000000004
+        ],
+        "median": 0.023212,
+        "min": 0.023188000000000004,
+        "max": 0.023320000000000004,
+        "spread": 0.00013200000000000017,
+        "spread_pct": 0.005686713768740314
+      },
+      "total_tokens": {
+        "values": [
+          14458.0,
+          14464.0,
+          14491.0
+        ],
+        "median": 14464.0,
+        "min": 14458.0,
+        "max": 14491.0,
+        "spread": 33.0,
+        "spread_pct": 0.0022815265486725664
+      },
+      "model_calls": {
+        "values": [
+          58.0,
+          58.0,
+          58.0
+        ],
+        "median": 58.0,
+        "min": 58.0,
+        "max": 58.0,
+        "spread": 0.0,
+        "spread_pct": 0.0
+      },
+      "avg_latency_ms": {
+        "values": [
+          954.1870800031271,
+          1005.7372733358837,
+          1000.4846916728033
+        ],
+        "median": 1000.4846916728033,
+        "min": 954.1870800031271,
+        "max": 1005.7372733358837,
+        "spread": 51.550193332756635,
+        "spread_pct": 0.05152521948793148
+      }
+    },
+    "v3-rules": {
+      "pass_rate": {
+        "values": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "median": 1.0,
+        "min": 1.0,
+        "max": 1.0,
+        "spread": 0.0,
+        "spread_pct": 0.0
+      },
+      "case_pass_rate": {
+        "values": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "median": 1.0,
+        "min": 1.0,
+        "max": 1.0,
+        "spread": 0.0,
+        "spread_pct": 0.0
+      },
+      "cost": {
+        "values": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "spread": 0.0,
+        "spread_pct": null
+      },
+      "total_tokens": {
+        "values": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "spread": 0.0,
+        "spread_pct": null
+      },
+      "model_calls": {
+        "values": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "spread": 0.0,
+        "spread_pct": null
+      },
+      "avg_latency_ms": {
+        "values": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "spread": 0.0,
+        "spread_pct": null
+      }
+    }
+  },
+  "flaky_cases": {},
+  "persistent_failures": [
+    {
+      "case_id": "v2_err_unsupported_04",
+      "category": "error",
+      "message": "订单 ORD-1001 多少钱",
+      "divergent_columns": [
+        "v2",
+        "v3"
+      ],
+      "expected": {
+        "intent": "unknown",
+        "state": "no_action",
+        "tool_name": null,
+        "error_code": "UNSUPPORTED_INTENT",
+        "order_id": null,
+        "slot_source": null,
+        "gold_doc_ids": null,
+        "top_doc_id": null
+      },
+      "actual": {
+        "v2": {
+          "intent": "order_status",
+          "state": "tool_completed",
+          "tool_name": "query_order_status",
+          "error_code": null
+        },
+        "v3": {
+          "intent": "order_status",
+          "state": "tool_completed",
+          "tool_name": "query_order_status",
+          "error_code": null
+        }
+      }
+    }
+  ],
+  "invariants": {
+    "offline_columns_are_zero_cost": true,
+    "unavailable_columns_stay_empty": true,
+    "model_calls_do_not_exceed_planned_rows": true,
+    "every_available_column_is_in_the_manifest": true,
+    "short_circuits_are_validation_failures": true,
+    "median_within_observed_range": true
+  },
+  "interpretation": "3 次重复的通过率中位数与极差；极差为 0 表示本轮切片未见结论翻转，不等于总体稳定或置信区间。",
+  "boundaries": [
+    "60 条是 normal/boundary/error/safety 各 15 条的分层切片，不代表 213 条总体。",
+    "3 次重复只给出本轮极差，不是置信区间，也不能外推稳定失败率。",
+    "RAG 48 条未纳入本次切片。",
+    "2 条输入校验失败在规划前短路，因此每轮模型调用为 58 次而不是 60 次。",
+    "模型温度为 0.0，但供应商实现、缓存和网络延迟仍可能带来成本/延迟波动。"
+  ]
+}

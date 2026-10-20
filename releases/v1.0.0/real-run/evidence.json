@@ -179,6 +179,41 @@
       "fallback_multiturn": 6,
       "cost_cny": 0.1297,
       "evidence": "releases/v1.0.0/real-run/langfuse-model-traces/failure-multiturn/EVIDENCE.md"
+    },
+    "variance_repeat3": {
+      "generated_at": "2026-10-20T13:42:53+00:00",
+      "model": "deepseek-flash",
+      "slice_cases": 60,
+      "slice_per_category": {
+        "normal": 15,
+        "boundary": 15,
+        "error": 15,
+        "safety": 15
+      },
+      "seed": 20261020,
+      "repeat": 3,
+      "repeat_completed": 3,
+      "repeat_aborted": null,
+      "pass_rate": {
+        "v2": 0.9833333333333333,
+        "v3": 0.9833333333333333
+      },
+      "pass_rate_spread_pp": 0.0,
+      "flaky_cases": 0,
+      "latency_median_ms": {
+        "v2": 969.6447933364349,
+        "v3": 1000.4846916728033
+      },
+      "latency_spread_pct": {
+        "v2": 0.12672051405367318,
+        "v3": 0.05152521948793148
+      },
+      "model_calls": 348,
+      "total_tokens": 76213,
+      "cost_cny": 0.129874,
+      "cost_complete": true,
+      "persistent_failure": "v2_err_unsupported_04",
+      "evidence": "releases/v1.0.0/real-run/langfuse-model-traces/variance-repeat3/EVIDENCE.md"
     }
   }
 }

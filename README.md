@@ -3,7 +3,7 @@
 [![regression](https://github.com/lixincilee/AgentEvalOps/actions/workflows/regression.yml/badge.svg)](https://github.com/lixincilee/AgentEvalOps/actions/workflows/regression.yml)
 
 > 一个用于练习 **Agent 评测工程（Evaluation Engineering / EvalOps）** 的教学项目。
-> 当前进度 **阶段二 M12（真实模型失败定位与多轮 trace 已完成，待冻结）**：确定性 Agent（v1）→ DeepSeek 规划层（v2）→ LangGraph 编排 + 知识库检索 + 多轮会话（v3）→ trace、三层判分、真实压测与 CI 回归门禁。
+> 当前进度 **阶段二 M13（真实模型重复运行方差已补测，待冻结）**：确定性 Agent（v1）→ DeepSeek 规划层（v2）→ LangGraph 编排 + 知识库检索 + 多轮会话（v3）→ trace、三层判分、真实压测与 CI 回归门禁。
 > 三个版本跑在同一批用例、同一判分口径下，产出结构完全相同的 `RunMetrics`，差异才有归因价值。
 
 ## 为什么先做确定性版本
@@ -829,7 +829,7 @@ trace 全部到达（API 3/3 匹配），`Langfuse: live` 且没有生成 dry-ru
 16/16 非空，span 树 16/16 与本地一致。有效花费 CNY 0.0109；计入一次导出失败重跑后，
 实际模型花费 CNY 0.0179。两条代表 trace 与完整 span 树：
 [`releases/v1.0.0/real-run/langfuse-model-traces/EVIDENCE.md`](releases/v1.0.0/real-run/langfuse-model-traces/EVIDENCE.md)。
-边界：只覆盖两个切片，不是 310 条全量模型 trace；方差仍未测。
+边界：只覆盖两个切片，不是 310 条全量模型 trace；这 16 条本身只跑了一次，模型方差另见下一段。
 
 **失败定位与多轮也补上了（2026-10-20）**：主矩阵 213 条 + 多轮 72 条等共 310 条模型 trace
 （292 条唯一 case-turn）。主矩阵出现 3 条真实失败，分别被定位到推理、检索、状态层；工具层用
@@ -837,6 +837,14 @@ trace 全部到达（API 3/3 匹配），`Langfuse: live` 且没有生成 dry-ru
 `slot_source=inherited` 有 trace 证据。另发现 **24/279** 个实际模型调用 turn 因输出不可解析或缺字段
 降级为 `llm-fallback`——任务仍通过，但通过率掩盖了模型协议问题。花费 CNY 0.1297，证据：
 [`releases/v1.0.0/real-run/langfuse-model-traces/failure-multiturn/EVIDENCE.md`](releases/v1.0.0/real-run/langfuse-model-traces/failure-multiturn/EVIDENCE.md)。
+
+**模型方差也补了一组（2026-10-20）**：从 213 条矩阵按 normal / boundary / error / safety 各抽 15 条，
+固定种子 `20261020`，用 `--llm --repeat 3` 背靠背跑 v2 / v3。两列通过率均为 **98.3%**，
+3 次极差 **0.0pp**，`flaky_cases` 为空；唯一失败固定为 `v2_err_unsupported_04`
+（「订单 ORD-1001 多少钱」被模型误判成查单）。延迟中位数 v2 969.64ms / v3 1000.48ms，
+相对极差 12.67% / 5.15%；3 轮合计 **CNY 0.129874**、348 次模型调用。
+边界：这是 60 条分层切片的本轮极差，不是置信区间，也不代表 213 条总体；RAG 48 条未纳入。
+证据：[`releases/v1.0.0/real-run/langfuse-model-traces/variance-repeat3/EVIDENCE.md`](releases/v1.0.0/real-run/langfuse-model-traces/variance-repeat3/EVIDENCE.md)。
 
 ### 脱敏是硬要求
 
@@ -908,6 +916,7 @@ L3 总额 1.7245 = 判分 1.5248 + 合成回答 0.1997；L4 总额 0.4885 = 判�
 | **阶段二 M10（已完成）** | 付费链路实跑：真实模型判分 + 真实并发 | `DEEPSEEK_API_KEY` secret、`DEEPSEEK_MODEL=deepseek-flash`、`paid_target=both` 手动触发、L3/L4 测量层 `--allow-failures`（PR #5）；run 39251627592：真实对比四臂、133 请求 / P95 1300ms / RPS 4.79 / 成功率 100% / 单次成功 CNY 0.000625、L3 64.5% / L4 95.8% / 门禁 8 项全过，合计 CNY 0.7163（证据 §18.8） |
 | **阶段二 M11（已完成，tag `v1.0.0`）** | 发布冻结：把真实运行证据锚定到版本 | `releases/v1.0.0/`（七项离线检查全过，对 `v0.9.0` 门禁全绿）、`real-run/`（付费 run 原始报告 + `EVIDENCE.md` / `evidence.json`）、3 条 Langfuse trace 链接与 span 树；CI 执法基线升到 `v1.0.0`（证据 §18.9） |
 | **阶段二 M12（已完成，待冻结）** | 真实模型失败定位 + 多轮 trace | 213 条主矩阵 + 72 条多轮等共 310 条模型 trace；3 条真实失败分别定位到推理/检索/状态层；工具层用合成探针验证；24/279 个模型调用 turn 降级为 `llm-fallback`；证据 §16.11 |
+| **阶段二 M13（已完成，待冻结）** | 真实模型重复运行方差 | 60 条四类分层切片 × v2/v3 × 3 次：两列 98.3%，极差 0.0pp，墙头草 0，失败固定 `v2_err_unsupported_04`；v2/v3 延迟相对极差 12.67% / 5.15%；合计 CNY 0.129874；证据 §16.12 |
 
 ### 评测指标（阶段五要算的东西，现在就能算前六项）
 

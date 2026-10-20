@@ -84,6 +84,9 @@ python scripts/regression_gate.py --candidate <候选目录> --baseline v1.0.0
   3 条真实失败分别定位到推理/检索/状态层，工具层另有合成探针；24/279 个模型调用 turn 发生规则臂降级。
   明细：[`real-run/langfuse-model-traces/failure-multiturn/EVIDENCE.md`](real-run/langfuse-model-traces/failure-multiturn/EVIDENCE.md)，
   花费 CNY 0.1297。
+- 真实模型方差：60 条四类分层切片 × v2/v3 × 3 次，两列通过率均 98.3%、极差 0.0pp、墙头草 0；
+  唯一失败固定为 `v2_err_unsupported_04`。3 轮合计 CNY 0.129874。
+  明细：[`real-run/langfuse-model-traces/variance-repeat3/EVIDENCE.md`](real-run/langfuse-model-traces/variance-repeat3/EVIDENCE.md)。
 - 2026-10-19 真实运行合计 **CNY 0.7163**；真实压测 P95 **1300 ms**、
   RPS **4.787**、任务成功率 **100.0%**、
   单次成功成本 **CNY 0.000624842**。
