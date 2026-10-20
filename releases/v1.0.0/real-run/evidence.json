@@ -141,6 +141,21 @@
         "name": "node.respond",
         "parent": "338807e0cec5a9bc"
       }
-    ]
+    ],
+    "model_traces": {
+      "generated_at": "2026-10-20T02:20:48.491608+00:00",
+      "host": "https://jp.cloud.langfuse.com",
+      "project_id": "cmvf9rprr002mad0k9ckxaig4",
+      "traces": 16,
+      "generation_spans": 16,
+      "all_matched": true,
+      "all_trees_match_local": true,
+      "all_prompts_present": true,
+      "all_outputs_present": true,
+      "all_usage_present": true,
+      "cost_cny": 0.0109,
+      "cost_cny_including_failed_retry": 0.0179,
+      "evidence": "releases/v1.0.0/real-run/langfuse-model-traces/EVIDENCE.md"
+    }
   }
 }

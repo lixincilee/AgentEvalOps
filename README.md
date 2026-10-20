@@ -824,6 +824,13 @@ trace 全部到达（API 3/3 匹配），`Langfuse: live` 且没有生成 dry-ru
 （`LANGFUSE_HOST` 是兼容别名），可以和 `DEEPSEEK_API_KEY` 一起放在 `.env` 里。
 现场证据与 trace 链接见 `docs/stage2-evidence.md` §16.9。
 
+**真实模型 trace 也已补发（2026-10-20）**：主矩阵 10 条 + RAG 6 条，共 16 条
+`--llm` trace；API 回查 16/16 到达，`GENERATION` span 16/16，Prompt / 模型输出 / usage
+16/16 非空，span 树 16/16 与本地一致。有效花费 CNY 0.0109；计入一次导出失败重跑后，
+实际模型花费 CNY 0.0179。两条代表 trace 与完整 span 树：
+[`releases/v1.0.0/real-run/langfuse-model-traces/EVIDENCE.md`](releases/v1.0.0/real-run/langfuse-model-traces/EVIDENCE.md)。
+边界：只覆盖两个切片，不是 310 条全量模型 trace；方差仍未测。
+
 ### 脱敏是硬要求
 
 trace 是要入库、要给人看的。API key、`Bearer` 头、邮箱、手机号在写盘前一律替换成 `***`
