@@ -3,7 +3,7 @@
 [![regression](https://github.com/lixincilee/AgentEvalOps/actions/workflows/regression.yml/badge.svg)](https://github.com/lixincilee/AgentEvalOps/actions/workflows/regression.yml)
 
 > 一个用于练习 **Agent 评测工程（Evaluation Engineering / EvalOps）** 的教学项目。
-> 当前进度 **阶段二 M13（真实模型重复运行方差已补测，待冻结）**：确定性 Agent（v1）→ DeepSeek 规划层（v2）→ LangGraph 编排 + 知识库检索 + 多轮会话（v3）→ trace、三层判分、真实压测与 CI 回归门禁。
+> 当前进度 **阶段二 M14（RAG 48 条与故障 25 条全量模型臂已补齐，待冻结）**：确定性 Agent（v1）→ DeepSeek 规划层（v2）→ LangGraph 编排 + 知识库检索 + 多轮会话（v3）→ trace、三层判分、真实压测与 CI 回归门禁。
 > 三个版本跑在同一批用例、同一判分口径下，产出结构完全相同的 `RunMetrics`，差异才有归因价值。
 
 ## 为什么先做确定性版本
@@ -843,8 +843,15 @@ trace 全部到达（API 3/3 匹配），`Langfuse: live` 且没有生成 dry-ru
 3 次极差 **0.0pp**，`flaky_cases` 为空；唯一失败固定为 `v2_err_unsupported_04`
 （「订单 ORD-1001 多少钱」被模型误判成查单）。延迟中位数 v2 969.64ms / v3 1000.48ms，
 相对极差 12.67% / 5.15%；3 轮合计 **CNY 0.129874**、348 次模型调用。
-边界：这是 60 条分层切片的本轮极差，不是置信区间，也不代表 213 条总体；RAG 48 条未纳入。
+边界：这是 60 条分层切片的本轮极差，不是置信区间，也不代表 213 条总体；RAG 48 条未纳入本次方差切片（其全量模型臂见下段）。
 证据：[`releases/v1.0.0/real-run/langfuse-model-traces/variance-repeat3/EVIDENCE.md`](releases/v1.0.0/real-run/langfuse-model-traces/variance-repeat3/EVIDENCE.md)。
+
+**RAG 48 条与故障 25 条的全量模型臂也补齐了（2026-10-20）**：RAG 48/48 通过，38 条有检索依据、
+10 条按空检索拒答；gold 文档 38/38、期望 Top-1 28/28、过期文档标记 13/13，48 次模型输出全部可解析。
+故障 25/25 在模型臂视图下意图/状态/工具/错误码/`plan_source` 全部匹配；19 条由模型规划，
+6 条限流按预期降级为 `llm-fallback`。Langfuse 回查 **73/73** 条 trace 到达，
+span 树 73/73 与本地一致，成功生成 Prompt/输出/usage 67/67 非空。两批合计新增花费 **CNY 0.0246**。
+证据：[`releases/v1.0.0/real-run/langfuse-model-traces/rag-fault-full/EVIDENCE.md`](releases/v1.0.0/real-run/langfuse-model-traces/rag-fault-full/EVIDENCE.md)。
 
 ### 脱敏是硬要求
 
@@ -917,6 +924,7 @@ L3 总额 1.7245 = 判分 1.5248 + 合成回答 0.1997；L4 总额 0.4885 = 判�
 | **阶段二 M11（已完成，tag `v1.0.0`）** | 发布冻结：把真实运行证据锚定到版本 | `releases/v1.0.0/`（七项离线检查全过，对 `v0.9.0` 门禁全绿）、`real-run/`（付费 run 原始报告 + `EVIDENCE.md` / `evidence.json`）、3 条 Langfuse trace 链接与 span 树；CI 执法基线升到 `v1.0.0`（证据 §18.9） |
 | **阶段二 M12（已完成，待冻结）** | 真实模型失败定位 + 多轮 trace | 213 条主矩阵 + 72 条多轮等共 310 条模型 trace；3 条真实失败分别定位到推理/检索/状态层；工具层用合成探针验证；24/279 个模型调用 turn 降级为 `llm-fallback`；证据 §16.11 |
 | **阶段二 M13（已完成，待冻结）** | 真实模型重复运行方差 | 60 条四类分层切片 × v2/v3 × 3 次：两列 98.3%，极差 0.0pp，墙头草 0，失败固定 `v2_err_unsupported_04`；v2/v3 延迟相对极差 12.67% / 5.15%；合计 CNY 0.129874；证据 §16.12 |
+| **阶段二 M14（已完成，待冻结）** | RAG 48 + 故障 25 全量模型臂 | RAG 48/48、gold 38/38、Top-1 28/28、过期标记 13/13；故障 25/25（19 llm + 6 llm-fallback）；Langfuse 73/73、树 73/73、成功生成 Prompt/输出/usage 67/67；新增 CNY 0.0246；证据 §16.13 |
 
 ### 评测指标（阶段五要算的东西，现在就能算前六项）
 

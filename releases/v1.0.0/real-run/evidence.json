@@ -214,6 +214,48 @@
       "cost_complete": true,
       "persistent_failure": "v2_err_unsupported_04",
       "evidence": "releases/v1.0.0/real-run/langfuse-model-traces/variance-repeat3/EVIDENCE.md"
+    },
+    "rag_fault_full": {
+      "generated_at": "2026-10-20",
+      "model": "deepseek-flash",
+      "rag_cases": 48,
+      "rag_passed": 48,
+      "rag_grounded": 38,
+      "rag_no_knowledge": 10,
+      "rag_top1": {
+        "expected": 28,
+        "matched": 28
+      },
+      "rag_gold_docs": {
+        "expected": 38,
+        "matched": 38
+      },
+      "rag_expired_marked": {
+        "expected": 13,
+        "matched": 13
+      },
+      "rag_trace_report_failed": 0,
+      "fault_cases": 25,
+      "fault_expected_field_match": 25,
+      "fault_plan_source": {
+        "llm": 19,
+        "llm-fallback": 6
+      },
+      "fault_trace_report_failed": 0,
+      "langfuse_traces": 73,
+      "langfuse_all_matched": true,
+      "generation_spans": 73,
+      "success_generations": 67,
+      "error_generations": 6,
+      "prompt_present": 73,
+      "output_present": 73,
+      "usage_present_for_success": 67,
+      "model_deepseek_flash_for_success": 67,
+      "generation_parent_node_plan": 73,
+      "tree_edges_match": 73,
+      "mismatches": 0,
+      "cost_cny": 0.0246,
+      "evidence": "releases/v1.0.0/real-run/langfuse-model-traces/rag-fault-full/EVIDENCE.md"
     }
   }
 }

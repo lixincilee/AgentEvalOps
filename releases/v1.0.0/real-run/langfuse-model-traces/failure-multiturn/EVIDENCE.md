@@ -358,9 +358,11 @@ llm-fallback
 
 ## 口径边界
 
-- 这是**主矩阵 + 故障 + 多轮**的模型臂，不是 310 条既有 trace 的逐条模型重跑；RAG 48 条没有全量重跑。
+- 这是**主矩阵 + 故障 + 多轮**的模型臂，不是 310 条既有 trace 的逐条模型重跑；RAG 48 与故障 25 的后续全量模型臂见
+  [`../rag-fault-full/EVIDENCE.md`](../rag-fault-full/EVIDENCE.md)。
 - 310 条原始 trace 中有 6 条在模型调用前被校验拦下，因此只有 304 条有 `GENERATION`；这不是缺 span。
-- 3 条失败是单次运行结果，不能当稳定失败率；模型方差仍未测。
+- 3 条失败是单次运行结果，不能当稳定失败率；后续 60 条 ×3 方差见
+  [`../variance-repeat3/EVIDENCE.md`](../variance-repeat3/EVIDENCE.md)。
 - 24/279 个实际模型调用 turn 发生规则臂降级；任务通过不等于模型输出可用，
   这条指标应和通过率一起看。
 - Langfuse v2 observations 在 SDK 5.0.2 批量导出时会压缩 `startTime` / `endTime`，耗时统一取本地

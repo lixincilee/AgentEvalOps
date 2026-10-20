@@ -102,5 +102,14 @@
 `flaky_cases` 为空；唯一失败固定为 `v2_err_unsupported_04`。延迟中位数
 v2 969.64ms / v3 1000.48ms，相对极差 12.67% / 5.15%；3 轮合计 CNY 0.129874、
 76,213 tokens、348 次模型调用。这是 60 条分层切片的本轮观测极差，不是置信区间，
-也不代表 213 条总体；RAG 48 条未纳入。明细：
+也不代表 213 条总体；RAG 48 条未纳入本次方差切片（全量模型臂见下文）。明细：
 [`langfuse-model-traces/variance-repeat3/EVIDENCE.md`](langfuse-model-traces/variance-repeat3/EVIDENCE.md)。
+
+## RAG 48 与故障 25 全量模型臂（2026-10-20）
+
+RAG 48/48 通过：38 条有依据、10 条按空检索拒答；gold 文档 38/38、期望 Top-1 28/28、
+过期文档标记 13/13，48 次模型输出全部可解析。故障 25/25 在模型臂视图下
+意图/状态/工具/错误码/`plan_source` 全部匹配：19 条 `llm`，6 条限流为 `llm-fallback`。
+Langfuse 回查 73/73 条 trace 到达，span 树 73/73 与本地一致；73 个 `GENERATION` 中
+67 个成功、6 个为预期限流错误，成功生成 Prompt/输出/usage 67/67 非空。新增花费 CNY 0.0246。
+明细：[`langfuse-model-traces/rag-fault-full/EVIDENCE.md`](langfuse-model-traces/rag-fault-full/EVIDENCE.md)。
