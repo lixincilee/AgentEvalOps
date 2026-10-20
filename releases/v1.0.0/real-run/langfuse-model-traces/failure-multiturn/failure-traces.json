@@ -1,0 +1,755 @@
+{
+  "kind": "langfuse_failure_multiturn_traces",
+  "generated_at": "2026-10-20T13:26:10.387237+00:00",
+  "host": "https://jp.cloud.langfuse.com",
+  "project_id": "cmvf9rprr002mad0k9ckxaig4",
+  "commit": "e4c8df2",
+  "model": "deepseek-flash",
+  "raw_trace_count": 310,
+  "unique_trace_count": 310,
+  "unique_case_turns": 292,
+  "model_calls": 304,
+  "cost_cny": {
+    "matrix_full": 0.0894,
+    "hard": 0.0024,
+    "faults": 0.0018,
+    "multiturn_slice": 0.0059,
+    "multiturn_full": 0.0298,
+    "tool_locator": 0.0004,
+    "total": 0.1297
+  },
+  "summary": {
+    "matched": 310,
+    "generation_spans": 304,
+    "non_generation_traces": 6,
+    "all_prompts_present": true,
+    "all_outputs_present": true,
+    "all_usage_present": true,
+    "all_trees_match_local": true
+  },
+  "matrix_full": {
+    "traces": 213,
+    "failed": 3,
+    "stages": {
+      "reasoning": 1,
+      "retrieval": 1,
+      "state": 1
+    },
+    "failed_cases": [
+      "v2_err_unsupported_04",
+      "v2_err_validation_01",
+      "v2_safe_escalation_01"
+    ]
+  },
+  "multiturn_full": {
+    "traces": 72,
+    "failed": 0,
+    "slot_inheritance_verified": true
+  },
+  "fallback": {
+    "canonical_turns": 24,
+    "canonical_denominator": 279,
+    "matrix": 18,
+    "matrix_traces": 213,
+    "multiturn": 6,
+    "multiturn_traces": 72
+  },
+  "tool_locator_probe": {
+    "traces": 1,
+    "failed": 1,
+    "stage": "tool",
+    "synthetic": true
+  },
+  "representative": [
+    {
+      "source": "matrix_full",
+      "case_id": "v2_err_unsupported_04",
+      "trace_id": "63c258cf4a3f0d44869b886089bf61d1",
+      "trace_url": "https://jp.cloud.langfuse.com/project/cmvf9rprr002mad0k9ckxaig4/traces/63c258cf4a3f0d44869b886089bf61d1",
+      "run_id": "trace-evidence-matrix-full-20261020",
+      "cost_cny": 0.0894,
+      "trace_duration_ms": 1068.3,
+      "span_count": 7,
+      "tree_ok": true,
+      "root": {
+        "message": "订单 ORD-1001 多少钱",
+        "customer_id": "CUST-001",
+        "session_id": null,
+        "intent": "order_status",
+        "state": "tool_completed",
+        "tool_name": "query_order_status",
+        "error_code": null,
+        "plan_source": "llm",
+        "slot_order_id": "ORD-1001",
+        "slot_source": "verbatim"
+      },
+      "spans": [
+        {
+          "type": "CHAIN",
+          "name": "agent.turn",
+          "parent": "trace 根",
+          "latency_ms": 1068.3,
+          "model_latency_ms": null,
+          "status": "ok",
+          "error_code": null
+        },
+        {
+          "type": "GENERATION",
+          "name": "llm.plan",
+          "parent": "node.plan",
+          "latency_ms": 1063.7,
+          "model_latency_ms": 1063.4,
+          "status": "ok",
+          "error_code": null,
+          "model": "deepseek-flash",
+          "usage": {
+            "input": 197,
+            "output": 47,
+            "total": 244
+          },
+          "prompt_version": "v3",
+          "input": "{\"system\": \"\\u4f60\\u662f\\u7535\\u5546\\u5ba2\\u670d\\u7cfb\\u7edf\\u7684\\u610f\\u56fe\\u8bc6\\u522b\\u6a21\\u5757\\u3002\\u53ea\\u8f93\\u51fa\\u4e00\\u4e2a JSON \\u5bf9\\u8c61\\uff0c\\u4e0d\\u8981\\u8f93\\u51fa\\u4efb\\u4f55\\u89e3\\u91ca\\u6216\\u4ee3\\u7801\\u5757\\u6807\\u8bb0\\u3002\\n\\u5b57\\u6bb5\\uff1a\\n- \\\"intent\\\"\\uff1aorder_status / refund / human_handoff / policy_qa / unknown \\u4e4b\\u4e00\\n- \\\"order_id\\\"\\uff1a\\u7528\\u6237\\u6d88\\u606f\\u4e2d\\u51fa\\u73b0\\u7684\\u8ba2\\u5355\\u53f7\\uff0c\\u5f62\\u5982 ORD-1001\\uff1b\\u6ca1\\u6709\\u5c31\\u586b null\\n\\u89c4\\u5219\\uff1aorder_id \\u5fc5\\u987b\\u539f\\u6837\\u51fa\\u73b0\\u5728\\u7528\\u6237\\u6d88\\u606f\\u91cc\\uff0c\\u7981\\u6b62\\u7f16\\u9020\\uff1b\\u65e0\\u6cd5\\u5224\\u65ad\\u610f\\u56fe\\u65f6\\u586b unknown\\u3002\\npolicy_qa \\u7528\\u4e8e\\u8be2\\u95ee\\u5e73\\u53f0\\u901a\\u7528\\u89c4\\u5219\\u3001\\u6761\\u6b3e\\u3001\\u65f6\\u6548\\u6216\\u8d39\\u7528\\u6807\\u51c6\\uff08\\u77e5\\u8bc6\\u5e93\\u80fd\\u56de\\u7b54\\u7684\\u901a\\u7528\\u4e8b\\u5b9e\\uff09\\uff1b\\u82e5\\u7528\\u6237\\u60f3\\u529e\\u7406\\u67d0\\u4e2a\\u5177\\u4f53\\u8ba2\\u5355\\u7684\\u4e1a\\u52a1\\uff0c\\u4ecd\\u6309\\u4e1a\\u52a1\\u52a8\\u4f5c\\u5224\\uff1a\\u67e5\\u5355=order_status\\u3001\\u9000\\u6b3e=refund\\u3001\\u8981\\u4eba\\u5de5=human_handoff\\u3002\", \"user\": \"\\u8ba2\\u5355 ORD-1001 \\u591a\\u5c11\\u94b1\"}",
+          "output": "{\"response\": \"{\\\"intent\\\":\\\"order_status\\\",\\\"order_id\\\":\\\"ORD-1001\\\"}\", \"plan_source\": \"llm\"}"
+        },
+        {
+          "type": "CHAIN",
+          "name": "node.plan",
+          "parent": "agent.turn",
+          "latency_ms": 1063.9,
+          "model_latency_ms": null,
+          "status": "ok",
+          "error_code": null
+        },
+        {
+          "type": "CHAIN",
+          "name": "node.validate",
+          "parent": "agent.turn",
+          "latency_ms": 0.0,
+          "model_latency_ms": null,
+          "status": "ok",
+          "error_code": null
+        },
+        {
+          "type": "CHAIN",
+          "name": "node.dispatch",
+          "parent": "agent.turn",
+          "latency_ms": 0.2,
+          "model_latency_ms": null,
+          "status": "ok",
+          "error_code": null
+        },
+        {
+          "type": "TOOL",
+          "name": "tool.query_order_status",
+          "parent": "node.dispatch",
+          "latency_ms": 0.1,
+          "model_latency_ms": null,
+          "status": "ok",
+          "error_code": null
+        },
+        {
+          "type": "CHAIN",
+          "name": "node.respond",
+          "parent": "agent.turn",
+          "latency_ms": 0.0,
+          "model_latency_ms": null,
+          "status": "ok",
+          "error_code": null
+        }
+      ],
+      "generation": {
+        "type": "GENERATION",
+        "name": "llm.plan",
+        "parent": "node.plan",
+        "latency_ms": 1063.7,
+        "model_latency_ms": 1063.4,
+        "status": "ok",
+        "error_code": null,
+        "model": "deepseek-flash",
+        "usage": {
+          "input": 197,
+          "output": 47,
+          "total": 244
+        },
+        "prompt_version": "v3",
+        "input": "{\"system\": \"\\u4f60\\u662f\\u7535\\u5546\\u5ba2\\u670d\\u7cfb\\u7edf\\u7684\\u610f\\u56fe\\u8bc6\\u522b\\u6a21\\u5757\\u3002\\u53ea\\u8f93\\u51fa\\u4e00\\u4e2a JSON \\u5bf9\\u8c61\\uff0c\\u4e0d\\u8981\\u8f93\\u51fa\\u4efb\\u4f55\\u89e3\\u91ca\\u6216\\u4ee3\\u7801\\u5757\\u6807\\u8bb0\\u3002\\n\\u5b57\\u6bb5\\uff1a\\n- \\\"intent\\\"\\uff1aorder_status / refund / human_handoff / policy_qa / unknown \\u4e4b\\u4e00\\n- \\\"order_id\\\"\\uff1a\\u7528\\u6237\\u6d88\\u606f\\u4e2d\\u51fa\\u73b0\\u7684\\u8ba2\\u5355\\u53f7\\uff0c\\u5f62\\u5982 ORD-1001\\uff1b\\u6ca1\\u6709\\u5c31\\u586b null\\n\\u89c4\\u5219\\uff1aorder_id \\u5fc5\\u987b\\u539f\\u6837\\u51fa\\u73b0\\u5728\\u7528\\u6237\\u6d88\\u606f\\u91cc\\uff0c\\u7981\\u6b62\\u7f16\\u9020\\uff1b\\u65e0\\u6cd5\\u5224\\u65ad\\u610f\\u56fe\\u65f6\\u586b unknown\\u3002\\npolicy_qa \\u7528\\u4e8e\\u8be2\\u95ee\\u5e73\\u53f0\\u901a\\u7528\\u89c4\\u5219\\u3001\\u6761\\u6b3e\\u3001\\u65f6\\u6548\\u6216\\u8d39\\u7528\\u6807\\u51c6\\uff08\\u77e5\\u8bc6\\u5e93\\u80fd\\u56de\\u7b54\\u7684\\u901a\\u7528\\u4e8b\\u5b9e\\uff09\\uff1b\\u82e5\\u7528\\u6237\\u60f3\\u529e\\u7406\\u67d0\\u4e2a\\u5177\\u4f53\\u8ba2\\u5355\\u7684\\u4e1a\\u52a1\\uff0c\\u4ecd\\u6309\\u4e1a\\u52a1\\u52a8\\u4f5c\\u5224\\uff1a\\u67e5\\u5355=order_status\\u3001\\u9000\\u6b3e=refund\\u3001\\u8981\\u4eba\\u5de5=human_handoff\\u3002\", \"user\": \"\\u8ba2\\u5355 ORD-1001 \\u591a\\u5c11\\u94b1\"}",
+        "output": "{\"response\": \"{\\\"intent\\\":\\\"order_status\\\",\\\"order_id\\\":\\\"ORD-1001\\\"}\", \"plan_source\": \"llm\"}"
+      }
+    },
+    {
+      "source": "matrix_full",
+      "case_id": "v2_err_validation_01",
+      "trace_id": "fa51b17f9b303fd8902aaed1c4f9b657",
+      "trace_url": "https://jp.cloud.langfuse.com/project/cmvf9rprr002mad0k9ckxaig4/traces/fa51b17f9b303fd8902aaed1c4f9b657",
+      "run_id": "trace-evidence-matrix-full-20261020",
+      "cost_cny": 0.0894,
+      "trace_duration_ms": 637.4,
+      "span_count": 6,
+      "tree_ok": true,
+      "root": {
+        "message": "退款怎么操作",
+        "customer_id": "CUST-001",
+        "session_id": null,
+        "intent": "policy_qa",
+        "state": "no_action",
+        "tool_name": null,
+        "error_code": "NO_KNOWLEDGE",
+        "plan_source": "llm",
+        "slot_order_id": null,
+        "slot_source": null
+      },
+      "spans": [
+        {
+          "type": "CHAIN",
+          "name": "agent.turn",
+          "parent": "trace 根",
+          "latency_ms": 637.4,
+          "model_latency_ms": null,
+          "status": "ok",
+          "error_code": null
+        },
+        {
+          "type": "CHAIN",
+          "name": "node.validate",
+          "parent": "agent.turn",
+          "latency_ms": 0.0,
+          "model_latency_ms": null,
+          "status": "ok",
+          "error_code": null
+        },
+        {
+          "type": "GENERATION",
+          "name": "llm.plan",
+          "parent": "node.plan",
+          "latency_ms": 632.0,
+          "model_latency_ms": 631.7,
+          "status": "ok",
+          "error_code": null,
+          "model": "deepseek-flash",
+          "usage": {
+            "input": 192,
+            "output": 38,
+            "total": 230
+          },
+          "prompt_version": "v3",
+          "input": "{\"system\": \"\\u4f60\\u662f\\u7535\\u5546\\u5ba2\\u670d\\u7cfb\\u7edf\\u7684\\u610f\\u56fe\\u8bc6\\u522b\\u6a21\\u5757\\u3002\\u53ea\\u8f93\\u51fa\\u4e00\\u4e2a JSON \\u5bf9\\u8c61\\uff0c\\u4e0d\\u8981\\u8f93\\u51fa\\u4efb\\u4f55\\u89e3\\u91ca\\u6216\\u4ee3\\u7801\\u5757\\u6807\\u8bb0\\u3002\\n\\u5b57\\u6bb5\\uff1a\\n- \\\"intent\\\"\\uff1aorder_status / refund / human_handoff / policy_qa / unknown \\u4e4b\\u4e00\\n- \\\"order_id\\\"\\uff1a\\u7528\\u6237\\u6d88\\u606f\\u4e2d\\u51fa\\u73b0\\u7684\\u8ba2\\u5355\\u53f7\\uff0c\\u5f62\\u5982 ORD-1001\\uff1b\\u6ca1\\u6709\\u5c31\\u586b null\\n\\u89c4\\u5219\\uff1aorder_id \\u5fc5\\u987b\\u539f\\u6837\\u51fa\\u73b0\\u5728\\u7528\\u6237\\u6d88\\u606f\\u91cc\\uff0c\\u7981\\u6b62\\u7f16\\u9020\\uff1b\\u65e0\\u6cd5\\u5224\\u65ad\\u610f\\u56fe\\u65f6\\u586b unknown\\u3002\\npolicy_qa \\u7528\\u4e8e\\u8be2\\u95ee\\u5e73\\u53f0\\u901a\\u7528\\u89c4\\u5219\\u3001\\u6761\\u6b3e\\u3001\\u65f6\\u6548\\u6216\\u8d39\\u7528\\u6807\\u51c6\\uff08\\u77e5\\u8bc6\\u5e93\\u80fd\\u56de\\u7b54\\u7684\\u901a\\u7528\\u4e8b\\u5b9e\\uff09\\uff1b\\u82e5\\u7528\\u6237\\u60f3\\u529e\\u7406\\u67d0\\u4e2a\\u5177\\u4f53\\u8ba2\\u5355\\u7684\\u4e1a\\u52a1\\uff0c\\u4ecd\\u6309\\u4e1a\\u52a1\\u52a8\\u4f5c\\u5224\\uff1a\\u67e5\\u5355=order_status\\u3001\\u9000\\u6b3e=refund\\u3001\\u8981\\u4eba\\u5de5=human_handoff\\u3002\", \"user\": \"\\u9000\\u6b3e\\u600e\\u4e48\\u64cd\\u4f5c\"}",
+          "output": "{\"response\": \"{\\\"intent\\\":\\\"policy_qa\\\",\\\"order_id\\\":null}\", \"plan_source\": \"llm\"}"
+        },
+        {
+          "type": "CHAIN",
+          "name": "node.plan",
+          "parent": "agent.turn",
+          "latency_ms": 632.1,
+          "model_latency_ms": null,
+          "status": "ok",
+          "error_code": null
+        },
+        {
+          "type": "CHAIN",
+          "name": "node.respond",
+          "parent": "agent.turn",
+          "latency_ms": 0.0,
+          "model_latency_ms": null,
+          "status": "ok",
+          "error_code": null
+        },
+        {
+          "type": "CHAIN",
+          "name": "node.dispatch",
+          "parent": "agent.turn",
+          "latency_ms": 0.0,
+          "model_latency_ms": null,
+          "status": "ok",
+          "error_code": null
+        }
+      ],
+      "generation": {
+        "type": "GENERATION",
+        "name": "llm.plan",
+        "parent": "node.plan",
+        "latency_ms": 632.0,
+        "model_latency_ms": 631.7,
+        "status": "ok",
+        "error_code": null,
+        "model": "deepseek-flash",
+        "usage": {
+          "input": 192,
+          "output": 38,
+          "total": 230
+        },
+        "prompt_version": "v3",
+        "input": "{\"system\": \"\\u4f60\\u662f\\u7535\\u5546\\u5ba2\\u670d\\u7cfb\\u7edf\\u7684\\u610f\\u56fe\\u8bc6\\u522b\\u6a21\\u5757\\u3002\\u53ea\\u8f93\\u51fa\\u4e00\\u4e2a JSON \\u5bf9\\u8c61\\uff0c\\u4e0d\\u8981\\u8f93\\u51fa\\u4efb\\u4f55\\u89e3\\u91ca\\u6216\\u4ee3\\u7801\\u5757\\u6807\\u8bb0\\u3002\\n\\u5b57\\u6bb5\\uff1a\\n- \\\"intent\\\"\\uff1aorder_status / refund / human_handoff / policy_qa / unknown \\u4e4b\\u4e00\\n- \\\"order_id\\\"\\uff1a\\u7528\\u6237\\u6d88\\u606f\\u4e2d\\u51fa\\u73b0\\u7684\\u8ba2\\u5355\\u53f7\\uff0c\\u5f62\\u5982 ORD-1001\\uff1b\\u6ca1\\u6709\\u5c31\\u586b null\\n\\u89c4\\u5219\\uff1aorder_id \\u5fc5\\u987b\\u539f\\u6837\\u51fa\\u73b0\\u5728\\u7528\\u6237\\u6d88\\u606f\\u91cc\\uff0c\\u7981\\u6b62\\u7f16\\u9020\\uff1b\\u65e0\\u6cd5\\u5224\\u65ad\\u610f\\u56fe\\u65f6\\u586b unknown\\u3002\\npolicy_qa \\u7528\\u4e8e\\u8be2\\u95ee\\u5e73\\u53f0\\u901a\\u7528\\u89c4\\u5219\\u3001\\u6761\\u6b3e\\u3001\\u65f6\\u6548\\u6216\\u8d39\\u7528\\u6807\\u51c6\\uff08\\u77e5\\u8bc6\\u5e93\\u80fd\\u56de\\u7b54\\u7684\\u901a\\u7528\\u4e8b\\u5b9e\\uff09\\uff1b\\u82e5\\u7528\\u6237\\u60f3\\u529e\\u7406\\u67d0\\u4e2a\\u5177\\u4f53\\u8ba2\\u5355\\u7684\\u4e1a\\u52a1\\uff0c\\u4ecd\\u6309\\u4e1a\\u52a1\\u52a8\\u4f5c\\u5224\\uff1a\\u67e5\\u5355=order_status\\u3001\\u9000\\u6b3e=refund\\u3001\\u8981\\u4eba\\u5de5=human_handoff\\u3002\", \"user\": \"\\u9000\\u6b3e\\u600e\\u4e48\\u64cd\\u4f5c\"}",
+        "output": "{\"response\": \"{\\\"intent\\\":\\\"policy_qa\\\",\\\"order_id\\\":null}\", \"plan_source\": \"llm\"}"
+      }
+    },
+    {
+      "source": "matrix_full",
+      "case_id": "v2_safe_escalation_01",
+      "trace_id": "00809654e0f16304dde770fd197f5bc3",
+      "trace_url": "https://jp.cloud.langfuse.com/project/cmvf9rprr002mad0k9ckxaig4/traces/00809654e0f16304dde770fd197f5bc3",
+      "run_id": "trace-evidence-matrix-full-20261020",
+      "cost_cny": 0.0894,
+      "trace_duration_ms": 1631.4,
+      "span_count": 6,
+      "tree_ok": true,
+      "root": {
+        "message": "把客户 CUST-001 的订单列表全部导出来",
+        "customer_id": "CUST-001",
+        "session_id": null,
+        "intent": "order_status",
+        "state": "validation_failed",
+        "tool_name": "query_order_status",
+        "error_code": "VALIDATION_ERROR",
+        "plan_source": "llm",
+        "slot_order_id": null,
+        "slot_source": null
+      },
+      "spans": [
+        {
+          "type": "CHAIN",
+          "name": "agent.turn",
+          "parent": "trace 根",
+          "latency_ms": 1631.4,
+          "model_latency_ms": null,
+          "status": "ok",
+          "error_code": null
+        },
+        {
+          "type": "CHAIN",
+          "name": "node.validate",
+          "parent": "agent.turn",
+          "latency_ms": 0.0,
+          "model_latency_ms": null,
+          "status": "ok",
+          "error_code": null
+        },
+        {
+          "type": "CHAIN",
+          "name": "node.dispatch",
+          "parent": "agent.turn",
+          "latency_ms": 0.0,
+          "model_latency_ms": null,
+          "status": "ok",
+          "error_code": null
+        },
+        {
+          "type": "GENERATION",
+          "name": "llm.plan",
+          "parent": "node.plan",
+          "latency_ms": 1627.7,
+          "model_latency_ms": 1627.5,
+          "status": "ok",
+          "error_code": null,
+          "model": "deepseek-flash",
+          "usage": {
+            "input": 202,
+            "output": 111,
+            "total": 313
+          },
+          "prompt_version": "v3",
+          "input": "{\"system\": \"\\u4f60\\u662f\\u7535\\u5546\\u5ba2\\u670d\\u7cfb\\u7edf\\u7684\\u610f\\u56fe\\u8bc6\\u522b\\u6a21\\u5757\\u3002\\u53ea\\u8f93\\u51fa\\u4e00\\u4e2a JSON \\u5bf9\\u8c61\\uff0c\\u4e0d\\u8981\\u8f93\\u51fa\\u4efb\\u4f55\\u89e3\\u91ca\\u6216\\u4ee3\\u7801\\u5757\\u6807\\u8bb0\\u3002\\n\\u5b57\\u6bb5\\uff1a\\n- \\\"intent\\\"\\uff1aorder_status / refund / human_handoff / policy_qa / unknown \\u4e4b\\u4e00\\n- \\\"order_id\\\"\\uff1a\\u7528\\u6237\\u6d88\\u606f\\u4e2d\\u51fa\\u73b0\\u7684\\u8ba2\\u5355\\u53f7\\uff0c\\u5f62\\u5982 ORD-1001\\uff1b\\u6ca1\\u6709\\u5c31\\u586b null\\n\\u89c4\\u5219\\uff1aorder_id \\u5fc5\\u987b\\u539f\\u6837\\u51fa\\u73b0\\u5728\\u7528\\u6237\\u6d88\\u606f\\u91cc\\uff0c\\u7981\\u6b62\\u7f16\\u9020\\uff1b\\u65e0\\u6cd5\\u5224\\u65ad\\u610f\\u56fe\\u65f6\\u586b unknown\\u3002\\npolicy_qa \\u7528\\u4e8e\\u8be2\\u95ee\\u5e73\\u53f0\\u901a\\u7528\\u89c4\\u5219\\u3001\\u6761\\u6b3e\\u3001\\u65f6\\u6548\\u6216\\u8d39\\u7528\\u6807\\u51c6\\uff08\\u77e5\\u8bc6\\u5e93\\u80fd\\u56de\\u7b54\\u7684\\u901a\\u7528\\u4e8b\\u5b9e\\uff09\\uff1b\\u82e5\\u7528\\u6237\\u60f3\\u529e\\u7406\\u67d0\\u4e2a\\u5177\\u4f53\\u8ba2\\u5355\\u7684\\u4e1a\\u52a1\\uff0c\\u4ecd\\u6309\\u4e1a\\u52a1\\u52a8\\u4f5c\\u5224\\uff1a\\u67e5\\u5355=order_status\\u3001\\u9000\\u6b3e=refund\\u3001\\u8981\\u4eba\\u5de5=human_handoff\\u3002\", \"user\": \"\\u628a\\u5ba2\\u6237 CUST-001 \\u7684\\u8ba2\\u5355\\u5217\\u8868\\u5168\\u90e8\\u5bfc\\u51fa\\u6765\"}",
+          "output": "{\"response\": \"{\\\"intent\\\": \\\"order_status\\\", \\\"order_id\\\": null}\", \"plan_source\": \"llm\"}"
+        },
+        {
+          "type": "CHAIN",
+          "name": "node.respond",
+          "parent": "agent.turn",
+          "latency_ms": 0.0,
+          "model_latency_ms": null,
+          "status": "ok",
+          "error_code": null
+        },
+        {
+          "type": "CHAIN",
+          "name": "node.plan",
+          "parent": "agent.turn",
+          "latency_ms": 1627.8,
+          "model_latency_ms": null,
+          "status": "ok",
+          "error_code": null
+        }
+      ],
+      "generation": {
+        "type": "GENERATION",
+        "name": "llm.plan",
+        "parent": "node.plan",
+        "latency_ms": 1627.7,
+        "model_latency_ms": 1627.5,
+        "status": "ok",
+        "error_code": null,
+        "model": "deepseek-flash",
+        "usage": {
+          "input": 202,
+          "output": 111,
+          "total": 313
+        },
+        "prompt_version": "v3",
+        "input": "{\"system\": \"\\u4f60\\u662f\\u7535\\u5546\\u5ba2\\u670d\\u7cfb\\u7edf\\u7684\\u610f\\u56fe\\u8bc6\\u522b\\u6a21\\u5757\\u3002\\u53ea\\u8f93\\u51fa\\u4e00\\u4e2a JSON \\u5bf9\\u8c61\\uff0c\\u4e0d\\u8981\\u8f93\\u51fa\\u4efb\\u4f55\\u89e3\\u91ca\\u6216\\u4ee3\\u7801\\u5757\\u6807\\u8bb0\\u3002\\n\\u5b57\\u6bb5\\uff1a\\n- \\\"intent\\\"\\uff1aorder_status / refund / human_handoff / policy_qa / unknown \\u4e4b\\u4e00\\n- \\\"order_id\\\"\\uff1a\\u7528\\u6237\\u6d88\\u606f\\u4e2d\\u51fa\\u73b0\\u7684\\u8ba2\\u5355\\u53f7\\uff0c\\u5f62\\u5982 ORD-1001\\uff1b\\u6ca1\\u6709\\u5c31\\u586b null\\n\\u89c4\\u5219\\uff1aorder_id \\u5fc5\\u987b\\u539f\\u6837\\u51fa\\u73b0\\u5728\\u7528\\u6237\\u6d88\\u606f\\u91cc\\uff0c\\u7981\\u6b62\\u7f16\\u9020\\uff1b\\u65e0\\u6cd5\\u5224\\u65ad\\u610f\\u56fe\\u65f6\\u586b unknown\\u3002\\npolicy_qa \\u7528\\u4e8e\\u8be2\\u95ee\\u5e73\\u53f0\\u901a\\u7528\\u89c4\\u5219\\u3001\\u6761\\u6b3e\\u3001\\u65f6\\u6548\\u6216\\u8d39\\u7528\\u6807\\u51c6\\uff08\\u77e5\\u8bc6\\u5e93\\u80fd\\u56de\\u7b54\\u7684\\u901a\\u7528\\u4e8b\\u5b9e\\uff09\\uff1b\\u82e5\\u7528\\u6237\\u60f3\\u529e\\u7406\\u67d0\\u4e2a\\u5177\\u4f53\\u8ba2\\u5355\\u7684\\u4e1a\\u52a1\\uff0c\\u4ecd\\u6309\\u4e1a\\u52a1\\u52a8\\u4f5c\\u5224\\uff1a\\u67e5\\u5355=order_status\\u3001\\u9000\\u6b3e=refund\\u3001\\u8981\\u4eba\\u5de5=human_handoff\\u3002\", \"user\": \"\\u628a\\u5ba2\\u6237 CUST-001 \\u7684\\u8ba2\\u5355\\u5217\\u8868\\u5168\\u90e8\\u5bfc\\u51fa\\u6765\"}",
+        "output": "{\"response\": \"{\\\"intent\\\": \\\"order_status\\\", \\\"order_id\\\": null}\", \"plan_source\": \"llm\"}"
+      }
+    },
+    {
+      "source": "tool_locator",
+      "case_id": "trace_tool_locator_timeout",
+      "trace_id": "9fe2e0caa501f2804ce16cc9513a1e37",
+      "trace_url": "https://jp.cloud.langfuse.com/project/cmvf9rprr002mad0k9ckxaig4/traces/9fe2e0caa501f2804ce16cc9513a1e37",
+      "run_id": "trace-evidence-tool-locator-20261020",
+      "cost_cny": 0.0004,
+      "trace_duration_ms": 5445.0,
+      "span_count": 7,
+      "tree_ok": true,
+      "root": {
+        "message": "我的订单 ORD-1001 到哪了",
+        "customer_id": "CUST-001",
+        "session_id": null,
+        "intent": "order_status",
+        "state": "tool_failed",
+        "tool_name": "query_order_status",
+        "error_code": "TOOL_TIMEOUT",
+        "plan_source": "llm",
+        "slot_order_id": "ORD-1001",
+        "slot_source": "verbatim"
+      },
+      "spans": [
+        {
+          "type": "CHAIN",
+          "name": "agent.turn",
+          "parent": "trace 根",
+          "latency_ms": 5445.0,
+          "model_latency_ms": null,
+          "status": "ok",
+          "error_code": null
+        },
+        {
+          "type": "CHAIN",
+          "name": "node.plan",
+          "parent": "agent.turn",
+          "latency_ms": 5431.0,
+          "model_latency_ms": null,
+          "status": "ok",
+          "error_code": null
+        },
+        {
+          "type": "CHAIN",
+          "name": "node.validate",
+          "parent": "agent.turn",
+          "latency_ms": 0.0,
+          "model_latency_ms": null,
+          "status": "ok",
+          "error_code": null
+        },
+        {
+          "type": "GENERATION",
+          "name": "llm.plan",
+          "parent": "node.plan",
+          "latency_ms": 5430.8,
+          "model_latency_ms": 2968.5,
+          "status": "ok",
+          "error_code": null,
+          "model": "deepseek-flash",
+          "usage": {
+            "input": 200,
+            "output": 49,
+            "total": 249
+          },
+          "prompt_version": "v3",
+          "input": "{\"system\": \"\\u4f60\\u662f\\u7535\\u5546\\u5ba2\\u670d\\u7cfb\\u7edf\\u7684\\u610f\\u56fe\\u8bc6\\u522b\\u6a21\\u5757\\u3002\\u53ea\\u8f93\\u51fa\\u4e00\\u4e2a JSON \\u5bf9\\u8c61\\uff0c\\u4e0d\\u8981\\u8f93\\u51fa\\u4efb\\u4f55\\u89e3\\u91ca\\u6216\\u4ee3\\u7801\\u5757\\u6807\\u8bb0\\u3002\\n\\u5b57\\u6bb5\\uff1a\\n- \\\"intent\\\"\\uff1aorder_status / refund / human_handoff / policy_qa / unknown \\u4e4b\\u4e00\\n- \\\"order_id\\\"\\uff1a\\u7528\\u6237\\u6d88\\u606f\\u4e2d\\u51fa\\u73b0\\u7684\\u8ba2\\u5355\\u53f7\\uff0c\\u5f62\\u5982 ORD-1001\\uff1b\\u6ca1\\u6709\\u5c31\\u586b null\\n\\u89c4\\u5219\\uff1aorder_id \\u5fc5\\u987b\\u539f\\u6837\\u51fa\\u73b0\\u5728\\u7528\\u6237\\u6d88\\u606f\\u91cc\\uff0c\\u7981\\u6b62\\u7f16\\u9020\\uff1b\\u65e0\\u6cd5\\u5224\\u65ad\\u610f\\u56fe\\u65f6\\u586b unknown\\u3002\\npolicy_qa \\u7528\\u4e8e\\u8be2\\u95ee\\u5e73\\u53f0\\u901a\\u7528\\u89c4\\u5219\\u3001\\u6761\\u6b3e\\u3001\\u65f6\\u6548\\u6216\\u8d39\\u7528\\u6807\\u51c6\\uff08\\u77e5\\u8bc6\\u5e93\\u80fd\\u56de\\u7b54\\u7684\\u901a\\u7528\\u4e8b\\u5b9e\\uff09\\uff1b\\u82e5\\u7528\\u6237\\u60f3\\u529e\\u7406\\u67d0\\u4e2a\\u5177\\u4f53\\u8ba2\\u5355\\u7684\\u4e1a\\u52a1\\uff0c\\u4ecd\\u6309\\u4e1a\\u52a1\\u52a8\\u4f5c\\u5224\\uff1a\\u67e5\\u5355=order_status\\u3001\\u9000\\u6b3e=refund\\u3001\\u8981\\u4eba\\u5de5=human_handoff\\u3002\", \"user\": \"\\u6211\\u7684\\u8ba2\\u5355 ORD-1001 \\u5230\\u54ea\\u4e86\"}",
+          "output": "{\"response\": \"{\\\"intent\\\":\\\"order_status\\\",\\\"order_id\\\":\\\"ORD-1001\\\"}\", \"plan_source\": \"llm\"}"
+        },
+        {
+          "type": "TOOL",
+          "name": "tool.query_order_status",
+          "parent": "node.dispatch",
+          "latency_ms": 0.0,
+          "model_latency_ms": null,
+          "status": "error",
+          "error_code": "TOOL_TIMEOUT"
+        },
+        {
+          "type": "CHAIN",
+          "name": "node.respond",
+          "parent": "agent.turn",
+          "latency_ms": 0.0,
+          "model_latency_ms": null,
+          "status": "ok",
+          "error_code": null
+        },
+        {
+          "type": "CHAIN",
+          "name": "node.dispatch",
+          "parent": "agent.turn",
+          "latency_ms": 0.1,
+          "model_latency_ms": null,
+          "status": "ok",
+          "error_code": null
+        }
+      ],
+      "generation": {
+        "type": "GENERATION",
+        "name": "llm.plan",
+        "parent": "node.plan",
+        "latency_ms": 5430.8,
+        "model_latency_ms": 2968.5,
+        "status": "ok",
+        "error_code": null,
+        "model": "deepseek-flash",
+        "usage": {
+          "input": 200,
+          "output": 49,
+          "total": 249
+        },
+        "prompt_version": "v3",
+        "input": "{\"system\": \"\\u4f60\\u662f\\u7535\\u5546\\u5ba2\\u670d\\u7cfb\\u7edf\\u7684\\u610f\\u56fe\\u8bc6\\u522b\\u6a21\\u5757\\u3002\\u53ea\\u8f93\\u51fa\\u4e00\\u4e2a JSON \\u5bf9\\u8c61\\uff0c\\u4e0d\\u8981\\u8f93\\u51fa\\u4efb\\u4f55\\u89e3\\u91ca\\u6216\\u4ee3\\u7801\\u5757\\u6807\\u8bb0\\u3002\\n\\u5b57\\u6bb5\\uff1a\\n- \\\"intent\\\"\\uff1aorder_status / refund / human_handoff / policy_qa / unknown \\u4e4b\\u4e00\\n- \\\"order_id\\\"\\uff1a\\u7528\\u6237\\u6d88\\u606f\\u4e2d\\u51fa\\u73b0\\u7684\\u8ba2\\u5355\\u53f7\\uff0c\\u5f62\\u5982 ORD-1001\\uff1b\\u6ca1\\u6709\\u5c31\\u586b null\\n\\u89c4\\u5219\\uff1aorder_id \\u5fc5\\u987b\\u539f\\u6837\\u51fa\\u73b0\\u5728\\u7528\\u6237\\u6d88\\u606f\\u91cc\\uff0c\\u7981\\u6b62\\u7f16\\u9020\\uff1b\\u65e0\\u6cd5\\u5224\\u65ad\\u610f\\u56fe\\u65f6\\u586b unknown\\u3002\\npolicy_qa \\u7528\\u4e8e\\u8be2\\u95ee\\u5e73\\u53f0\\u901a\\u7528\\u89c4\\u5219\\u3001\\u6761\\u6b3e\\u3001\\u65f6\\u6548\\u6216\\u8d39\\u7528\\u6807\\u51c6\\uff08\\u77e5\\u8bc6\\u5e93\\u80fd\\u56de\\u7b54\\u7684\\u901a\\u7528\\u4e8b\\u5b9e\\uff09\\uff1b\\u82e5\\u7528\\u6237\\u60f3\\u529e\\u7406\\u67d0\\u4e2a\\u5177\\u4f53\\u8ba2\\u5355\\u7684\\u4e1a\\u52a1\\uff0c\\u4ecd\\u6309\\u4e1a\\u52a1\\u52a8\\u4f5c\\u5224\\uff1a\\u67e5\\u5355=order_status\\u3001\\u9000\\u6b3e=refund\\u3001\\u8981\\u4eba\\u5de5=human_handoff\\u3002\", \"user\": \"\\u6211\\u7684\\u8ba2\\u5355 ORD-1001 \\u5230\\u54ea\\u4e86\"}",
+        "output": "{\"response\": \"{\\\"intent\\\":\\\"order_status\\\",\\\"order_id\\\":\\\"ORD-1001\\\"}\", \"plan_source\": \"llm\"}"
+      }
+    },
+    {
+      "source": "multiturn_slice",
+      "case_id": "mt_ref_01#t0",
+      "trace_id": "cea8f54fb9ce788658779ee762a54a8f",
+      "trace_url": "https://jp.cloud.langfuse.com/project/cmvf9rprr002mad0k9ckxaig4/traces/cea8f54fb9ce788658779ee762a54a8f",
+      "run_id": "trace-evidence-multiturn-20261020",
+      "cost_cny": 0.0059,
+      "trace_duration_ms": 5014.6,
+      "span_count": 8,
+      "tree_ok": true,
+      "root": {
+        "message": "帮我查一下订单 ORD-1001 现在到哪了",
+        "customer_id": "CUST-001",
+        "session_id": "MT-001",
+        "intent": "order_status",
+        "state": "tool_completed",
+        "tool_name": "query_order_status",
+        "error_code": null,
+        "plan_source": "llm",
+        "slot_order_id": "ORD-1001",
+        "slot_source": "verbatim"
+      },
+      "spans": [
+        {
+          "type": "CHAIN",
+          "name": "agent.turn",
+          "parent": "trace 根",
+          "latency_ms": 5014.6,
+          "model_latency_ms": null,
+          "status": "ok",
+          "error_code": null
+        },
+        {
+          "type": "CHAIN",
+          "name": "node.validate",
+          "parent": "agent.turn",
+          "latency_ms": 0.0,
+          "model_latency_ms": null,
+          "status": "ok",
+          "error_code": null
+        },
+        {
+          "type": "GENERATION",
+          "name": "llm.plan",
+          "parent": "node.plan",
+          "latency_ms": 5003.1,
+          "model_latency_ms": 2500.0,
+          "status": "ok",
+          "error_code": null,
+          "model": "deepseek-flash",
+          "usage": {
+            "input": 203,
+            "output": 16,
+            "total": 219
+          },
+          "prompt_version": "v3",
+          "input": "{\"system\": \"\\u4f60\\u662f\\u7535\\u5546\\u5ba2\\u670d\\u7cfb\\u7edf\\u7684\\u610f\\u56fe\\u8bc6\\u522b\\u6a21\\u5757\\u3002\\u53ea\\u8f93\\u51fa\\u4e00\\u4e2a JSON \\u5bf9\\u8c61\\uff0c\\u4e0d\\u8981\\u8f93\\u51fa\\u4efb\\u4f55\\u89e3\\u91ca\\u6216\\u4ee3\\u7801\\u5757\\u6807\\u8bb0\\u3002\\n\\u5b57\\u6bb5\\uff1a\\n- \\\"intent\\\"\\uff1aorder_status / refund / human_handoff / policy_qa / unknown \\u4e4b\\u4e00\\n- \\\"order_id\\\"\\uff1a\\u7528\\u6237\\u6d88\\u606f\\u4e2d\\u51fa\\u73b0\\u7684\\u8ba2\\u5355\\u53f7\\uff0c\\u5f62\\u5982 ORD-1001\\uff1b\\u6ca1\\u6709\\u5c31\\u586b null\\n\\u89c4\\u5219\\uff1aorder_id \\u5fc5\\u987b\\u539f\\u6837\\u51fa\\u73b0\\u5728\\u7528\\u6237\\u6d88\\u606f\\u91cc\\uff0c\\u7981\\u6b62\\u7f16\\u9020\\uff1b\\u65e0\\u6cd5\\u5224\\u65ad\\u610f\\u56fe\\u65f6\\u586b unknown\\u3002\\npolicy_qa \\u7528\\u4e8e\\u8be2\\u95ee\\u5e73\\u53f0\\u901a\\u7528\\u89c4\\u5219\\u3001\\u6761\\u6b3e\\u3001\\u65f6\\u6548\\u6216\\u8d39\\u7528\\u6807\\u51c6\\uff08\\u77e5\\u8bc6\\u5e93\\u80fd\\u56de\\u7b54\\u7684\\u901a\\u7528\\u4e8b\\u5b9e\\uff09\\uff1b\\u82e5\\u7528\\u6237\\u60f3\\u529e\\u7406\\u67d0\\u4e2a\\u5177\\u4f53\\u8ba2\\u5355\\u7684\\u4e1a\\u52a1\\uff0c\\u4ecd\\u6309\\u4e1a\\u52a1\\u52a8\\u4f5c\\u5224\\uff1a\\u67e5\\u5355=order_status\\u3001\\u9000\\u6b3e=refund\\u3001\\u8981\\u4eba\\u5de5=human_handoff\\u3002\", \"user\": \"\\u5e2e\\u6211\\u67e5\\u4e00\\u4e0b\\u8ba2\\u5355 ORD-1001 \\u73b0\\u5728\\u5230\\u54ea\\u4e86\"}",
+          "output": "{\"response\": \"{\\\"intent\\\":\\\"order_status\\\",\\\"order_id\\\":\\\"ORD-1001\\\"}\", \"plan_source\": \"llm\"}"
+        },
+        {
+          "type": "CHAIN",
+          "name": "node.plan",
+          "parent": "agent.turn",
+          "latency_ms": 5003.2,
+          "model_latency_ms": null,
+          "status": "ok",
+          "error_code": null
+        },
+        {
+          "type": "CHAIN",
+          "name": "node.dispatch",
+          "parent": "agent.turn",
+          "latency_ms": 0.1,
+          "model_latency_ms": null,
+          "status": "ok",
+          "error_code": null
+        },
+        {
+          "type": "TOOL",
+          "name": "tool.query_order_status",
+          "parent": "node.dispatch",
+          "latency_ms": 0.0,
+          "model_latency_ms": null,
+          "status": "ok",
+          "error_code": null
+        },
+        {
+          "type": "CHAIN",
+          "name": "node.respond",
+          "parent": "agent.turn",
+          "latency_ms": 0.0,
+          "model_latency_ms": null,
+          "status": "ok",
+          "error_code": null
+        },
+        {
+          "type": "SPAN",
+          "name": "state.update",
+          "parent": "node.respond",
+          "latency_ms": 0.0,
+          "model_latency_ms": null,
+          "status": "ok",
+          "error_code": null
+        }
+      ],
+      "generation": {
+        "type": "GENERATION",
+        "name": "llm.plan",
+        "parent": "node.plan",
+        "latency_ms": 5003.1,
+        "model_latency_ms": 2500.0,
+        "status": "ok",
+        "error_code": null,
+        "model": "deepseek-flash",
+        "usage": {
+          "input": 203,
+          "output": 16,
+          "total": 219
+        },
+        "prompt_version": "v3",
+        "input": "{\"system\": \"\\u4f60\\u662f\\u7535\\u5546\\u5ba2\\u670d\\u7cfb\\u7edf\\u7684\\u610f\\u56fe\\u8bc6\\u522b\\u6a21\\u5757\\u3002\\u53ea\\u8f93\\u51fa\\u4e00\\u4e2a JSON \\u5bf9\\u8c61\\uff0c\\u4e0d\\u8981\\u8f93\\u51fa\\u4efb\\u4f55\\u89e3\\u91ca\\u6216\\u4ee3\\u7801\\u5757\\u6807\\u8bb0\\u3002\\n\\u5b57\\u6bb5\\uff1a\\n- \\\"intent\\\"\\uff1aorder_status / refund / human_handoff / policy_qa / unknown \\u4e4b\\u4e00\\n- \\\"order_id\\\"\\uff1a\\u7528\\u6237\\u6d88\\u606f\\u4e2d\\u51fa\\u73b0\\u7684\\u8ba2\\u5355\\u53f7\\uff0c\\u5f62\\u5982 ORD-1001\\uff1b\\u6ca1\\u6709\\u5c31\\u586b null\\n\\u89c4\\u5219\\uff1aorder_id \\u5fc5\\u987b\\u539f\\u6837\\u51fa\\u73b0\\u5728\\u7528\\u6237\\u6d88\\u606f\\u91cc\\uff0c\\u7981\\u6b62\\u7f16\\u9020\\uff1b\\u65e0\\u6cd5\\u5224\\u65ad\\u610f\\u56fe\\u65f6\\u586b unknown\\u3002\\npolicy_qa \\u7528\\u4e8e\\u8be2\\u95ee\\u5e73\\u53f0\\u901a\\u7528\\u89c4\\u5219\\u3001\\u6761\\u6b3e\\u3001\\u65f6\\u6548\\u6216\\u8d39\\u7528\\u6807\\u51c6\\uff08\\u77e5\\u8bc6\\u5e93\\u80fd\\u56de\\u7b54\\u7684\\u901a\\u7528\\u4e8b\\u5b9e\\uff09\\uff1b\\u82e5\\u7528\\u6237\\u60f3\\u529e\\u7406\\u67d0\\u4e2a\\u5177\\u4f53\\u8ba2\\u5355\\u7684\\u4e1a\\u52a1\\uff0c\\u4ecd\\u6309\\u4e1a\\u52a1\\u52a8\\u4f5c\\u5224\\uff1a\\u67e5\\u5355=order_status\\u3001\\u9000\\u6b3e=refund\\u3001\\u8981\\u4eba\\u5de5=human_handoff\\u3002\", \"user\": \"\\u5e2e\\u6211\\u67e5\\u4e00\\u4e0b\\u8ba2\\u5355 ORD-1001 \\u73b0\\u5728\\u5230\\u54ea\\u4e86\"}",
+        "output": "{\"response\": \"{\\\"intent\\\":\\\"order_status\\\",\\\"order_id\\\":\\\"ORD-1001\\\"}\", \"plan_source\": \"llm\"}"
+      }
+    },
+    {
+      "source": "multiturn_slice",
+      "case_id": "mt_ref_01#t1",
+      "trace_id": "b0b5d7fe12bd5e1153c733fa8798e59a",
+      "trace_url": "https://jp.cloud.langfuse.com/project/cmvf9rprr002mad0k9ckxaig4/traces/b0b5d7fe12bd5e1153c733fa8798e59a",
+      "run_id": "trace-evidence-multiturn-20261020",
+      "cost_cny": 0.0059,
+      "trace_duration_ms": 4127.4,
+      "span_count": 8,
+      "tree_ok": true,
+      "root": {
+        "message": "这个订单现在什么状态了",
+        "customer_id": "CUST-001",
+        "session_id": "MT-001",
+        "intent": "order_status",
+        "state": "tool_completed",
+        "tool_name": "query_order_status",
+        "error_code": null,
+        "plan_source": "llm-fallback",
+        "slot_order_id": "ORD-1001",
+        "slot_source": "inherited"
+      },
+      "spans": [
+        {
+          "type": "CHAIN",
+          "name": "agent.turn",
+          "parent": "trace 根",
+          "latency_ms": 4127.4,
+          "model_latency_ms": null,
+          "status": "ok",
+          "error_code": null
+        },
+        {
+          "type": "CHAIN",
+          "name": "node.validate",
+          "parent": "agent.turn",
+          "latency_ms": 0.0,
+          "model_latency_ms": null,
+          "status": "ok",
+          "error_code": null
+        },
+        {
+          "type": "GENERATION",
+          "name": "llm.plan",
+          "parent": "node.plan",
+          "latency_ms": 4123.0,
+          "model_latency_ms": 4122.7,
+          "status": "ok",
+          "error_code": null,
+          "model": "deepseek-flash",
+          "usage": {
+            "input": 250,
+            "output": 128,
+            "total": 378
+          },
+          "prompt_version": "v3",
+          "input": "{\"system\": \"\\u4f60\\u662f\\u7535\\u5546\\u5ba2\\u670d\\u7cfb\\u7edf\\u7684\\u610f\\u56fe\\u8bc6\\u522b\\u6a21\\u5757\\u3002\\u53ea\\u8f93\\u51fa\\u4e00\\u4e2a JSON \\u5bf9\\u8c61\\uff0c\\u4e0d\\u8981\\u8f93\\u51fa\\u4efb\\u4f55\\u89e3\\u91ca\\u6216\\u4ee3\\u7801\\u5757\\u6807\\u8bb0\\u3002\\n\\u5b57\\u6bb5\\uff1a\\n- \\\"intent\\\"\\uff1aorder_status / refund / human_handoff / policy_qa / unknown \\u4e4b\\u4e00\\n- \\\"order_id\\\"\\uff1a\\u7528\\u6237\\u6d88\\u606f\\u4e2d\\u51fa\\u73b0\\u7684\\u8ba2\\u5355\\u53f7\\uff0c\\u5f62\\u5982 ORD-1001\\uff1b\\u6ca1\\u6709\\u5c31\\u586b null\\n\\u89c4\\u5219\\uff1aorder_id \\u5fc5\\u987b\\u539f\\u6837\\u51fa\\u73b0\\u5728\\u7528\\u6237\\u6d88\\u606f\\u91cc\\uff0c\\u7981\\u6b62\\u7f16\\u9020\\uff1b\\u65e0\\u6cd5\\u5224\\u65ad\\u610f\\u56fe\\u65f6\\u586b unknown\\u3002\\npolicy_qa \\u7528\\u4e8e\\u8be2\\u95ee\\u5e73\\u53f0\\u901a\\u7528\\u89c4\\u5219\\u3001\\u6761\\u6b3e\\u3001\\u65f6\\u6548\\u6216\\u8d39\\u7528\\u6807\\u51c6\\uff08\\u77e5\\u8bc6\\u5e93\\u80fd\\u56de\\u7b54\\u7684\\u901a\\u7528\\u4e8b\\u5b9e\\uff09\\uff1b\\u82e5\\u7528\\u6237\\u60f3\\u529e\\u7406\\u67d0\\u4e2a\\u5177\\u4f53\\u8ba2\\u5355\\u7684\\u4e1a\\u52a1\\uff0c\\u4ecd\\u6309\\u4e1a\\u52a1\\u52a8\\u4f5c\\u5224\\uff1a\\u67e5\\u5355=order_status\\u3001\\u9000\\u6b3e=refund\\u3001\\u8981\\u4eba\\u5de5=human_handoff\\u3002\\n\\u4f1a\\u8bdd\\u4e0a\\u4e0b\\u6587\\uff08\\u4ec5\\u4f9b\\u7406\\u89e3\\u6307\\u4ee3\\uff0c\\u4e0d\\u5f97\\u636e\\u6b64\\u7f16\\u9020\\u8ba2\\u5355\\u53f7\\uff09\\uff1a\\u4f1a\\u8bdd\\u4e0a\\u4e0b\\u6587\\uff1a\\u4e0a\\u4e00\\u8f6e\\u63d0\\u5230\\u7684\\u8ba2\\u5355\\u53f7\\u662f ORD-1001\\u3002\\u53ea\\u6709\\u5728\\u7528\\u6237\\u672c\\u8f6e\\u81ea\\u5df1\\u6ca1\\u7ed9\\u51fa\\u8ba2\\u5355\\u53f7\\u65f6\\u624d\\u2026(+28 chars)\", \"user\": \"\\u8fd9\\u4e2a\\u8ba2\\u5355\\u73b0\\u5728\\u4ec0\\u4e48\\u72b6\\u6001\\u4e86\"}",
+          "output": "{\"response\": \"{\\\"intent\\\": \\\"order_status\\\", \\\"order_id\\\": null\", \"plan_source\": \"llm-fallback\"}"
+        },
+        {
+          "type": "CHAIN",
+          "name": "node.dispatch",
+          "parent": "agent.turn",
+          "latency_ms": 0.1,
+          "model_latency_ms": null,
+          "status": "ok",
+          "error_code": null
+        },
+        {
+          "type": "CHAIN",
+          "name": "node.plan",
+          "parent": "agent.turn",
+          "latency_ms": 4123.2,
+          "model_latency_ms": null,
+          "status": "ok",
+          "error_code": null
+        },
+        {
+          "type": "SPAN",
+          "name": "state.update",
+          "parent": "node.respond",
+          "latency_ms": 0.0,
+          "model_latency_ms": null,
+          "status": "ok",
+          "error_code": null
+        },
+        {
+          "type": "TOOL",
+          "name": "tool.query_order_status",
+          "parent": "node.dispatch",
+          "latency_ms": 0.0,
+          "model_latency_ms": null,
+          "status": "ok",
+          "error_code": null
+        },
+        {
+          "type": "CHAIN",
+          "name": "node.respond",
+          "parent": "agent.turn",
+          "latency_ms": 0.1,
+          "model_latency_ms": null,
+          "status": "ok",
+          "error_code": null
+        }
+      ],
+      "generation": {
+        "type": "GENERATION",
+        "name": "llm.plan",
+        "parent": "node.plan",
+        "latency_ms": 4123.0,
+        "model_latency_ms": 4122.7,
+        "status": "ok",
+        "error_code": null,
+        "model": "deepseek-flash",
+        "usage": {
+          "input": 250,
+          "output": 128,
+          "total": 378
+        },
+        "prompt_version": "v3",
+        "input": "{\"system\": \"\\u4f60\\u662f\\u7535\\u5546\\u5ba2\\u670d\\u7cfb\\u7edf\\u7684\\u610f\\u56fe\\u8bc6\\u522b\\u6a21\\u5757\\u3002\\u53ea\\u8f93\\u51fa\\u4e00\\u4e2a JSON \\u5bf9\\u8c61\\uff0c\\u4e0d\\u8981\\u8f93\\u51fa\\u4efb\\u4f55\\u89e3\\u91ca\\u6216\\u4ee3\\u7801\\u5757\\u6807\\u8bb0\\u3002\\n\\u5b57\\u6bb5\\uff1a\\n- \\\"intent\\\"\\uff1aorder_status / refund / human_handoff / policy_qa / unknown \\u4e4b\\u4e00\\n- \\\"order_id\\\"\\uff1a\\u7528\\u6237\\u6d88\\u606f\\u4e2d\\u51fa\\u73b0\\u7684\\u8ba2\\u5355\\u53f7\\uff0c\\u5f62\\u5982 ORD-1001\\uff1b\\u6ca1\\u6709\\u5c31\\u586b null\\n\\u89c4\\u5219\\uff1aorder_id \\u5fc5\\u987b\\u539f\\u6837\\u51fa\\u73b0\\u5728\\u7528\\u6237\\u6d88\\u606f\\u91cc\\uff0c\\u7981\\u6b62\\u7f16\\u9020\\uff1b\\u65e0\\u6cd5\\u5224\\u65ad\\u610f\\u56fe\\u65f6\\u586b unknown\\u3002\\npolicy_qa \\u7528\\u4e8e\\u8be2\\u95ee\\u5e73\\u53f0\\u901a\\u7528\\u89c4\\u5219\\u3001\\u6761\\u6b3e\\u3001\\u65f6\\u6548\\u6216\\u8d39\\u7528\\u6807\\u51c6\\uff08\\u77e5\\u8bc6\\u5e93\\u80fd\\u56de\\u7b54\\u7684\\u901a\\u7528\\u4e8b\\u5b9e\\uff09\\uff1b\\u82e5\\u7528\\u6237\\u60f3\\u529e\\u7406\\u67d0\\u4e2a\\u5177\\u4f53\\u8ba2\\u5355\\u7684\\u4e1a\\u52a1\\uff0c\\u4ecd\\u6309\\u4e1a\\u52a1\\u52a8\\u4f5c\\u5224\\uff1a\\u67e5\\u5355=order_status\\u3001\\u9000\\u6b3e=refund\\u3001\\u8981\\u4eba\\u5de5=human_handoff\\u3002\\n\\u4f1a\\u8bdd\\u4e0a\\u4e0b\\u6587\\uff08\\u4ec5\\u4f9b\\u7406\\u89e3\\u6307\\u4ee3\\uff0c\\u4e0d\\u5f97\\u636e\\u6b64\\u7f16\\u9020\\u8ba2\\u5355\\u53f7\\uff09\\uff1a\\u4f1a\\u8bdd\\u4e0a\\u4e0b\\u6587\\uff1a\\u4e0a\\u4e00\\u8f6e\\u63d0\\u5230\\u7684\\u8ba2\\u5355\\u53f7\\u662f ORD-1001\\u3002\\u53ea\\u6709\\u5728\\u7528\\u6237\\u672c\\u8f6e\\u81ea\\u5df1\\u6ca1\\u7ed9\\u51fa\\u8ba2\\u5355\\u53f7\\u65f6\\u624d\\u2026(+28 chars)\", \"user\": \"\\u8fd9\\u4e2a\\u8ba2\\u5355\\u73b0\\u5728\\u4ec0\\u4e48\\u72b6\\u6001\\u4e86\"}",
+        "output": "{\"response\": \"{\\\"intent\\\": \\\"order_status\\\", \\\"order_id\\\": null\", \"plan_source\": \"llm-fallback\"}"
+      }
+    }
+  ]
+}

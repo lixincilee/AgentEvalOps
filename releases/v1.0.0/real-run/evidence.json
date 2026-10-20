@@ -156,6 +156,29 @@
       "cost_cny": 0.0109,
       "cost_cny_including_failed_retry": 0.0179,
       "evidence": "releases/v1.0.0/real-run/langfuse-model-traces/EVIDENCE.md"
+    },
+    "failure_multiturn": {
+      "generated_at": "2026-10-20T13:26:10.387237+00:00",
+      "host": "https://jp.cloud.langfuse.com",
+      "project_id": "cmvf9rprr002mad0k9ckxaig4",
+      "raw_traces": 310,
+      "unique_trace_ids": 310,
+      "unique_case_turns": 292,
+      "model_calls": 304,
+      "matched": 310,
+      "generation_spans": 304,
+      "all_prompts_present": true,
+      "all_outputs_present": true,
+      "all_usage_present": true,
+      "all_trees_match_local": true,
+      "matrix_failed": 3,
+      "multiturn_failed": 0,
+      "fallback_canonical_turns": 24,
+      "fallback_model_call_turns": 279,
+      "fallback_matrix": 18,
+      "fallback_multiturn": 6,
+      "cost_cny": 0.1297,
+      "evidence": "releases/v1.0.0/real-run/langfuse-model-traces/failure-multiturn/EVIDENCE.md"
     }
   }
 }

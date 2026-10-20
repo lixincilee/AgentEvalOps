@@ -3,7 +3,7 @@
 [![regression](https://github.com/lixincilee/AgentEvalOps/actions/workflows/regression.yml/badge.svg)](https://github.com/lixincilee/AgentEvalOps/actions/workflows/regression.yml)
 
 > 一个用于练习 **Agent 评测工程（Evaluation Engineering / EvalOps）** 的教学项目。
-> 当前进度 **阶段二 M11（已完成，tag `v1.0.0`）**：确定性 Agent（v1）→ DeepSeek 规划层（v2）→ LangGraph 编排 + 知识库检索 + 多轮会话（v3）→ trace、三层判分、真实压测与 CI 回归门禁。
+> 当前进度 **阶段二 M12（真实模型失败定位与多轮 trace 已完成，待冻结）**：确定性 Agent（v1）→ DeepSeek 规划层（v2）→ LangGraph 编排 + 知识库检索 + 多轮会话（v3）→ trace、三层判分、真实压测与 CI 回归门禁。
 > 三个版本跑在同一批用例、同一判分口径下，产出结构完全相同的 `RunMetrics`，差异才有归因价值。
 
 ## 为什么先做确定性版本
@@ -831,6 +831,13 @@ trace 全部到达（API 3/3 匹配），`Langfuse: live` 且没有生成 dry-ru
 [`releases/v1.0.0/real-run/langfuse-model-traces/EVIDENCE.md`](releases/v1.0.0/real-run/langfuse-model-traces/EVIDENCE.md)。
 边界：只覆盖两个切片，不是 310 条全量模型 trace；方差仍未测。
 
+**失败定位与多轮也补上了（2026-10-20）**：主矩阵 213 条 + 多轮 72 条等共 310 条模型 trace
+（292 条唯一 case-turn）。主矩阵出现 3 条真实失败，分别被定位到推理、检索、状态层；工具层用
+1 条明确标注的合成探针验证。全部 36 条多轮用例（72 轮）判分 0 失败，第二轮
+`slot_source=inherited` 有 trace 证据。另发现 **24/279** 个实际模型调用 turn 因输出不可解析或缺字段
+降级为 `llm-fallback`——任务仍通过，但通过率掩盖了模型协议问题。花费 CNY 0.1297，证据：
+[`releases/v1.0.0/real-run/langfuse-model-traces/failure-multiturn/EVIDENCE.md`](releases/v1.0.0/real-run/langfuse-model-traces/failure-multiturn/EVIDENCE.md)。
+
 ### 脱敏是硬要求
 
 trace 是要入库、要给人看的。API key、`Bearer` 头、邮箱、手机号在写盘前一律替换成 `***`
@@ -900,6 +907,7 @@ L3 总额 1.7245 = 判分 1.5248 + 合成回答 0.1997；L4 总额 0.4885 = 判�
 | **阶段二 M9（已完成，tag `v0.9.0`）** | 判分分层 + 方差 + 门禁 + 把 trace 纳入发布冻结 | L3/L4 `--repeat 3` 方差、`judge_gate.py` 基线门禁、20 条人工抽检（一致率 95%，kappa 0.875）、CI 五 job（L5 阻塞 PR，L3/L4 夜间；证据 §18）、`freeze_release.py` 七项检查（原五项 + trace + judge）、发布冻结 `releases/v0.9.0/`（310 条 trace / L3 65.8% / L4 95.8% / L5 100%） |
 | **阶段二 M10（已完成）** | 付费链路实跑：真实模型判分 + 真实并发 | `DEEPSEEK_API_KEY` secret、`DEEPSEEK_MODEL=deepseek-flash`、`paid_target=both` 手动触发、L3/L4 测量层 `--allow-failures`（PR #5）；run 39251627592：真实对比四臂、133 请求 / P95 1300ms / RPS 4.79 / 成功率 100% / 单次成功 CNY 0.000625、L3 64.5% / L4 95.8% / 门禁 8 项全过，合计 CNY 0.7163（证据 §18.8） |
 | **阶段二 M11（已完成，tag `v1.0.0`）** | 发布冻结：把真实运行证据锚定到版本 | `releases/v1.0.0/`（七项离线检查全过，对 `v0.9.0` 门禁全绿）、`real-run/`（付费 run 原始报告 + `EVIDENCE.md` / `evidence.json`）、3 条 Langfuse trace 链接与 span 树；CI 执法基线升到 `v1.0.0`（证据 §18.9） |
+| **阶段二 M12（已完成，待冻结）** | 真实模型失败定位 + 多轮 trace | 213 条主矩阵 + 72 条多轮等共 310 条模型 trace；3 条真实失败分别定位到推理/检索/状态层；工具层用合成探针验证；24/279 个模型调用 turn 降级为 `llm-fallback`；证据 §16.11 |
 
 ### 评测指标（阶段五要算的东西，现在就能算前六项）
 

@@ -103,9 +103,16 @@ llm
 ## 口径边界
 
 - 这 16 条补齐了此前缺失的 Prompt / 模型响应 / token 证据；训练与线上系统本身不依赖 Langfuse。
-- 16 条只代表两个切片，不是 310 条全量 trace 的模型臂；方差仍未测。
+- 本节 16 条是成功切片，不是 310 条全量 trace 的模型臂；失败定位与多轮 trace 见
+  [`failure-multiturn/EVIDENCE.md`](failure-multiturn/EVIDENCE.md)，方差仍未测。
 - 发送时本机代理失效，改为直连 `jp.cloud.langfuse.com`，并把 SDK 超时从默认 5 秒提高到 60 秒。
 - Langfuse v2 observations 在 SDK 5.0.2 批量导出时会压缩 `startTime` / `endTime`（同一毫秒），
   `latency` 也常为 `null`；因此本文耗时统一取**本地 trace 的 `span.duration_ms`**。
   `llm.plan` 的 span 耗时包含客户端初始化与 SDK 重试，模型本身的调用计时取
   `span.attributes.latency_ms`，两者分别列出。
+
+## 失败定位与多轮
+
+成功切片之外，另有 310 条真实模型 trace 覆盖主矩阵、故障、多轮与难例：3 条真实失败分别定位到
+推理/检索/状态层，工具层用合成探针验证，24/279 个模型调用 turn 降级为 `llm-fallback`。
+见 [`failure-multiturn/EVIDENCE.md`](failure-multiturn/EVIDENCE.md)。

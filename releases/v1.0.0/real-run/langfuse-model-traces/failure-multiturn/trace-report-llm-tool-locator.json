@@ -1,0 +1,50 @@
+{
+  "generated_at": "2026-10-20T13:07:21.153811+00:00",
+  "traces": 1,
+  "failed": 1,
+  "stages": {
+    "tool": 1
+  },
+  "verdicts": [
+    {
+      "case_id": "trace_tool_locator_timeout",
+      "trace_id": "tr_ebe343a991d143d58f4d",
+      "passed": false,
+      "stage": "tool",
+      "detail": "tool-error:TOOL_TIMEOUT",
+      "mismatches": [
+        {
+          "field": "expected_state",
+          "attribute": "state",
+          "expected": "tool_completed",
+          "observed": "tool_failed"
+        },
+        {
+          "field": "expected_error_code",
+          "attribute": "error_code",
+          "expected": null,
+          "observed": "TOOL_TIMEOUT"
+        }
+      ],
+      "observed": {
+        "message": "我的订单 ORD-1001 到哪了",
+        "customer_id": "CUST-001",
+        "session_id": null,
+        "intent": "order_status",
+        "state": "tool_failed",
+        "tool_name": "query_order_status",
+        "error_code": "TOOL_TIMEOUT",
+        "response": "query_order_status 超时（fault 注入）",
+        "plan_source": "llm",
+        "slot_order_id": "ORD-1001",
+        "slot_source": "verbatim",
+        "nodes": [
+          "validate",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    }
+  ]
+}
