@@ -80,6 +80,10 @@ python scripts/regression_gate.py --candidate <候选目录> --baseline v1.0.0
 - 16 条真实模型 Langfuse trace（Prompt / 模型响应 / token / span 树）：
   [`real-run/langfuse-model-traces/EVIDENCE.md`](real-run/langfuse-model-traces/EVIDENCE.md)，
   有效花费 CNY 0.0109；计入一次导出失败重跑后，实际模型花费 CNY 0.0179。
+- 失败定位与多轮 trace：主矩阵 213 条 + 多轮 72 条等共 310 条原始 trace，
+  3 条真实失败分别定位到推理/检索/状态层，工具层另有合成探针；24/279 个模型调用 turn 发生规则臂降级。
+  明细：[`real-run/langfuse-model-traces/failure-multiturn/EVIDENCE.md`](real-run/langfuse-model-traces/failure-multiturn/EVIDENCE.md)，
+  花费 CNY 0.1297。
 - 2026-10-19 真实运行合计 **CNY 0.7163**；真实压测 P95 **1300 ms**、
   RPS **4.787**、任务成功率 **100.0%**、
   单次成功成本 **CNY 0.000624842**。

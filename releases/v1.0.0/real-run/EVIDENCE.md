@@ -84,3 +84,13 @@
 耗时以本地 trace 为准（Langfuse 批量导出的时间戳被压缩）。
 明细与两条代表 trace 的 Prompt/span 树：
 [`langfuse-model-traces/EVIDENCE.md`](langfuse-model-traces/EVIDENCE.md)。
+
+## 真实模型失败定位与多轮 Trace（2026-10-20）
+
+主矩阵 213 条 + 故障/难例/多轮共 310 条原始 trace（292 条去重），全部到达 Langfuse。
+主矩阵出现 **3 条真实失败**，分别定位到推理、检索、状态层；工具层用 1 条明确标注的合成探针验证。
+全部 36 条多轮用例（72 轮）真实模型判分 0 失败，第二轮 `slot_source=inherited` 有 trace 证据。
+另有 **24/279** 个实际模型调用 turn 因输出不可解析或缺字段降级到规则臂（矩阵 18 + 多轮 6）；
+任务仍通过，但通过率掩盖了模型协议问题。
+花费 CNY 0.1297。明细：
+[`langfuse-model-traces/failure-multiturn/EVIDENCE.md`](langfuse-model-traces/failure-multiturn/EVIDENCE.md)。

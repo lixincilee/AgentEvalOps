@@ -1,0 +1,173 @@
+{
+  "generated_at": "2026-10-20T12:59:49.858700+00:00",
+  "traces": 6,
+  "failed": 0,
+  "stages": {},
+  "verdicts": [
+    {
+      "case_id": "flt_timeout_status_01",
+      "trace_id": "tr_9f3c4c8091c34d0dad0a",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "我的订单 ORD-1001 到哪了",
+        "customer_id": "CUST-001",
+        "session_id": null,
+        "intent": "order_status",
+        "state": "tool_failed",
+        "tool_name": "query_order_status",
+        "error_code": "TOOL_TIMEOUT",
+        "response": "query_order_status 超时（fault 注入）",
+        "plan_source": "llm",
+        "slot_order_id": "ORD-1001",
+        "slot_source": "verbatim",
+        "nodes": [
+          "validate",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "flt_timeout_refund_04",
+      "trace_id": "tr_110fe59473f8415086f5",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "订单 ORD-1004 我要退款",
+        "customer_id": "CUST-001",
+        "session_id": null,
+        "intent": "refund",
+        "state": "tool_failed",
+        "tool_name": "apply_refund",
+        "error_code": "TOOL_TIMEOUT",
+        "response": "apply_refund 超时（fault 注入）",
+        "plan_source": "llm",
+        "slot_order_id": "ORD-1004",
+        "slot_source": "verbatim",
+        "nodes": [
+          "validate",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "flt_timeout_retrieval_07",
+      "trace_id": "tr_7e809f58063e4570b469",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "退款政策是怎么规定的",
+        "customer_id": "CUST-001",
+        "session_id": null,
+        "intent": "policy_qa",
+        "state": "tool_failed",
+        "tool_name": "search_knowledge_base",
+        "error_code": "TOOL_TIMEOUT",
+        "response": "search_knowledge_base 超时（fault 注入）",
+        "plan_source": "llm",
+        "slot_order_id": null,
+        "slot_source": null,
+        "nodes": [
+          "validate",
+          "retrieve",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "flt_unavail_status_08",
+      "trace_id": "tr_f1085a6849804975ace0",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "我的订单 ORD-1002 到哪了",
+        "customer_id": "CUST-001",
+        "session_id": null,
+        "intent": "order_status",
+        "state": "tool_failed",
+        "tool_name": "query_order_status",
+        "error_code": "TOOL_UNAVAILABLE",
+        "response": "query_order_status 返回 5xx（fault 注入）",
+        "plan_source": "llm",
+        "slot_order_id": "ORD-1002",
+        "slot_source": "verbatim",
+        "nodes": [
+          "validate",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "flt_unavail_retrieval_13",
+      "trace_id": "tr_010d0fed20804415befe",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "退货运费政策是怎么规定的",
+        "customer_id": "CUST-001",
+        "session_id": null,
+        "intent": "policy_qa",
+        "state": "tool_failed",
+        "tool_name": "search_knowledge_base",
+        "error_code": "TOOL_UNAVAILABLE",
+        "response": "search_knowledge_base 返回 5xx（fault 注入）",
+        "plan_source": "llm",
+        "slot_order_id": null,
+        "slot_source": null,
+        "nodes": [
+          "validate",
+          "retrieve",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "flt_empty_retrieval_14",
+      "trace_id": "tr_02cd13771bf340aab5bf",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "退款政策是怎么规定的",
+        "customer_id": "CUST-001",
+        "session_id": null,
+        "intent": "policy_qa",
+        "state": "no_action",
+        "tool_name": null,
+        "error_code": "NO_KNOWLEDGE",
+        "response": "no supporting document found in the knowledge base",
+        "plan_source": "llm",
+        "slot_order_id": null,
+        "slot_source": null,
+        "nodes": [
+          "validate",
+          "retrieve",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    }
+  ]
+}

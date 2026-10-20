@@ -343,7 +343,7 @@ completion 2442 tokens——与 run1/run3 一致，说明这 9 条是稳定差�
 | ~~真实三方对比（v1 / v2 / v3 / v3-rules）~~ | **已完成**（第 10 节）：四个批次、两个 tag（`v0.5.0` / `v0.5.1`）锚定，`is_reproducible=true`，合计花费 CNY 0.542；并抓到 v3 兜底路径的一个真实缺陷 |
 | ~~重复执行 N 次取稳定值~~ | **已完成**（M6，§14）：规则列跑 5 次零噪声；真实模型 `--repeat 3` 实测噪声 2.5pp（CNY 0.0893） |
 | ~~3 个版本回归对比~~ | **已完成**（M7，§15）：补冻 `releases/v0.6.0/`，`releases/comparisons/v0.6.0-v0.7.0-v0.8.0.json` 三版并排、门禁全绿；**但功能指标三版无区分度**，见 §15.6 ① |
-| ~~Langfuse trace~~ | **已完成并实发验证**（M8 §16；2026-10-19 / 2026-10-20 补验）：本地 JSONL + Langfuse 载荷映射；3 条规则臂 trace 与 **16 条真实模型 trace** 到达 `jp.cloud.langfuse.com`，Prompt / 模型响应 / token / 父子层级全部核对（§16.9 / §16.10） |
+| ~~Langfuse trace~~ | **已完成并实发验证**（M8 §16；2026-10-19 / 2026-10-20 补验）：本地 JSONL + Langfuse 载荷映射；3 条规则臂 + 16 条成功切片 + **310 条失败定位/多轮模型 trace** 到达 `jp.cloud.langfuse.com`；主矩阵 3 条真实失败定位到推理/检索/状态，24/279 个模型调用 turn 降级（§16.9 / §16.10 / §16.11） |
 | ~~故障注入（25 条）~~ | **已完成**（M4，tag `v0.6.0`）：工具超时 / 工具 500 / 空检索 / 模型限流，25/25 全过（§11.1） |
 | ~~并发压测（Locust/k6）~~ | **已完成**（M4，tag `v0.6.0`；真实模型 2026-10-19）：mock / modeled 臂见 §11.2；`nightly-real` 真模型 133 请求、RPS 4.79、P95 1300ms、成功率 100%、单次成功成本 CNY 0.000625（§18.8） |
 | ~~付费 CI（`judge-real` / `nightly-real`）~~ | **已完成**（2026-10-19，run 39251627592）：L3 64.5% / L4 95.8% / 门禁 8/8 通过，判分花费 CNY 0.6058；真实对比 + 压测花费 CNY 0.1105（§18.8） |
@@ -1401,8 +1401,9 @@ M8 在写 trace 的过程中修掉 5 个真 bug（都写进 `docs/tracing.md` §
 | Langfuse SDK 的 API 形状 | **已在 5.0.2 上核对并真实发送**：入口是 `start_observation`；父子层级用 `trace_context.parent_span_id`；区域配置用 `LANGFUSE_BASE_URL`（`LANGFUSE_HOST` 是兼容别名） |
 | HTML 视图的肉眼效果 | **未逐像素核对**。几何、转义、徽标有测试钉住，浏览器里到底长什么样需要人打开确认 |
 | trace 进了发布冻结产物 | **已完成**（M9，tag `v0.9.0`）。`freeze_release.py` 现有七项检查，`releases/v0.9.0/trace/` 含 310 条 trace、定位报告与 HTML 视图 |
-| 310 条 trace 覆盖了模型路径 | **只有 16 条**（§16.5）。剩下 294 条是规则臂：能定位状态与工具问题，回答不了 prompt 问题 |
-| 真实模型 trace 的方差 | **未测**。16 条只跑了一次；`--llm --repeat N` 的成本与延迟方差都还是空白（对照 §13.3 / §14.4） |
+| 310 条 trace 覆盖了模型路径 | 冻结集里**只有 16 条**（§16.5）；2026-10-20 另跑 213 条主矩阵 + 72 条多轮模型 trace（§16.11），但 RAG 48 条尚未全量重跑 |
+| 真实模型 trace 的方差 | **未测**。16 条成功切片与 213 条主矩阵都只跑了一次；`--llm --repeat N` 的通过率/延迟方差仍是空白（对照 §13.3 / §14.4） |
+| 模型输出可解析率 | **已量化一次**：主矩阵 18/207、多轮 6/72 发生 `llm-fallback`，合计 24/279 个模型调用 turn（§16.11）；任务仍通过，但模型格式问题被兜底掩盖 |
 
 ### 16.9 真实发送补验（2026-10-19）
 
@@ -1502,6 +1503,56 @@ Langfuse 导出超时导致的重跑，模型调用 CNY 0.0070，未计入有效
 `startTime` / `endTime`（同一毫秒），`latency` 也常为 `null`，因此证据里的耗时统一取本地
 trace 的 `span.duration_ms`；`llm.plan` 的 span 耗时包含客户端初始化与 SDK 重试，模型调用
 计时另取 `span.attributes.latency_ms`。
+
+### 16.11 真实模型失败定位与多轮补验（2026-10-20）
+
+§16.10 的 16 条 trace 全部通过，只能证明「记录得到」，不能证明「失败能定位」。这一节把模型臂
+扩大到完整主矩阵、故障、多轮和难例：
+
+```powershell
+$env:LANGFUSE_TIMEOUT = "60"
+.venv-trace\Scripts\python.exe scripts\trace_run.py `
+  --cases eval_cases\case_matrix_v2.jsonl `
+  --llm --yes --budget 0.35 --langfuse `
+  --run-id trace-evidence-matrix-full-20261020 `
+  --out reports\traces-langfuse-llm-matrix-full.jsonl
+
+.venv-trace\Scripts\python.exe scripts\trace_run.py `
+  --multiturn eval_cases\multiturn_cases.jsonl `
+  --llm --yes --budget 0.1 --langfuse `
+  --run-id trace-evidence-multiturn-full-20261020 `
+  --out reports\traces-langfuse-llm-multiturn-full.jsonl
+```
+
+合计 310 条原始 trace（292 条唯一 case-turn），全部到达 Langfuse；其中 304 条有
+`GENERATION`（6 条在模型调用前被请求校验拦下），Prompt / 输出 / usage 304/304 非空，
+span 树 310/310 与本地一致。花费 **CNY 0.1297**。
+
+**主矩阵 213 条：3 条真实失败。**
+
+| case | 定位 | 期望 → 实际 | 说明 |
+| --- | --- | --- | --- |
+| `v2_err_unsupported_04` | reasoning / intent | unknown/no_action → order_status/tool_completed | 「订单 ORD-1001 多少钱」被模型判成查单并调用工具 |
+| `v2_err_validation_01` | retrieval / no-grounding | refund/validation_failed → policy_qa/NO_KNOWLEDGE | 「退款怎么操作」被判成政策问答，检索无依据后拒答 |
+| `v2_safe_escalation_01` | state / missing-slot | unknown/no_action → order_status/validation_failed | 报告按固定优先级落在 state，但差异显示上游意图先偏；这是定位规则待改进项 |
+
+工具层的非预期失败没有在真实矩阵出现，因此补了一条**明确标注的合成探针**：
+注入查单超时但期望成功，`trace_report.py` 正确落到 `tool`。它不是产品缺陷，只验证定位链路。
+
+**多轮 36 条用例 / 72 轮：0 条失败。** 第二轮 `mt_ref_01#t1` 的
+`slot_source=inherited`、`slot_order_id=ORD-1001`，每轮都有 `state.update` span。
+
+**通过率掩盖的问题**：主矩阵 18/207、多轮 6/72，合计 **24/279** 个模型调用 turn 标记
+`plan_source=llm-fallback`——模型输出不是合法 JSON 或缺字段，规则臂兜底后任务仍然正确。
+例如 `mt_ref_03#t1` 的 `parse=not-json`，但继承槽位后退款成功。只看通过率会把这 24 条
+算成「全对」；trace 才把它暴露成模型格式/协议问题。
+
+人读证据（含 7 条代表 trace 的 Prompt、模型输出和 span 树）：
+[`releases/v1.0.0/real-run/langfuse-model-traces/failure-multiturn/EVIDENCE.md`](../releases/v1.0.0/real-run/langfuse-model-traces/failure-multiturn/EVIDENCE.md)。
+
+**边界**：主矩阵 + 故障 + 多轮是模型臂，RAG 48 条没有全量重跑；3 条失败和 24 条降级都是
+单次运行结果，不能当稳定失败率；模型方差仍未测。状态层那条的定位存在优先级歧义，
+应作为 `trace_report.py` 的改进项。
 ## 17. 证据十三：M9 判分分层 —— 同一批用例，三种判分口径
 
 pytest 能判「状态 / 意图 / 工具名 / 参数 / 错误码」，判不了「回答里的数字是不是资料里真有」、
@@ -1723,7 +1774,8 @@ D:\Python\python.exe scripts\judge_gate.py --l3 reports/l3-ragas.json --l4 repor
 `judge_baseline.json`、`review-summary-v1.json`。
 
 **边界**：这仍是本机离线冻结。冻结时 GitHub Actions 尚未运行（随后已跑通，见 §18.7）；Langfuse 出口随后已补验（§16.9）；
-L3/L4 报告是冻结前既有的多轮运行结果，不是冻结时重跑；trace 的模型臂只有 16 条。
+L3/L4 报告是冻结前既有的多轮运行结果，不是冻结时重跑；v0.9.0 冻结时 trace 的模型臂只有 16 条，
+2026-10-20 已扩到 310 条（§16.11）。
 
 ### 18.7 GitHub Actions 首次真实运行
 
@@ -1833,6 +1885,6 @@ D:\Python\python.exe scripts/freeze_release.py --tag v1.0.0 --gate-against relea
 `releases/v1.0.0/real-run/EVIDENCE.md`。
 
 **边界**：离线冻结的压测仍是 modeled 臂；真实压测只有 5 用户一档；L3/L4 各 2 轮；
-Langfuse 的 16 条真实模型 trace 已于 2026-10-20 补发（§16.10），但仍只覆盖两个切片，
-不是 310 条全量。这些边界不影响“发布锚定 + 原始证据可追溯”，
+Langfuse 已有 310 条失败定位/多轮模型 trace（§16.11），但 RAG 48 条尚未全量重跑，
+模型方差仍未测。这些边界不影响“发布锚定 + 原始证据可追溯”，
 但都不能读成容量或统计显著性结论。

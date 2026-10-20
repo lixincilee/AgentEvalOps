@@ -1,0 +1,332 @@
+{
+  "generated_at": "2026-10-20T12:59:49.093379+00:00",
+  "traces": 12,
+  "failed": 0,
+  "stages": {},
+  "verdicts": [
+    {
+      "case_id": "mt_ref_01#t0",
+      "trace_id": "tr_059851241744466cb756",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "帮我查一下订单 ORD-1001 现在到哪了",
+        "customer_id": "CUST-001",
+        "session_id": "MT-001",
+        "intent": "order_status",
+        "state": "tool_completed",
+        "tool_name": "query_order_status",
+        "error_code": null,
+        "response": "request completed",
+        "plan_source": "llm",
+        "slot_order_id": "ORD-1001",
+        "slot_source": "verbatim",
+        "nodes": [
+          "validate",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "mt_ref_01#t1",
+      "trace_id": "tr_f79caa332eea42df9302",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "这个订单现在什么状态了",
+        "customer_id": "CUST-001",
+        "session_id": "MT-001",
+        "intent": "order_status",
+        "state": "tool_completed",
+        "tool_name": "query_order_status",
+        "error_code": null,
+        "response": "request completed",
+        "plan_source": "llm-fallback",
+        "slot_order_id": "ORD-1001",
+        "slot_source": "inherited",
+        "nodes": [
+          "validate",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "mt_ref_02#t0",
+      "trace_id": "tr_4e3aab928e5b40beb719",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "订单 ORD-1004 的物流到哪了",
+        "customer_id": "CUST-001",
+        "session_id": "MT-002",
+        "intent": "order_status",
+        "state": "tool_completed",
+        "tool_name": "query_order_status",
+        "error_code": null,
+        "response": "request completed",
+        "plan_source": "llm",
+        "slot_order_id": "ORD-1004",
+        "slot_source": "verbatim",
+        "nodes": [
+          "validate",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "mt_ref_02#t1",
+      "trace_id": "tr_3d9f259b2aac4325afdd",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "那笔我要退款",
+        "customer_id": "CUST-001",
+        "session_id": "MT-002",
+        "intent": "refund",
+        "state": "tool_completed",
+        "tool_name": "apply_refund",
+        "error_code": null,
+        "response": "request completed",
+        "plan_source": "llm",
+        "slot_order_id": "ORD-1004",
+        "slot_source": "inherited",
+        "nodes": [
+          "validate",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "mt_ref_03#t0",
+      "trace_id": "tr_ca19b4bbf1924acbbd4d",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "订单 ORD-1002 现在到哪了",
+        "customer_id": "CUST-001",
+        "session_id": "MT-003",
+        "intent": "order_status",
+        "state": "tool_completed",
+        "tool_name": "query_order_status",
+        "error_code": null,
+        "response": "request completed",
+        "plan_source": "llm",
+        "slot_order_id": "ORD-1002",
+        "slot_source": "verbatim",
+        "nodes": [
+          "validate",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "mt_ref_03#t1",
+      "trace_id": "tr_e339e5be9bd64b08b2f7",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "它现在还能退款吗",
+        "customer_id": "CUST-001",
+        "session_id": "MT-003",
+        "intent": "refund",
+        "state": "tool_completed",
+        "tool_name": "apply_refund",
+        "error_code": null,
+        "response": "request completed",
+        "plan_source": "llm",
+        "slot_order_id": "ORD-1002",
+        "slot_source": "inherited",
+        "nodes": [
+          "validate",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "mt_ref_04#t0",
+      "trace_id": "tr_b81d6a05efd84ef5ae9c",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "帮我查下订单 ORD-1005 到哪了",
+        "customer_id": "CUST-001",
+        "session_id": "MT-004",
+        "intent": "order_status",
+        "state": "tool_completed",
+        "tool_name": "query_order_status",
+        "error_code": null,
+        "response": "request completed",
+        "plan_source": "llm",
+        "slot_order_id": "ORD-1005",
+        "slot_source": "verbatim",
+        "nodes": [
+          "validate",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "mt_ref_04#t1",
+      "trace_id": "tr_7a2dc1d7a5944942978b",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "这一单我要投诉，给我转人工",
+        "customer_id": "CUST-001",
+        "session_id": "MT-004",
+        "intent": "human_handoff",
+        "state": "tool_completed",
+        "tool_name": "create_human_ticket",
+        "error_code": null,
+        "response": "request completed",
+        "plan_source": "llm-fallback",
+        "slot_order_id": "ORD-1005",
+        "slot_source": "inherited",
+        "nodes": [
+          "validate",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "mt_ref_05#t0",
+      "trace_id": "tr_6a5c3ca31b034bf38025",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "订单 ORD-2001 现在到哪了",
+        "customer_id": "CUST-002",
+        "session_id": "MT-005",
+        "intent": "order_status",
+        "state": "tool_completed",
+        "tool_name": "query_order_status",
+        "error_code": null,
+        "response": "request completed",
+        "plan_source": "llm",
+        "slot_order_id": "ORD-2001",
+        "slot_source": "verbatim",
+        "nodes": [
+          "validate",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "mt_ref_05#t1",
+      "trace_id": "tr_f053290452de47dfa5a5",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "这个订单的状态怎么一直不变",
+        "customer_id": "CUST-002",
+        "session_id": "MT-005",
+        "intent": "order_status",
+        "state": "tool_completed",
+        "tool_name": "query_order_status",
+        "error_code": null,
+        "response": "request completed",
+        "plan_source": "llm-fallback",
+        "slot_order_id": "ORD-2001",
+        "slot_source": "inherited",
+        "nodes": [
+          "validate",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "mt_ref_06#t0",
+      "trace_id": "tr_dc9559dedf1e47349c9c",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "订单 ORD-2002 的物流到哪了",
+        "customer_id": "CUST-002",
+        "session_id": "MT-006",
+        "intent": "order_status",
+        "state": "tool_completed",
+        "tool_name": "query_order_status",
+        "error_code": null,
+        "response": "request completed",
+        "plan_source": "llm",
+        "slot_order_id": "ORD-2002",
+        "slot_source": "verbatim",
+        "nodes": [
+          "validate",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "mt_ref_06#t1",
+      "trace_id": "tr_6b0570f4276d4a0b87e9",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "这个订单我要退款",
+        "customer_id": "CUST-002",
+        "session_id": "MT-006",
+        "intent": "refund",
+        "state": "tool_completed",
+        "tool_name": "apply_refund",
+        "error_code": null,
+        "response": "request completed",
+        "plan_source": "llm-fallback",
+        "slot_order_id": "ORD-2002",
+        "slot_source": "inherited",
+        "nodes": [
+          "validate",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    }
+  ]
+}
