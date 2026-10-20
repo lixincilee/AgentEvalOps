@@ -343,7 +343,7 @@ completion 2442 tokens——与 run1/run3 一致，说明这 9 条是稳定差�
 | ~~真实三方对比（v1 / v2 / v3 / v3-rules）~~ | **已完成**（第 10 节）：四个批次、两个 tag（`v0.5.0` / `v0.5.1`）锚定，`is_reproducible=true`，合计花费 CNY 0.542；并抓到 v3 兜底路径的一个真实缺陷 |
 | ~~重复执行 N 次取稳定值~~ | **已完成**（M6，§14）：规则列跑 5 次零噪声；真实模型 `--repeat 3` 实测噪声 2.5pp（CNY 0.0893） |
 | ~~3 个版本回归对比~~ | **已完成**（M7，§15）：补冻 `releases/v0.6.0/`，`releases/comparisons/v0.6.0-v0.7.0-v0.8.0.json` 三版并排、门禁全绿；**但功能指标三版无区分度**，见 §15.6 ① |
-| ~~Langfuse trace~~ | **已完成并实发验证**（M8 §16；2026-10-19 补验）：本地 JSONL + Langfuse 载荷映射；3 条规则臂 trace 真实到达 `jp.cloud.langfuse.com`，API 3/3 匹配、父子层级正确（§16.9） |
+| ~~Langfuse trace~~ | **已完成并实发验证**（M8 §16；2026-10-19 / 2026-10-20 补验）：本地 JSONL + Langfuse 载荷映射；3 条规则臂 trace 与 **16 条真实模型 trace** 到达 `jp.cloud.langfuse.com`，Prompt / 模型响应 / token / 父子层级全部核对（§16.9 / §16.10） |
 | ~~故障注入（25 条）~~ | **已完成**（M4，tag `v0.6.0`）：工具超时 / 工具 500 / 空检索 / 模型限流，25/25 全过（§11.1） |
 | ~~并发压测（Locust/k6）~~ | **已完成**（M4，tag `v0.6.0`；真实模型 2026-10-19）：mock / modeled 臂见 §11.2；`nightly-real` 真模型 133 请求、RPS 4.79、P95 1300ms、成功率 100%、单次成功成本 CNY 0.000625（§18.8） |
 | ~~付费 CI（`judge-real` / `nightly-real`）~~ | **已完成**（2026-10-19，run 39251627592）：L3 64.5% / L4 95.8% / 门禁 8/8 通过，判分花费 CNY 0.6058；真实对比 + 压测花费 CNY 0.1105（§18.8） |
@@ -1397,7 +1397,7 @@ M8 在写 trace 的过程中修掉 5 个真 bug（都写进 `docs/tracing.md` §
 
 | 声明 | 状态 |
 | --- | --- |
-| 有 trace 真的到过 Langfuse 服务 | **已补验（2026-10-19，§16.9）**：3 条规则臂 trace 到达 `jp.cloud.langfuse.com`，v2 observations API 3/3 匹配；之前只验证过载荷映射、dry-run 降级与假 client 调用序列 |
+| 有 trace 真的到过 Langfuse 服务 | **已补验（2026-10-19 / 2026-10-20，§16.9 / §16.10）**：3 条规则臂 trace + 16 条真实模型 trace 到达 `jp.cloud.langfuse.com`；模型 trace 的 Prompt / 输出 / usage 16/16 非空，span 树 16/16 与本地一致 |
 | Langfuse SDK 的 API 形状 | **已在 5.0.2 上核对并真实发送**：入口是 `start_observation`；父子层级用 `trace_context.parent_span_id`；区域配置用 `LANGFUSE_BASE_URL`（`LANGFUSE_HOST` 是兼容别名） |
 | HTML 视图的肉眼效果 | **未逐像素核对**。几何、转义、徽标有测试钉住，浏览器里到底长什么样需要人打开确认 |
 | trace 进了发布冻结产物 | **已完成**（M9，tag `v0.9.0`）。`freeze_release.py` 现有七项检查，`releases/v0.9.0/trace/` 含 310 条 trace、定位报告与 HTML 视图 |
@@ -1448,9 +1448,60 @@ Langfuse  : live
 项目 ID `cmvf9rprr002mad0k9ckxaig4`，可直接打开
 [`status_shipped_zh` 的 trace](https://jp.cloud.langfuse.com/project/cmvf9rprr002mad0k9ckxaig4/traces/39ff1895e6a037d8a50e02872b68635e)。
 
-**边界**：这 3 条是零成本规则臂，证明的是链路与层级，不是模型 span 的质量；Langfuse 新版组织
+**边界**：这 3 条是零成本规则臂，证明的是链路与层级，不是模型 span 的质量；真实模型 span 的补验见
+§16.10。Langfuse 新版组织
 已经停用 `/api/public/traces`（返回 410 `LEGACY_API_UNAVAILABLE_FOR_NEW_ORGANIZATION`），
 核对脚本用的是 `/api/public/v2/observations`。UI 的肉眼效果仍建议人工打开一次确认。
+
+### 16.10 真实模型 trace 补验（2026-10-20）
+
+规则臂只能证明「链路通」，证明不了 `llm.plan` 上真的有 Prompt、模型回答和 token。M8 的 16 条
+真实模型 trace 当时只落了本地 JSONL；本节把这 16 条重新跑到 Langfuse，补齐模型 span 证据。
+
+```powershell
+$env:LANGFUSE_TIMEOUT = "60"
+.venv-trace\Scripts\python.exe scripts\trace_run.py `
+  --cases eval_cases\case_matrix_v2.jsonl --limit 10 `
+  --llm --yes --budget 0.2 --langfuse `
+  --out reports\traces-langfuse-llm-matrix.jsonl
+
+.venv-trace\Scripts\python.exe scripts\trace_run.py `
+  --cases eval_cases\rag_cases.jsonl --limit 6 `
+  --llm --yes --budget 0.2 --langfuse `
+  --out reports\traces-langfuse-llm-rag.jsonl
+```
+
+核对仍然不靠「脚本说 live」，而是回查 `GET /api/public/v2/observations`，并同时满足：
+
+| 检查 | 结果 |
+| --- | --- |
+| trace 到达 | 16/16 |
+| `GENERATION` span | 16/16 |
+| Prompt 输入非空 | 16/16 |
+| 模型输出非空 | 16/16 |
+| usage 非空 | 16/16 |
+| `metadata.parent_name` 与本地 `parent_id` 一致 | 16/16 |
+
+代表 trace：
+
+| 切片 | case_id | Langfuse trace |
+| --- | --- | --- |
+| 主矩阵 | `v2_status_zh_01` | [打开](https://jp.cloud.langfuse.com/project/cmvf9rprr002mad0k9ckxaig4/traces/2d5696d177bdf0efea4978661d09265f) |
+| RAG | `rag_refund_window` | [打开](https://jp.cloud.langfuse.com/project/cmvf9rprr002mad0k9ckxaig4/traces/e2554060d905cc581ee04cea76319516) |
+
+人读证据（含两棵 span 树、Prompt 与模型输出）：
+[`releases/v1.0.0/real-run/langfuse-model-traces/EVIDENCE.md`](../releases/v1.0.0/real-run/langfuse-model-traces/EVIDENCE.md)；
+机器可读明细：`model-traces.json`。
+
+**口径**：有效运行花费 CNY 0.0067（矩阵）+ CNY 0.0042（RAG）= **CNY 0.0109**。另有一次
+Langfuse 导出超时导致的重跑，模型调用 CNY 0.0070，未计入有效证据；实际模型花费合计
+**CNY 0.0179**。
+
+**边界**：16 条只覆盖主矩阵与 RAG 两个切片，不是 310 条全量 trace 的模型臂；只跑了一次，
+模型路径的通过率 / 延迟方差仍未测。Langfuse v2 observations 在 SDK 5.0.2 批量导出时会压缩
+`startTime` / `endTime`（同一毫秒），`latency` 也常为 `null`，因此证据里的耗时统一取本地
+trace 的 `span.duration_ms`；`llm.plan` 的 span 耗时包含客户端初始化与 SDK 重试，模型调用
+计时另取 `span.attributes.latency_ms`。
 ## 17. 证据十三：M9 判分分层 —— 同一批用例，三种判分口径
 
 pytest 能判「状态 / 意图 / 工具名 / 参数 / 错误码」，判不了「回答里的数字是不是资料里真有」、
@@ -1775,11 +1826,13 @@ D:\Python\python.exe scripts/freeze_release.py --tag v1.0.0 --gate-against relea
 | `real-run/l3-ragas.*` / `l4-deepeval.*` / `l5-promptfoo.*` | 付费 run 的三层判分报告 |
 | `real-run/langfuse-traces.json` / `langfuse-trace-tree.json` | 3/3 API 核对结果与 span 树 |
 | `real-run/traces-langfuse-live.jsonl` / `trace-langfuse-live.*` | 本地 trace 与定位报告 |
+| `real-run/langfuse-model-traces/` | 16 条真实模型 trace：`EVIDENCE.md`、`model-traces.json`、两个切片的原始 trace 与定位报告 |
 
-真实运行合计 **CNY 0.7163**；真实压测 P95 **1300ms**、RPS **4.787**、任务成功率 **100%**、
+2026-10-19 真实运行合计 **CNY 0.7163**；真实压测 P95 **1300ms**、RPS **4.787**、任务成功率 **100%**、
 单次成功任务成本 **CNY 0.000625**。Langfuse 3 条 trace 的 ID 与链接见
 `releases/v1.0.0/real-run/EVIDENCE.md`。
 
 **边界**：离线冻结的压测仍是 modeled 臂；真实压测只有 5 用户一档；L3/L4 各 2 轮；
-Langfuse 的 3 条是规则臂，真实模型 span 尚未实发。这些边界不影响“发布锚定 + 原始证据可追溯”，
+Langfuse 的 16 条真实模型 trace 已于 2026-10-20 补发（§16.10），但仍只覆盖两个切片，
+不是 310 条全量。这些边界不影响“发布锚定 + 原始证据可追溯”，
 但都不能读成容量或统计显著性结论。

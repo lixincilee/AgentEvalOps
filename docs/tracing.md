@@ -114,6 +114,17 @@ $env:LANGFUSE_BASE_URL = "https://cloud.langfuse.com"
 SDK 只装在 `.venv-trace`（`langfuse==5.0.2`）；用系统 Python 跑会得到 `dry-run:no-sdk`。
 不加 `--llm` 时走零成本规则臂，足以验证 trace 是否真的到达 Langfuse。
 
+**真实模型 trace 也已实发（2026-10-20）**：主矩阵 10 条 + RAG 6 条，共 16 条
+（`--llm --yes --budget 0.2`）。回查 `/api/public/v2/observations` 得到 16/16 trace、
+16/16 `GENERATION` span；每条 Prompt、模型输出、usage 都非空，`metadata.parent_name`
+与本地 `parent_id` 16/16 一致。两条代表 trace 与完整 span 树见
+[`releases/v1.0.0/real-run/langfuse-model-traces/EVIDENCE.md`](../releases/v1.0.0/real-run/langfuse-model-traces/EVIDENCE.md)。
+
+注意：Langfuse v2 observations 在 SDK 5.0.2 批量导出时会压缩 `startTime` / `endTime`，
+`latency` 也常为 `null`；**耗时以本地 trace 的 `span.duration_ms` 为准**。`llm.plan` 的
+span 耗时包含客户端初始化与 SDK 重试，模型本身的调用计时在
+`span.attributes.latency_ms`，两者要分开读。
+
 ## 6. 失败定位规则
 
 规则表在 `scripts/trace_report.py` 的模块文档里，优先级从硬事实到间接证据：
@@ -145,11 +156,11 @@ SDK 只装在 `.venv-trace`（`langfuse==5.0.2`）；用系统 Python 跑会得�
 
 | 声明 | 状态 |
 | --- | --- |
-| 有 trace 真的到过 Langfuse 服务 | **已验证（2026-10-19）**：3 条规则臂 trace 到达 `jp.cloud.langfuse.com`，`Langfuse: live`，v2 observations API 3/3 匹配；现场记录见 `docs/stage2-evidence.md` §16.9 |
+| 有 trace 真的到过 Langfuse 服务 | **已验证（2026-10-19 / 2026-10-20）**：3 条规则臂 trace + 16 条真实模型 trace 到达 `jp.cloud.langfuse.com`；模型 trace 的 Prompt / 输出 / usage 16/16 非空，span 树 16/16 与本地一致；现场记录见 `docs/stage2-evidence.md` §16.9 / §16.10 |
 | Langfuse SDK 的 API 形状 | **已在 5.0.2 上核对并真实发送**：入口是 `start_observation`，父子层级用 `trace_context`（`trace_id` / `parent_span_id`）；区域用 `LANGFUSE_BASE_URL`（`LANGFUSE_HOST` 为兼容别名） |
 | HTML 视图在浏览器里的实际渲染 | **未逐像素核对**。结构（几何、转义、徽标）有测试钉住，肉眼效果需要在浏览器里打开确认 |
 | trace 进了发布冻结产物 | **已完成**（M9，tag `v0.9.0`）。`freeze_release.py` 现在跑七项检查，`releases/v0.9.0/trace/` 含 310 条 trace、定位报告与 HTML 视图 |
-| 真实模型路径的 trace | **跑过了，但只有 16 条**（CNY 0.0057）。`llm.plan` 上带真实 prompt / 回答 / token / 延迟；方差未测（只跑了一次）。其余 294 条是规则臂——能定位状态与工具问题，回答不了 prompt 问题 |
+| 真实模型路径的 trace | **本地 16 条 + Langfuse 16 条**（本地 CNY 0.0057；Langfuse 有效 CNY 0.0109，另计失败重跑后实际 CNY 0.0179）。`llm.plan` 上带真实 prompt / 回答 / token / 延迟；方差未测（只跑了一次）。310 条全量里其余 294 条仍是规则臂——能定位状态与工具问题，回答不了 prompt 问题 |
 | `--llm` 的接线（预算闸门、注入客户端也过账本、故障轮用真实规划器） | **有测试钉住**：`tests/test_trace_run.py` 16 条，全程不联网（注入 `ScriptedLLMClient`） |
 
 ## 8. 已经踩过的坑

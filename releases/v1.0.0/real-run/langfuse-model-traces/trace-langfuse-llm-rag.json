@@ -1,0 +1,176 @@
+{
+  "generated_at": "2026-10-20T02:13:29.995115+00:00",
+  "traces": 6,
+  "failed": 0,
+  "stages": {},
+  "verdicts": [
+    {
+      "case_id": "rag_refund_window",
+      "trace_id": "tr_f5a7f82d2e4446a4aad1",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "退款政策里无理由退款的期限是怎么规定的",
+        "customer_id": "CUST-001",
+        "session_id": null,
+        "intent": "policy_qa",
+        "state": "tool_completed",
+        "tool_name": "search_knowledge_base",
+        "error_code": null,
+        "response": "request completed",
+        "plan_source": "llm",
+        "slot_order_id": null,
+        "slot_source": null,
+        "nodes": [
+          "validate",
+          "retrieve",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "rag_refund_arrival",
+      "trace_id": "tr_88ecc07d6c904964b772",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "退款到账时间是多久",
+        "customer_id": "CUST-001",
+        "session_id": null,
+        "intent": "policy_qa",
+        "state": "tool_completed",
+        "tool_name": "search_knowledge_base",
+        "error_code": null,
+        "response": "request completed",
+        "plan_source": "llm",
+        "slot_order_id": null,
+        "slot_source": null,
+        "nodes": [
+          "validate",
+          "retrieve",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "rag_return_window",
+      "trace_id": "tr_b39e83bd3e0740b98643",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "退货申请要在签收后几天内提交",
+        "customer_id": "CUST-002",
+        "session_id": null,
+        "intent": "policy_qa",
+        "state": "tool_completed",
+        "tool_name": "search_knowledge_base",
+        "error_code": null,
+        "response": "request completed",
+        "plan_source": "llm",
+        "slot_order_id": null,
+        "slot_source": null,
+        "nodes": [
+          "validate",
+          "retrieve",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "rag_freight_conflict",
+      "trace_id": "tr_4795959db7c446f29204",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "退货运费承担标准是怎么规定的",
+        "customer_id": "CUST-001",
+        "session_id": null,
+        "intent": "policy_qa",
+        "state": "tool_completed",
+        "tool_name": "search_knowledge_base",
+        "error_code": null,
+        "response": "request completed",
+        "plan_source": "llm",
+        "slot_order_id": null,
+        "slot_source": null,
+        "nodes": [
+          "validate",
+          "retrieve",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "rag_shipping_sla",
+      "trace_id": "tr_de9e4f5119b144b09c2b",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "发货时效是多久",
+        "customer_id": "CUST-002",
+        "session_id": null,
+        "intent": "policy_qa",
+        "state": "tool_completed",
+        "tool_name": "search_knowledge_base",
+        "error_code": null,
+        "response": "request completed",
+        "plan_source": "llm",
+        "slot_order_id": null,
+        "slot_source": null,
+        "nodes": [
+          "validate",
+          "retrieve",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "rag_shipping_promo",
+      "trace_id": "tr_8e2b661491fa4566869f",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "大促期间发货时效有什么规定",
+        "customer_id": "CUST-001",
+        "session_id": null,
+        "intent": "policy_qa",
+        "state": "tool_completed",
+        "tool_name": "search_knowledge_base",
+        "error_code": null,
+        "response": "request completed",
+        "plan_source": "llm",
+        "slot_order_id": null,
+        "slot_source": null,
+        "nodes": [
+          "validate",
+          "retrieve",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    }
+  ]
+}

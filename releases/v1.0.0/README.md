@@ -77,6 +77,9 @@ python scripts/regression_gate.py --candidate <候选目录> --baseline v1.0.0
 - GitHub Actions：[run 39251627592](https://github.com/lixincilee/AgentEvalOps/actions/runs/39251627592)，提交 `cff5b09`。
 - 详细报告与 trace 链接：[`real-run/EVIDENCE.md`](real-run/EVIDENCE.md)。
 - 机器可读摘要：[`real-run/evidence.json`](real-run/evidence.json)。
-- 花费合计 **CNY 0.7163**；真实压测 P95 **1300 ms**、
+- 16 条真实模型 Langfuse trace（Prompt / 模型响应 / token / span 树）：
+  [`real-run/langfuse-model-traces/EVIDENCE.md`](real-run/langfuse-model-traces/EVIDENCE.md)，
+  有效花费 CNY 0.0109；计入一次导出失败重跑后，实际模型花费 CNY 0.0179。
+- 2026-10-19 真实运行合计 **CNY 0.7163**；真实压测 P95 **1300 ms**、
   RPS **4.787**、任务成功率 **100.0%**、
   单次成功成本 **CNY 0.000624842**。
