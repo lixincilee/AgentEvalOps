@@ -104,7 +104,9 @@ llm
 
 - 这 16 条补齐了此前缺失的 Prompt / 模型响应 / token 证据；训练与线上系统本身不依赖 Langfuse。
 - 本节 16 条是成功切片，不是 310 条全量 trace 的模型臂；失败定位与多轮 trace 见
-  [`failure-multiturn/EVIDENCE.md`](failure-multiturn/EVIDENCE.md)，方差仍未测。
+  [`failure-multiturn/EVIDENCE.md`](failure-multiturn/EVIDENCE.md)；后续方差见
+  [`variance-repeat3/EVIDENCE.md`](variance-repeat3/EVIDENCE.md)，RAG 48 与故障 25 全量模型臂见
+  [`rag-fault-full/EVIDENCE.md`](rag-fault-full/EVIDENCE.md)。
 - 发送时本机代理失效，改为直连 `jp.cloud.langfuse.com`，并把 SDK 超时从默认 5 秒提高到 60 秒。
 - Langfuse v2 observations 在 SDK 5.0.2 批量导出时会压缩 `startTime` / `endTime`（同一毫秒），
   `latency` 也常为 `null`；因此本文耗时统一取**本地 trace 的 `span.duration_ms`**。

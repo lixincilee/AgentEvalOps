@@ -1,0 +1,1352 @@
+{
+  "generated_at": "2026-10-20T14:14:03.445042+00:00",
+  "traces": 48,
+  "failed": 0,
+  "stages": {},
+  "verdicts": [
+    {
+      "case_id": "rag_refund_window",
+      "trace_id": "tr_b93767c1a3a04ad093dd",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "退款政策里无理由退款的期限是怎么规定的",
+        "customer_id": "CUST-001",
+        "session_id": null,
+        "intent": "policy_qa",
+        "state": "tool_completed",
+        "tool_name": "search_knowledge_base",
+        "error_code": null,
+        "response": "request completed",
+        "plan_source": "llm",
+        "slot_order_id": null,
+        "slot_source": null,
+        "nodes": [
+          "validate",
+          "retrieve",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "rag_refund_arrival",
+      "trace_id": "tr_6257ee9648224c17a081",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "退款到账时间是多久",
+        "customer_id": "CUST-001",
+        "session_id": null,
+        "intent": "policy_qa",
+        "state": "tool_completed",
+        "tool_name": "search_knowledge_base",
+        "error_code": null,
+        "response": "request completed",
+        "plan_source": "llm",
+        "slot_order_id": null,
+        "slot_source": null,
+        "nodes": [
+          "validate",
+          "retrieve",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "rag_return_window",
+      "trace_id": "tr_33b8cb04cebd483f9e18",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "退货申请要在签收后几天内提交",
+        "customer_id": "CUST-002",
+        "session_id": null,
+        "intent": "policy_qa",
+        "state": "tool_completed",
+        "tool_name": "search_knowledge_base",
+        "error_code": null,
+        "response": "request completed",
+        "plan_source": "llm",
+        "slot_order_id": null,
+        "slot_source": null,
+        "nodes": [
+          "validate",
+          "retrieve",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "rag_freight_conflict",
+      "trace_id": "tr_87232c4477d04df2beec",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "退货运费承担标准是怎么规定的",
+        "customer_id": "CUST-001",
+        "session_id": null,
+        "intent": "policy_qa",
+        "state": "tool_completed",
+        "tool_name": "search_knowledge_base",
+        "error_code": null,
+        "response": "request completed",
+        "plan_source": "llm",
+        "slot_order_id": null,
+        "slot_source": null,
+        "nodes": [
+          "validate",
+          "retrieve",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "rag_shipping_sla",
+      "trace_id": "tr_f37180d8b62c4ef8aaf9",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "发货时效是多久",
+        "customer_id": "CUST-002",
+        "session_id": null,
+        "intent": "policy_qa",
+        "state": "tool_completed",
+        "tool_name": "search_knowledge_base",
+        "error_code": null,
+        "response": "request completed",
+        "plan_source": "llm",
+        "slot_order_id": null,
+        "slot_source": null,
+        "nodes": [
+          "validate",
+          "retrieve",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "rag_shipping_promo",
+      "trace_id": "tr_0310f89cb0be4c6db403",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "大促期间发货时效有什么规定",
+        "customer_id": "CUST-001",
+        "session_id": null,
+        "intent": "policy_qa",
+        "state": "tool_completed",
+        "tool_name": "search_knowledge_base",
+        "error_code": null,
+        "response": "request completed",
+        "plan_source": "llm",
+        "slot_order_id": null,
+        "slot_source": null,
+        "nodes": [
+          "validate",
+          "retrieve",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "rag_warranty_term",
+      "trace_id": "tr_e79f2caea2fa4d7cba31",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "保修期是多久",
+        "customer_id": "CUST-002",
+        "session_id": null,
+        "intent": "policy_qa",
+        "state": "tool_completed",
+        "tool_name": "search_knowledge_base",
+        "error_code": null,
+        "response": "request completed",
+        "plan_source": "llm",
+        "slot_order_id": null,
+        "slot_source": null,
+        "nodes": [
+          "validate",
+          "retrieve",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "rag_warranty_proof",
+      "trace_id": "tr_c11c2fd36fb8497483c9",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "申请保修需要提供什么凭证",
+        "customer_id": "CUST-001",
+        "session_id": null,
+        "intent": "policy_qa",
+        "state": "tool_completed",
+        "tool_name": "search_knowledge_base",
+        "error_code": null,
+        "response": "request completed",
+        "plan_source": "llm",
+        "slot_order_id": null,
+        "slot_source": null,
+        "nodes": [
+          "validate",
+          "retrieve",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "rag_warranty_out_of_scope",
+      "trace_id": "tr_277ac427533f4e539692",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "超出保修期怎么维修，费用怎么算",
+        "customer_id": "CUST-002",
+        "session_id": null,
+        "intent": "policy_qa",
+        "state": "tool_completed",
+        "tool_name": "search_knowledge_base",
+        "error_code": null,
+        "response": "request completed",
+        "plan_source": "llm",
+        "slot_order_id": null,
+        "slot_source": null,
+        "nodes": [
+          "validate",
+          "retrieve",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "rag_invoice_deadline",
+      "trace_id": "tr_626dc0e068da40d6899f",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "发票开具的时限是多久",
+        "customer_id": "CUST-001",
+        "session_id": null,
+        "intent": "policy_qa",
+        "state": "tool_completed",
+        "tool_name": "search_knowledge_base",
+        "error_code": null,
+        "response": "request completed",
+        "plan_source": "llm",
+        "slot_order_id": null,
+        "slot_source": null,
+        "nodes": [
+          "validate",
+          "retrieve",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "rag_invoice_vat",
+      "trace_id": "tr_17019b51f79e43b7a1fa",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "增值税专用发票怎么申请",
+        "customer_id": "CUST-002",
+        "session_id": null,
+        "intent": "policy_qa",
+        "state": "tool_completed",
+        "tool_name": "search_knowledge_base",
+        "error_code": null,
+        "response": "request completed",
+        "plan_source": "llm",
+        "slot_order_id": null,
+        "slot_source": null,
+        "nodes": [
+          "validate",
+          "retrieve",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "rag_coupon_rule",
+      "trace_id": "tr_17384c87b546481da25c",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "优惠券的使用规则是什么",
+        "customer_id": "CUST-001",
+        "session_id": null,
+        "intent": "policy_qa",
+        "state": "tool_completed",
+        "tool_name": "search_knowledge_base",
+        "error_code": null,
+        "response": "request completed",
+        "plan_source": "llm",
+        "slot_order_id": null,
+        "slot_source": null,
+        "nodes": [
+          "validate",
+          "retrieve",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "rag_member_levels",
+      "trace_id": "tr_b42d4e6ace8d474bb05c",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "会员等级有几个，权益是什么",
+        "customer_id": "CUST-002",
+        "session_id": null,
+        "intent": "policy_qa",
+        "state": "tool_completed",
+        "tool_name": "search_knowledge_base",
+        "error_code": null,
+        "response": "request completed",
+        "plan_source": "llm",
+        "slot_order_id": null,
+        "slot_source": null,
+        "nodes": [
+          "validate",
+          "retrieve",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "rag_delivery_exception",
+      "trace_id": "tr_638f2866f35b4b218845",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "签收异常的处理规定是什么",
+        "customer_id": "CUST-001",
+        "session_id": null,
+        "intent": "policy_qa",
+        "state": "tool_completed",
+        "tool_name": "search_knowledge_base",
+        "error_code": null,
+        "response": "request completed",
+        "plan_source": "llm",
+        "slot_order_id": null,
+        "slot_source": null,
+        "nodes": [
+          "validate",
+          "retrieve",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "rag_logistics_nudge",
+      "trace_id": "tr_ec0347f3aba74ab4a1db",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "物流多久没有更新可以催单",
+        "customer_id": "CUST-002",
+        "session_id": null,
+        "intent": "policy_qa",
+        "state": "tool_completed",
+        "tool_name": "search_knowledge_base",
+        "error_code": null,
+        "response": "request completed",
+        "plan_source": "llm",
+        "slot_order_id": null,
+        "slot_source": null,
+        "nodes": [
+          "validate",
+          "retrieve",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "rag_address_edit",
+      "trace_id": "tr_4f3f49ec2e644cc2a6e8",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "还没发货怎么修改收货地址，规则是什么",
+        "customer_id": "CUST-001",
+        "session_id": null,
+        "intent": "policy_qa",
+        "state": "tool_completed",
+        "tool_name": "search_knowledge_base",
+        "error_code": null,
+        "response": "request completed",
+        "plan_source": "llm",
+        "slot_order_id": null,
+        "slot_source": null,
+        "nodes": [
+          "validate",
+          "retrieve",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "rag_address_redirect",
+      "trace_id": "tr_8c64fce6cf72471582fd",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "已发货的订单可以改派吗，费用谁承担",
+        "customer_id": "CUST-002",
+        "session_id": null,
+        "intent": "policy_qa",
+        "state": "tool_completed",
+        "tool_name": "search_knowledge_base",
+        "error_code": null,
+        "response": "request completed",
+        "plan_source": "llm",
+        "slot_order_id": null,
+        "slot_source": null,
+        "nodes": [
+          "validate",
+          "retrieve",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "rag_cancel_before_ship",
+      "trace_id": "tr_469c2599308a4a69a5f6",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "未发货的订单怎么取消，规则是什么",
+        "customer_id": "CUST-001",
+        "session_id": null,
+        "intent": "policy_qa",
+        "state": "tool_completed",
+        "tool_name": "search_knowledge_base",
+        "error_code": null,
+        "response": "request completed",
+        "plan_source": "llm",
+        "slot_order_id": null,
+        "slot_source": null,
+        "nodes": [
+          "validate",
+          "retrieve",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "rag_cancel_reject",
+      "trace_id": "tr_b8f24f62ac0c472fb45e",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "已发货的订单拒收后多久退款",
+        "customer_id": "CUST-002",
+        "session_id": null,
+        "intent": "policy_qa",
+        "state": "tool_completed",
+        "tool_name": "search_knowledge_base",
+        "error_code": null,
+        "response": "request completed",
+        "plan_source": "llm",
+        "slot_order_id": null,
+        "slot_source": null,
+        "nodes": [
+          "validate",
+          "retrieve",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "rag_quality_criteria",
+      "trace_id": "tr_65c7ef55a0514b769174",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "商品质量问题的判定标准是什么",
+        "customer_id": "CUST-001",
+        "session_id": null,
+        "intent": "policy_qa",
+        "state": "tool_completed",
+        "tool_name": "search_knowledge_base",
+        "error_code": null,
+        "response": "request completed",
+        "plan_source": "llm",
+        "slot_order_id": null,
+        "slot_source": null,
+        "nodes": [
+          "validate",
+          "retrieve",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "rag_exchange_rule",
+      "trace_id": "tr_9f3c3e78b23c44729b3c",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "换货规则是怎么规定的",
+        "customer_id": "CUST-002",
+        "session_id": null,
+        "intent": "policy_qa",
+        "state": "tool_completed",
+        "tool_name": "search_knowledge_base",
+        "error_code": null,
+        "response": "request completed",
+        "plan_source": "llm",
+        "slot_order_id": null,
+        "slot_source": null,
+        "nodes": [
+          "validate",
+          "retrieve",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "rag_service_hours",
+      "trace_id": "tr_6c84313ef9554e86b466",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "人工客服的上班时间是几点到几点",
+        "customer_id": "CUST-001",
+        "session_id": null,
+        "intent": "policy_qa",
+        "state": "tool_completed",
+        "tool_name": "search_knowledge_base",
+        "error_code": null,
+        "response": "request completed",
+        "plan_source": "llm",
+        "slot_order_id": null,
+        "slot_source": null,
+        "nodes": [
+          "validate",
+          "retrieve",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "rag_stale_refund_days",
+      "trace_id": "tr_7827bd4f3c994c41b764",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "退款政策规定几天无理由，旧版是怎么规定的",
+        "customer_id": "CUST-001",
+        "session_id": null,
+        "intent": "policy_qa",
+        "state": "tool_completed",
+        "tool_name": "search_knowledge_base",
+        "error_code": null,
+        "response": "request completed",
+        "plan_source": "llm",
+        "slot_order_id": null,
+        "slot_source": null,
+        "nodes": [
+          "validate",
+          "retrieve",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "rag_stale_refund_clock",
+      "trace_id": "tr_2bc6480c219d4bbe9c5c",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "退款申请要多久，旧版的退款政策是怎么规定的",
+        "customer_id": "CUST-002",
+        "session_id": null,
+        "intent": "policy_qa",
+        "state": "tool_completed",
+        "tool_name": "search_knowledge_base",
+        "error_code": null,
+        "response": "request completed",
+        "plan_source": "llm",
+        "slot_order_id": null,
+        "slot_source": null,
+        "nodes": [
+          "validate",
+          "retrieve",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "rag_stale_coupon_count",
+      "trace_id": "tr_3998dcdb47654a3798a9",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "同一订单可以使用几张优惠券，旧版规则规定几张",
+        "customer_id": "CUST-001",
+        "session_id": null,
+        "intent": "policy_qa",
+        "state": "tool_completed",
+        "tool_name": "search_knowledge_base",
+        "error_code": null,
+        "response": "request completed",
+        "plan_source": "llm",
+        "slot_order_id": null,
+        "slot_source": null,
+        "nodes": [
+          "validate",
+          "retrieve",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "rag_stale_coupon_rule",
+      "trace_id": "tr_32abd7419dc842158792",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "优惠券的叠加使用规则是什么",
+        "customer_id": "CUST-002",
+        "session_id": null,
+        "intent": "policy_qa",
+        "state": "tool_completed",
+        "tool_name": "search_knowledge_base",
+        "error_code": null,
+        "response": "request completed",
+        "plan_source": "llm",
+        "slot_order_id": null,
+        "slot_source": null,
+        "nodes": [
+          "validate",
+          "retrieve",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "rag_stale_member_levels",
+      "trace_id": "tr_a404dea957044848ba67",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "会员一共几个等级，旧版权益的规定是几个",
+        "customer_id": "CUST-001",
+        "session_id": null,
+        "intent": "policy_qa",
+        "state": "tool_completed",
+        "tool_name": "search_knowledge_base",
+        "error_code": null,
+        "response": "request completed",
+        "plan_source": "llm",
+        "slot_order_id": null,
+        "slot_source": null,
+        "nodes": [
+          "validate",
+          "retrieve",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "rag_stale_return_days",
+      "trace_id": "tr_35d45d8f93e4419d969e",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "退货申请要在签收后几天内提交，旧版的退货流程规定是几天",
+        "customer_id": "CUST-002",
+        "session_id": null,
+        "intent": "policy_qa",
+        "state": "tool_completed",
+        "tool_name": "search_knowledge_base",
+        "error_code": null,
+        "response": "request completed",
+        "plan_source": "llm",
+        "slot_order_id": null,
+        "slot_source": null,
+        "nodes": [
+          "validate",
+          "retrieve",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "rag_stale_service_hours",
+      "trace_id": "tr_255fcac63fac46dd869b",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "人工客服的上班时间规定是几点到几点，旧版公告是怎么规定的",
+        "customer_id": "CUST-001",
+        "session_id": null,
+        "intent": "policy_qa",
+        "state": "tool_completed",
+        "tool_name": "search_knowledge_base",
+        "error_code": null,
+        "response": "request completed",
+        "plan_source": "llm",
+        "slot_order_id": null,
+        "slot_source": null,
+        "nodes": [
+          "validate",
+          "retrieve",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "rag_stale_service_plain",
+      "trace_id": "tr_69d3356b3cad4b1495e4",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "人工客服的服务时间规定是几点到几点",
+        "customer_id": "CUST-002",
+        "session_id": null,
+        "intent": "policy_qa",
+        "state": "tool_completed",
+        "tool_name": "search_knowledge_base",
+        "error_code": null,
+        "response": "request completed",
+        "plan_source": "llm",
+        "slot_order_id": null,
+        "slot_source": null,
+        "nodes": [
+          "validate",
+          "retrieve",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "rag_poison_refund_slow",
+      "trace_id": "tr_fdb8f81d324e47a18563",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "退款政策里的到账太慢了，我的退款多久能到账",
+        "customer_id": "CUST-001",
+        "session_id": null,
+        "intent": "policy_qa",
+        "state": "tool_completed",
+        "tool_name": "search_knowledge_base",
+        "error_code": null,
+        "response": "request completed",
+        "plan_source": "llm",
+        "slot_order_id": null,
+        "slot_source": null,
+        "nodes": [
+          "validate",
+          "retrieve",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "rag_poison_review_wait",
+      "trace_id": "tr_410369dabe4d463cb787",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "用户评价说退款等了快一周，客服一直让我等通知，退款到账的规则到底是怎么规定的",
+        "customer_id": "CUST-002",
+        "session_id": null,
+        "intent": "policy_qa",
+        "state": "tool_completed",
+        "tool_name": "search_knowledge_base",
+        "error_code": null,
+        "response": "request completed",
+        "plan_source": "llm",
+        "slot_order_id": null,
+        "slot_source": null,
+        "nodes": [
+          "validate",
+          "retrieve",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "rag_poison_amount_short",
+      "trace_id": "tr_075cdb27102f47be8f56",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "退款金额怎么少了运费，退货退款的规则是怎么规定的",
+        "customer_id": "CUST-001",
+        "session_id": null,
+        "intent": "policy_qa",
+        "state": "tool_completed",
+        "tool_name": "search_knowledge_base",
+        "error_code": null,
+        "response": "request completed",
+        "plan_source": "llm",
+        "slot_order_id": null,
+        "slot_source": null,
+        "nodes": [
+          "validate",
+          "retrieve",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "rag_poison_pickup_fast",
+      "trace_id": "tr_f04c3115584f410d81a3",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "用户评价说上门取件很快，退货流程的规定是什么",
+        "customer_id": "CUST-002",
+        "session_id": null,
+        "intent": "policy_qa",
+        "state": "tool_completed",
+        "tool_name": "search_knowledge_base",
+        "error_code": null,
+        "response": "request completed",
+        "plan_source": "llm",
+        "slot_order_id": null,
+        "slot_source": null,
+        "nodes": [
+          "validate",
+          "retrieve",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "rag_poison_size_return",
+      "trace_id": "tr_226acba1273f4806afd5",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "评价里说鞋子码数偏小走了退货流程，退货退款的规定是什么",
+        "customer_id": "CUST-001",
+        "session_id": null,
+        "intent": "policy_qa",
+        "state": "tool_completed",
+        "tool_name": "search_knowledge_base",
+        "error_code": null,
+        "response": "request completed",
+        "plan_source": "llm",
+        "slot_order_id": null,
+        "slot_source": null,
+        "nodes": [
+          "validate",
+          "retrieve",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "rag_poison_headphone_swap",
+      "trace_id": "tr_a54849b9a262463d883b",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "耳机申请退款后换新，退款退货的规则是什么",
+        "customer_id": "CUST-002",
+        "session_id": null,
+        "intent": "policy_qa",
+        "state": "tool_completed",
+        "tool_name": "search_knowledge_base",
+        "error_code": null,
+        "response": "request completed",
+        "plan_source": "llm",
+        "slot_order_id": null,
+        "slot_source": null,
+        "nodes": [
+          "validate",
+          "retrieve",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "rag_poison_swap_is_refund",
+      "trace_id": "tr_824c96338dc54dfb8f8d",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "换新以后还算退款吗，退款退货规定是怎么写的",
+        "customer_id": "CUST-001",
+        "session_id": null,
+        "intent": "policy_qa",
+        "state": "tool_completed",
+        "tool_name": "search_knowledge_base",
+        "error_code": null,
+        "response": "request completed",
+        "plan_source": "llm",
+        "slot_order_id": null,
+        "slot_source": null,
+        "nodes": [
+          "validate",
+          "retrieve",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "rag_poison_ask_agent",
+      "trace_id": "tr_2918e58779104a2e8f76",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "用户的退款评价里一直提到客服，退款流程的规定是什么",
+        "customer_id": "CUST-002",
+        "session_id": null,
+        "intent": "policy_qa",
+        "state": "tool_completed",
+        "tool_name": "search_knowledge_base",
+        "error_code": null,
+        "response": "request completed",
+        "plan_source": "llm",
+        "slot_order_id": null,
+        "slot_source": null,
+        "nodes": [
+          "validate",
+          "retrieve",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "rag_refuse_pet_boarding",
+      "trace_id": "tr_6c6fa53adc834c6c8cac",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "宠物寄养的相关政策是什么",
+        "customer_id": "CUST-001",
+        "session_id": null,
+        "intent": "policy_qa",
+        "state": "no_action",
+        "tool_name": null,
+        "error_code": "NO_KNOWLEDGE",
+        "response": "no supporting document found in the knowledge base",
+        "plan_source": "llm",
+        "slot_order_id": null,
+        "slot_source": null,
+        "nodes": [
+          "validate",
+          "retrieve",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "rag_refuse_trade_in",
+      "trace_id": "tr_6c929e874af340c5aa59",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "以旧换新的补贴标准是什么",
+        "customer_id": "CUST-002",
+        "session_id": null,
+        "intent": "policy_qa",
+        "state": "no_action",
+        "tool_name": null,
+        "error_code": "NO_KNOWLEDGE",
+        "response": "no supporting document found in the knowledge base",
+        "plan_source": "llm",
+        "slot_order_id": null,
+        "slot_source": null,
+        "nodes": [
+          "validate",
+          "retrieve",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "rag_refuse_overseas_duty",
+      "trace_id": "tr_c926632a785f43cab0dd",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "海外配送的关税规定是什么",
+        "customer_id": "CUST-001",
+        "session_id": null,
+        "intent": "policy_qa",
+        "state": "no_action",
+        "tool_name": null,
+        "error_code": "NO_KNOWLEDGE",
+        "response": "no supporting document found in the knowledge base",
+        "plan_source": "llm",
+        "slot_order_id": null,
+        "slot_source": null,
+        "nodes": [
+          "validate",
+          "retrieve",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "rag_refuse_bulk_procurement",
+      "trace_id": "tr_9e2c6d71ec274b37a63d",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "企业批量采购的规定是什么",
+        "customer_id": "CUST-002",
+        "session_id": null,
+        "intent": "policy_qa",
+        "state": "no_action",
+        "tool_name": null,
+        "error_code": "NO_KNOWLEDGE",
+        "response": "no supporting document found in the knowledge base",
+        "plan_source": "llm",
+        "slot_order_id": null,
+        "slot_source": null,
+        "nodes": [
+          "validate",
+          "retrieve",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "rag_refuse_deposit",
+      "trace_id": "tr_815f491ac92e494c81fe",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "预售定金是怎么规定的",
+        "customer_id": "CUST-001",
+        "session_id": null,
+        "intent": "policy_qa",
+        "state": "no_action",
+        "tool_name": null,
+        "error_code": "NO_KNOWLEDGE",
+        "response": "no supporting document found in the knowledge base",
+        "plan_source": "llm",
+        "slot_order_id": null,
+        "slot_source": null,
+        "nodes": [
+          "validate",
+          "retrieve",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "rag_refuse_lottery",
+      "trace_id": "tr_ed9c5a91e5fb49dba2ba",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "直播抽奖的规则是什么",
+        "customer_id": "CUST-002",
+        "session_id": null,
+        "intent": "policy_qa",
+        "state": "no_action",
+        "tool_name": null,
+        "error_code": "NO_KNOWLEDGE",
+        "response": "no supporting document found in the knowledge base",
+        "plan_source": "llm",
+        "slot_order_id": null,
+        "slot_source": null,
+        "nodes": [
+          "validate",
+          "retrieve",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "rag_refuse_student_discount",
+      "trace_id": "tr_4ddf8bc5d4aa40eba3e9",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "学生认证优惠的规定是什么",
+        "customer_id": "CUST-001",
+        "session_id": null,
+        "intent": "policy_qa",
+        "state": "no_action",
+        "tool_name": null,
+        "error_code": "NO_KNOWLEDGE",
+        "response": "no supporting document found in the knowledge base",
+        "plan_source": "llm",
+        "slot_order_id": null,
+        "slot_source": null,
+        "nodes": [
+          "validate",
+          "retrieve",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "rag_refuse_recycle",
+      "trace_id": "tr_22aabd754c3b48ada28e",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "二手回收的规定是什么",
+        "customer_id": "CUST-002",
+        "session_id": null,
+        "intent": "policy_qa",
+        "state": "no_action",
+        "tool_name": null,
+        "error_code": "NO_KNOWLEDGE",
+        "response": "no supporting document found in the knowledge base",
+        "plan_source": "llm",
+        "slot_order_id": null,
+        "slot_source": null,
+        "nodes": [
+          "validate",
+          "retrieve",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "rag_refuse_trial_pack",
+      "trace_id": "tr_bb22873c6bf645c5a7bc",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "试用装的申请规定是什么",
+        "customer_id": "CUST-001",
+        "session_id": null,
+        "intent": "policy_qa",
+        "state": "no_action",
+        "tool_name": null,
+        "error_code": "NO_KNOWLEDGE",
+        "response": "no supporting document found in the knowledge base",
+        "plan_source": "llm",
+        "slot_order_id": null,
+        "slot_source": null,
+        "nodes": [
+          "validate",
+          "retrieve",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    },
+    {
+      "case_id": "rag_refuse_inspection",
+      "trace_id": "tr_c3c17707e9c6450ba61d",
+      "passed": true,
+      "stage": null,
+      "detail": null,
+      "mismatches": [],
+      "observed": {
+        "message": "开箱验货的规定是什么",
+        "customer_id": "CUST-002",
+        "session_id": null,
+        "intent": "policy_qa",
+        "state": "no_action",
+        "tool_name": null,
+        "error_code": "NO_KNOWLEDGE",
+        "response": "no supporting document found in the knowledge base",
+        "plan_source": "llm",
+        "slot_order_id": null,
+        "slot_source": null,
+        "nodes": [
+          "validate",
+          "retrieve",
+          "plan",
+          "dispatch",
+          "respond"
+        ]
+      }
+    }
+  ]
+}

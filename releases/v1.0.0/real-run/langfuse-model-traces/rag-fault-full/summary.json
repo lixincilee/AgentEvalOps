@@ -1,0 +1,110 @@
+{
+  "kind": "real_model_rag_fault_full",
+  "model": "deepseek-flash",
+  "generated_at": "2026-10-20",
+  "cost_cny": {
+    "rag": 0.0177,
+    "faults": 0.0069,
+    "total": 0.0246
+  },
+  "rag": {
+    "cases": 48,
+    "passed": 48,
+    "categories": {
+      "rag": {
+        "cases": 22,
+        "grounded": 22,
+        "no_knowledge": 0,
+        "parse_ok": 22
+      },
+      "rag_poison": {
+        "cases": 8,
+        "grounded": 8,
+        "no_knowledge": 0,
+        "parse_ok": 8
+      },
+      "rag_refuse": {
+        "cases": 10,
+        "grounded": 0,
+        "no_knowledge": 10,
+        "parse_ok": 10
+      },
+      "rag_stale": {
+        "cases": 8,
+        "grounded": 8,
+        "no_knowledge": 0,
+        "parse_ok": 8
+      }
+    },
+    "llm_calls": 48,
+    "parse_ok": 48,
+    "grounded": 38,
+    "no_knowledge": 10,
+    "gold_docs": {
+      "expected": 38,
+      "matched": 38
+    },
+    "top1_docs": {
+      "expected": 28,
+      "matched": 28
+    },
+    "expired_marked": {
+      "expected": 13,
+      "matched": 13
+    },
+    "total_tokens": 11535,
+    "latency_ms": {
+      "median": 893.67,
+      "p95": 1102.66,
+      "max": 4432.38
+    },
+    "trace_report_failed": 0
+  },
+  "faults": {
+    "cases": 25,
+    "expected_field_match": 25,
+    "llm_calls_traced": 25,
+    "llm_success": 19,
+    "llm_error_expected_rate_limit": 6,
+    "charged_model_calls_cli": 21,
+    "total_tokens": 4430,
+    "plan_source": {
+      "llm": 19,
+      "llm-fallback": 6
+    },
+    "error_codes": {
+      "TOOL_TIMEOUT": 7,
+      "TOOL_UNAVAILABLE": 6,
+      "NO_KNOWLEDGE": 5,
+      "None": 6,
+      "UNSUPPORTED_INTENT": 1
+    },
+    "latency_ms": {
+      "median": 887.52,
+      "p95": 1298.04,
+      "max": 2561.06
+    },
+    "trace_report_failed_with_model_arm_view": 0,
+    "note": "源 fault_cases.jsonl 的 expected_plan_source=rules 是规则臂契约；模型臂视图只把这 19 条改为 llm，其余期望与 6 条限流的 llm-fallback 不变。"
+  },
+  "langfuse": {
+    "traces": 73,
+    "traces_total": 73,
+    "tree_edges_match": 73,
+    "generation_spans": 73,
+    "success_generations": 67,
+    "error_generations": 6,
+    "prompt_present": 73,
+    "output_present": 73,
+    "usage_present_for_success": 67,
+    "model_deepseek_flash_for_success": 67,
+    "generation_parent_node_plan": 73,
+    "mismatches": 0
+  },
+  "boundaries": [
+    "这是模型臂单次运行，不是重复方差；方差另见 variance-repeat3。",
+    "故障 25 条使用模型臂评测视图：19 条 expected_plan_source 从 rules 改为 llm，源用例未改。",
+    "6 条 model rate-limit 故障是预期 ERROR，不应算作产品失败。",
+    "RAG 48 条只覆盖构造好的本地知识库，不代表外部企业知识库。"
+  ]
+}

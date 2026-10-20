@@ -1401,7 +1401,7 @@ M8 在写 trace 的过程中修掉 5 个真 bug（都写进 `docs/tracing.md` §
 | Langfuse SDK 的 API 形状 | **已在 5.0.2 上核对并真实发送**：入口是 `start_observation`；父子层级用 `trace_context.parent_span_id`；区域配置用 `LANGFUSE_BASE_URL`（`LANGFUSE_HOST` 是兼容别名） |
 | HTML 视图的肉眼效果 | **未逐像素核对**。几何、转义、徽标有测试钉住，浏览器里到底长什么样需要人打开确认 |
 | trace 进了发布冻结产物 | **已完成**（M9，tag `v0.9.0`）。`freeze_release.py` 现有七项检查，`releases/v0.9.0/trace/` 含 310 条 trace、定位报告与 HTML 视图 |
-| 310 条 trace 覆盖了模型路径 | 冻结集里**只有 16 条**（§16.5）；2026-10-20 另跑 213 条主矩阵 + 72 条多轮模型 trace（§16.11），但 RAG 48 条尚未全量重跑 |
+| 310 条 trace 覆盖了模型路径 | 冻结集里**只有 16 条**（§16.5）；2026-10-20 另跑 213 条主矩阵 + 72 条多轮模型 trace（§16.11），并补齐 RAG 48 + 故障 25 全量模型臂（§16.13） |
 | 真实模型 trace 的方差 | **已补测一组（§16.12）**：60 条四类分层切片 × v2/v3 × 3 次，通过率均为 98.3%、极差 0.0pp，墙头草 0；延迟相对极差 12.67% / 5.15%。这是本轮观测极差，不是置信区间；16 条成功切片与 213 条主矩阵本身仍只跑了一次 |
 | 模型输出可解析率 | **已量化一次**：主矩阵 18/207、多轮 6/72 发生 `llm-fallback`，合计 24/279 个模型调用 turn（§16.11）；任务仍通过，但模型格式问题被兜底掩盖 |
 
@@ -1550,7 +1550,7 @@ span 树 310/310 与本地一致。花费 **CNY 0.1297**。
 人读证据（含 7 条代表 trace 的 Prompt、模型输出和 span 树）：
 [`releases/v1.0.0/real-run/langfuse-model-traces/failure-multiturn/EVIDENCE.md`](../releases/v1.0.0/real-run/langfuse-model-traces/failure-multiturn/EVIDENCE.md)。
 
-**边界**：主矩阵 + 故障 + 多轮是模型臂，RAG 48 条没有全量重跑；3 条失败和 24 条降级都是
+**边界**：主矩阵 + 故障 + 多轮是模型臂，RAG 48 条与故障 25 条的全量模型臂另见 §16.13；3 条失败和 24 条降级都是
 单次运行结果，不能当稳定失败率；模型方差另见 §16.12。状态层那条的定位存在优先级歧义，
 应作为 `trace_report.py` 的改进项。
 
@@ -1579,8 +1579,44 @@ order_status / tool_completed），三轮一致。两次输入校验失败在规
 58 次而不是 60 次。3 轮合计 **CNY 0.129874**、76,213 tokens、348 次调用。
 
 **边界**：60 条是四类各 15 条的分层切片，不代表 213 条总体；3 次只给出本轮观测极差，不是置信区间，
-也不能把 98.3% 当成稳定失败率。RAG 48 条未纳入本次切片。证据：
+也不能把 98.3% 当成稳定失败率。RAG 48 条未纳入本次方差切片（其全量模型臂见 §16.13）。证据：
 [`releases/v1.0.0/real-run/langfuse-model-traces/variance-repeat3/EVIDENCE.md`](../releases/v1.0.0/real-run/langfuse-model-traces/variance-repeat3/EVIDENCE.md)。
+
+### 16.13 RAG 48 条与故障 25 条全量模型臂（2026-10-20）
+
+§16.11 的主矩阵、多轮和 6 条故障代表样本之外，RAG 48 条只跑过 6 条。这一节把两个缺口补齐：
+RAG 全量 48 条，以及故障全量 25 条。两批都走 `deepseek-flash` + Langfuse，合计 73 条 trace，
+新增花费 **CNY 0.0246**（RAG 0.0177 + 故障 0.0069）。
+
+```powershell
+$env:LANGFUSE_TIMEOUT = "60"
+.venv-trace\Scripts\python.exe scripts\trace_run.py `
+  --cases eval_cases\rag_cases.jsonl --llm --yes --budget 0.15 --langfuse `
+  --run-id rag-full-20261020 --out reports\traces-langfuse-llm-rag-full.jsonl
+.venv-trace\Scripts\python.exe scripts\trace_run.py `
+  --faults eval_cases\fault_cases.jsonl --llm --yes --budget 0.10 --langfuse `
+  --run-id faults-full-20261020 --out reports\traces-langfuse-llm-faults-full.jsonl
+```
+
+**RAG 48 条：48/48 通过。** 38 条有检索依据、10 条按空检索拒答；gold 文档 **38/38**、
+期望 Top-1 **28/28**、过期文档标记 **13/13**；48 次模型输出全部可解析，没有 `llm-fallback`。
+花费 CNY 0.0177，延迟中位数 893.67 ms、P95 1102.66 ms。
+
+**故障 25 条：25/25 期望字段匹配。** 19 条由模型规划，6 条限流按预期降级为
+`llm-fallback`；工具超时 7、工具不可用 6、空检索 6、模型限流 6。花费 CNY 0.0069。
+这里有一个容易误判的口径：源 `fault_cases.jsonl` 的 19 条非限流用例把
+`expected_plan_source` 写成 `rules`，那是规则臂契约。模型臂应改为 `llm`；直接拿源用例判会
+报 19 条失败，但差异只有这个字段。因此归档中保留了源用例，另生成
+`fault-cases-model-arm.jsonl`（只改这 19 条），模型臂视图是 **0/25 失败**。
+
+**Langfuse 回查：73/73 到达。** span 树 73/73 与本地一致；73 个 `GENERATION` 中 67 个成功、
+6 个是预期限流 `ERROR`；成功生成 Prompt / 输出 / usage 67/67 非空，模型均为 `deepseek-flash`；
+`llm.plan` 父节点 73/73 为 `node.plan`。机器可读明细见
+`releases/v1.0.0/real-run/langfuse-model-traces/rag-fault-full/langfuse-verification.json`。
+
+**边界**：这是单次模型臂运行，不是重复方差；6 条限流错误是注入故障，不是产品失败；
+RAG 只覆盖项目构造的本地知识库，不代表外部企业知识库或答案忠实性。
+证据：[`releases/v1.0.0/real-run/langfuse-model-traces/rag-fault-full/EVIDENCE.md`](../releases/v1.0.0/real-run/langfuse-model-traces/rag-fault-full/EVIDENCE.md)。
 
 ## 17. 证据十三：M9 判分分层 —— 同一批用例，三种判分口径
 
@@ -1914,6 +1950,6 @@ D:\Python\python.exe scripts/freeze_release.py --tag v1.0.0 --gate-against relea
 `releases/v1.0.0/real-run/EVIDENCE.md`。
 
 **边界**：离线冻结的压测仍是 modeled 臂；真实压测只有 5 用户一档；L3/L4 各 2 轮；
-Langfuse 已有 310 条失败定位/多轮模型 trace（§16.11），且补了 60 条 ×3 的模型方差（§16.12），
-但 RAG 48 条尚未全量重跑。这些边界不影响“发布锚定 + 原始证据可追溯”，
+Langfuse 已有 310 条失败定位/多轮模型 trace（§16.11）、60 条 ×3 的模型方差（§16.12），
+并补齐 RAG 48 + 故障 25 全量模型臂（§16.13）。这些边界不影响“发布锚定 + 原始证据可追溯”，
 但都不能读成容量或统计显著性结论。

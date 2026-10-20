@@ -87,6 +87,9 @@ python scripts/regression_gate.py --candidate <候选目录> --baseline v1.0.0
 - 真实模型方差：60 条四类分层切片 × v2/v3 × 3 次，两列通过率均 98.3%、极差 0.0pp、墙头草 0；
   唯一失败固定为 `v2_err_unsupported_04`。3 轮合计 CNY 0.129874。
   明细：[`real-run/langfuse-model-traces/variance-repeat3/EVIDENCE.md`](real-run/langfuse-model-traces/variance-repeat3/EVIDENCE.md)。
+- RAG 48 + 故障 25 全量模型臂：RAG 48/48、gold 38/38、Top-1 28/28、过期标记 13/13；
+  故障 25/25（19 llm + 6 llm-fallback）；Langfuse 73/73、树 73/73、成功生成 Prompt/输出/usage 67/67。
+  新增花费 CNY 0.0246。明细：[`real-run/langfuse-model-traces/rag-fault-full/EVIDENCE.md`](real-run/langfuse-model-traces/rag-fault-full/EVIDENCE.md)。
 - 2026-10-19 真实运行合计 **CNY 0.7163**；真实压测 P95 **1300 ms**、
   RPS **4.787**、任务成功率 **100.0%**、
   单次成功成本 **CNY 0.000624842**。
