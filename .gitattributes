@@ -3,3 +3,5 @@
 *.png binary
 *.jpg binary
 *.ico binary
+# 生成的 trace 页面是发布证据，不计入 GitHub 语言统计。
+releases/**/trace/*.html linguist-documentation

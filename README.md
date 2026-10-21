@@ -1,26 +1,90 @@
 # AgentEvalOps
 
 [![regression](https://github.com/lixincilee/AgentEvalOps/actions/workflows/regression.yml/badge.svg)](https://github.com/lixincilee/AgentEvalOps/actions/workflows/regression.yml)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-3776AB.svg)](https://www.python.org/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-> 一个用于练习 **Agent 评测工程（Evaluation Engineering / EvalOps）** 的教学项目。
-> 当前进度 **阶段二 M14（RAG 48 条与故障 25 条全量模型臂已补齐，待冻结）**：确定性 Agent（v1）→ DeepSeek 规划层（v2）→ LangGraph 编排 + 知识库检索 + 多轮会话（v3）→ trace、三层判分、真实压测与 CI 回归门禁。
-> 三个版本跑在同一批用例、同一判分口径下，产出结构完全相同的 `RunMetrics`，差异才有归因价值。
+> **面向电商客服场景的 RAG 工具型 Agent 质量平台｜个人项目**
+>
+> 一套围绕“被测 Agent”而不是“客服 Demo”建立的评测工程：用版本化用例、字段级判分、
+> Trace、并发压测和 CI 回归门禁，把知识库检索、工具调用和多轮状态管理中的失败定位到具体环节。
+>
+> 角色：独立完成被测 Agent、评测集、判分、Trace、压测与 CI 门禁。状态：M1–M14 已完成，最新冻结基线 `v1.0.0`。
 
-## 为什么先做确定性版本
+技术栈：Python、pytest、LangGraph、DeepSeek API、Ragas、DeepEval、Promptfoo、Langfuse、Locust、FastAPI、GitHub Actions。
 
-评测工程最核心的能力是：**把一个 AI 应用的行为变成可复现、可断言、可度量的对象**。
-如果一上来就接大模型，你面对的是随机输出，很难判断失败究竟来自提示词、模型、工具，还是你自己的断言写错了。
+## 30 秒概览
 
-所以阶段一先把「被测系统」做成纯规则、无网络、无随机数的确定性程序：
-
-| 特性 | 说明 |
+| 维度 | 已落地结果 |
 | --- | --- |
-| 确定性 | 无随机数、无网络；相同内部状态下，相同输入必得相同输出，测试可精确断言到字段 |
-| 无外部依赖 | 运行期零第三方依赖，不调用任何模型或网络 |
-| 有审计记录 | 每次决策都产出 `AuditRecord`：意图、状态、工具名、参数、结果、错误 |
-| 可度量 | 意图/状态/工具/参数都能逐条比对，天然产出准确率指标 |
+| 被测系统 | v1 确定性规则臂 / v2 DeepSeek 规划臂 / v3 LangGraph + RAG + 多轮会话；4 个工具 |
+| 评测规模 | **322 条**版本化 JSONL 用例：213 主矩阵 + 48 RAG + 25 故障注入 + 36 多轮 |
+| 自动化 | **1293 项 pytest 通过**；工具契约、Agent 端到端、数据驱动回放 |
+| 检索质量 | RAG 48/48 通过；gold 38/38、Top-1 28/28、过期文档标记 13/13 |
+| 判分体系 | L3 Ragas / L4 DeepEval / L5 Promptfoo；人工抽检 20 条，一致率 95%，kappa 0.875 |
+| 可观测性 | 310 条可回放 trace；73 条真实模型专项 trace，Langfuse span 树 73/73，未定位 0 |
+| 并发基线 | 5 用户 / 30 秒：133 请求、RPS 4.79、P95 1300ms、成功率 100%、单次成功 CNY 0.000625 |
+| 回归门禁 | GitHub Actions 5 个 job、8 项指标（6 项阻断）；v1/v2/v3 同口径对比，60 条切片 × 3 次 |
 
-阶段一验收通过后，阶段二会把「意图识别 + 槽位抽取」换成真实大模型，而**测试、契约和 JSONL 场景数据几乎不用改** —— 这正是先建基线的价值。
+> 压测是低并发基线，不是容量上限；RAG 覆盖项目本地构造的知识库；60 条切片的 3 次重复是观测极差，不是置信区间。
+
+## 它解决什么问题
+
+评测 Agent 最容易只盯“最终回答像不像”。这个项目把一次 turn 拆成可断言的审计记录：
+`intent`、`state`、`tool_name`、`arguments`、`tool_result`、`error_code`，再叠加检索证据和
+span 树。这样失败不是一句“模型答错了”，而是能落到检索、规划、工具或状态管理中的某一层。
+
+三个版本共享同一套 `AuditRecord` / `RunMetrics` 契约，跑同一批 JSONL 用例，差异才有归因价值。
+
+## 架构
+
+```text
+eval_cases/*.jsonl
+        │
+        ▼
+compare_versions / trace_run / run_faults / load_test
+        │
+        ├── v1  规则臂：确定性、零模型调用
+        ├── v2  DeepSeek 规划臂：意图 + 槽位 + 工具参数
+        └── v3  LangGraph：validate → retrieve → plan → dispatch → respond
+                    │
+                    ▼
+        AuditRecord + RetrievalRecord + Trace
+                    │
+        ┌───────────┼────────────┐
+        ▼           ▼            ▼
+   L3 Ragas    L4 DeepEval   L5 Promptfoo
+        └───────────┼────────────┘
+                    ▼
+        RunMetrics → 回归门禁 → GitHub Actions
+```
+
+## 快速开始
+
+```powershell
+python -m venv .venv
+.venv\Scripts\activate
+python -m pip install -e ".[dev]"
+python -m pytest -q
+```
+
+不配置任何 API Key 也能跑完整确定性测试。需要真实模型时，复制 `.env.example` 为 `.env`，
+填入 `DEEPSEEK_API_KEY`，再运行：
+
+```powershell
+python scripts/smoke_llm.py
+python scripts/compare_versions.py --llm --cases eval_cases/case_matrix_v2.jsonl --budget 2.0
+```
+
+## 证据入口
+
+- 真实运行总览：`releases/v1.0.0/real-run/EVIDENCE.md`
+- 失败定位与多轮 trace：`releases/v1.0.0/real-run/langfuse-model-traces/failure-multiturn/EVIDENCE.md`
+- 重复运行方差：`releases/v1.0.0/real-run/langfuse-model-traces/variance-repeat3/EVIDENCE.md`
+- RAG 48 + 故障 25 全量模型臂：`releases/v1.0.0/real-run/langfuse-model-traces/rag-fault-full/EVIDENCE.md`
+- 三层判分与人工抽检：`docs/judging.md`
+- CI 门禁与分支保护：`docs/ci.md`
+- 完整实测记录：`docs/stage2-evidence.md`
 
 ## 目录结构
 
@@ -28,6 +92,7 @@
 AgentEvalOps/
 ├── pyproject.toml                     # 项目元数据、依赖、pytest 配置
 ├── README.md                          # 本文件
+├── LICENSE                            # MIT
 ├── .gitignore
 ├── .env.example                       # API Key 等环境变量模板
 ├── docs/
@@ -148,12 +213,14 @@ AgentEvalOps/
     └── test_judge_gate.py             # M9：判分门禁的绝对下限与相对退化
 ```
 
-## 快速开始
+## 完整运行说明
+
+最短安装与测试路径见上方“快速开始”；下面是各模块的完整命令和环境变量。
 
 ### 1. 环境要求
 
 - Python **3.11+**（代码使用了 `StrEnum`）
-- 运行期零第三方依赖；测试只需要 `pytest`
+- 确定性用例不调用模型、不访问网络；完整 v3 编排需要 `langgraph`
 
 ### 2. 安装（可编辑模式）
 
@@ -164,7 +231,7 @@ python -m pip install -e ".[dev]"
 本机（Windows / PowerShell）示例：
 
 ```powershell
-D:\Python\python.exe -m pip install -e ".[dev]" --no-build-isolation
+python -m pip install -e ".[dev]" --no-build-isolation
 ```
 
 `--no-build-isolation` 表示直接使用本机已安装的 setuptools 构建，适合离线环境。
@@ -172,7 +239,7 @@ D:\Python\python.exe -m pip install -e ".[dev]" --no-build-isolation
 ### 3. 运行测试
 
 ```bash
-python -m pytest                                # 全量：649 passed（另有 10 条已登记偏差 xfail）
+python -m pytest                                # 全量：1293 passed / 1 skipped / 10 xfailed
 python -m pytest -q                             # 精简输出
 python -m pytest -v                             # 逐条列出用例名
 python -m pytest tests/test_safety.py           # 只跑安全场景
@@ -231,15 +298,19 @@ result     工具成功时的结果
 error      工具失败时的 {code, message}
 ```
 
-## 三个工具
+## 四个工具
+
+阶段一实现 3 个业务工具；阶段二 M3 增加只读检索工具 `search_knowledge_base`，返回候选文档和过期标记。
+检索不到也属于成功结果（SPEC-RAG-1），由上层决定拒答或转人工。
 
 | 工具 | `name` | 成功结果 | 主要拒绝原因 |
 | --- | --- | --- | --- |
 | 订单状态查询 | `query_order_status` | `order_id` / `status` / `tracking_number` | `ORDER_NOT_FOUND` |
 | 退款申请 | `apply_refund` | `refund_id` / `order_id` / `status` / `duplicate` | `REFUND_NOT_ALLOWED`、`ORDER_NOT_FOUND` |
 | 人工工单 | `create_human_ticket` | `ticket_id` / `status` / `customer_id` / `order_id` | `ORDER_NOT_FOUND` |
+| 知识库检索 | `search_knowledge_base` | `query` / `top_k` / `hits` / `retrieved` | `INVALID_ARGUMENT`（空查询） |
 
-三个工具都遵守同一条契约：`execute(...) -> ToolResult`。`ToolResult` 只有两种形态 —— 成功（带 `data`）或失败（带 `error_code` + `error_message`），不会把异常抛给上层。
+所有工具都遵守同一条契约：`execute(...) -> ToolResult`。`ToolResult` 只有两种形态 —— 成功（带 `data`）或失败（带 `error_code` + `error_message`），不会把异常抛给上层。
 
 ### 业务规则（当前实现）
 
@@ -314,7 +385,7 @@ error      工具失败时的 {code, message}
 - **参数化**：用 `@pytest.mark.parametrize` 一次覆盖「空字符串 / 纯空格 / None / 非字符串」。
 - **边界**：取「等于上限」和「上限 + 1」两个点（500 / 501、1000 / 1001）。
 
-## 阶段二：接入 DeepSeek（进行中）
+## 阶段二：接入 DeepSeek（已完成）
 
 把「规则 Agent」升级为「LLM Agent」，并建立**版本 / 运行 / 指标**数据模型。
 完整施工图、用例矩阵（约 240 条）与里程碑见 `docs/stage2-plan.md`。
@@ -551,8 +622,8 @@ python scripts/compare_versions.py --llm --yes --budget 2.0 --cases eval_cases/c
   注入器，不是 Agent。
 
 ```powershell
-D:\Python\python.exe -m pytest tests/test_faults.py tests/test_fault_cases.py -q
-D:\Python\python.exe scripts/run_faults.py
+python -m pytest tests/test_faults.py tests/test_fault_cases.py -q
+python scripts/run_faults.py
 ```
 
 `run_faults.py` 的实测结果：**25/25 通过**，注入计数
@@ -567,10 +638,10 @@ D:\Python\python.exe scripts/run_faults.py
 服务端是 `src/agentevalops/service.py`（把 v3 链路包成 HTTP），压测客户端在 `perf/`。
 
 ```powershell
-D:\Python\python.exe scripts/load_test.py --users 20 --spawn-rate 5 --run-time 20s
-D:\Python\python.exe scripts/load_test.py --arm rules --users 20 --run-time 15s --port 8131
+python scripts/load_test.py --users 20 --spawn-rate 5 --run-time 20s
+python scripts/load_test.py --arm rules --users 20 --run-time 15s --port 8131
 # 真实调用会花钱：必须显式加 --yes，不带就停在发请求之前（退出码 2）
-D:\Python\python.exe scripts/load_test.py --real --yes --users 5 --run-time 30s --budget 0.5
+python scripts/load_test.py --real --yes --users 5 --run-time 30s --budget 0.5
 ```
 
 | 模型臂 | users | 请求 | RPS | P50 / P95 / P99 (ms) | 服务端自报延迟均值 | http 错误率 | 任务成功率 | 单次成功任务成本 |
@@ -608,7 +679,7 @@ D:\Python\python.exe scripts/load_test.py --real --yes --users 5 --run-time 30s 
 ### 冻结：`releases/<tag>/`
 
 ```powershell
-D:\Python\python.exe scripts/freeze_release.py
+python scripts/freeze_release.py
 ```
 
 跑五项检查（全离线、零成本），把原始报告和一份机器可读的指标索引写进 `releases/<tag>/`：
@@ -633,10 +704,10 @@ D:\Python\python.exe scripts/freeze_release.py
 ### 门禁：`scripts/regression_gate.py`
 
 ```powershell
-D:\Python\python.exe scripts/regression_gate.py --candidate .release-candidate --baseline releases/v0.9.0
+python scripts/regression_gate.py --candidate .release-candidate --baseline releases/v0.9.0
 
 # 多版本并排：三条都进报告，但只有最后一条是执法基线
-D:\Python\python.exe scripts/regression_gate.py --candidate releases/v0.8.0 --baseline releases/v0.6.0 --baseline releases/v0.7.0 --out releases/comparisons/v0.6.0-v0.7.0-v0.8.0.json
+python scripts/regression_gate.py --candidate releases/v0.8.0 --baseline releases/v0.6.0 --baseline releases/v0.7.0 --out releases/comparisons/v0.6.0-v0.7.0-v0.8.0.json
 ```
 
 每项指标两条判据，缺一不可：
@@ -690,13 +761,13 @@ RPS 差 1.7 倍、P95 差 2.2 倍，代码一个字没改。M6 给两台测量�
 
 ```powershell
 # 压测：5 次背靠背，每次都重启服务（新进程、新端口）
-D:\Python\python.exe scripts/load_test.py --arm rules --users 20 --spawn-rate 5 --run-time 15s --repeat 5 --report reports/variance-rules-15s-5x.json
+python scripts/load_test.py --arm rules --users 20 --spawn-rate 5 --run-time 15s --repeat 5 --report reports/variance-rules-15s-5x.json
 
 # 判分：同一份用例跑 5 次，汇总中位数与方差（离线，零成本，12 秒）
-D:\Python\python.exe scripts/compare_versions.py --offline --repeat 5
+python scripts/compare_versions.py --offline --repeat 5
 
 # 冻结版本：方差一起写进 release.json，门禁会把它读成报告里的「噪声」列
-D:\Python\python.exe scripts/freeze_release.py --repeat 3
+python scripts/freeze_release.py --repeat 3
 ```
 
 汇总口径写死在报告里（`aggregate_policy` 字段），不是随手取平均：
@@ -748,7 +819,7 @@ M3 之后，一次 `handle()` 会走 5 个节点，可能查知识库、可能�
 ### 一条 trace 长什么样
 
 ```
-D:\Python\python.exe scripts/trace_run.py --cases eval_cases/case_matrix_v2.jsonl ^
+python scripts/trace_run.py --cases eval_cases/case_matrix_v2.jsonl ^
     --faults eval_cases/fault_cases.jsonl --multiturn eval_cases/multiturn_cases.jsonl ^
     --out reports/traces-full.jsonl
 ```
@@ -778,8 +849,8 @@ tracer」的 Agent 跑一遍，**审计记录的每个字段都必须相同**。
 | `scripts/trace_view.py` | 渲染自包含 HTML 瀑布图（不联网、不依赖服务） | `reports/trace-view.html` |
 
 ```powershell
-D:\Python\python.exe scripts/trace_report.py --traces reports/traces-full.jsonl --cases reports/traces-full.cases.jsonl --out reports/trace-report.md
-D:\Python\python.exe scripts/trace_view.py   --traces reports/traces-full.jsonl --out reports/trace-view.html
+python scripts/trace_report.py --traces reports/traces-full.jsonl --cases reports/traces-full.cases.jsonl --out reports/trace-report.md
+python scripts/trace_view.py   --traces reports/traces-full.jsonl --out reports/trace-view.html
 ```
 
 定位规则固定在 `scripts/trace_report.py` 的模块文档里，优先级从硬事实到间接证据：
@@ -795,7 +866,7 @@ span 失败（模型 / 检索 / 工具）→ 无依据（`NO_KNOWLEDGE` / 命中
 token 与延迟，加 `--llm --yes`：
 
 ```powershell
-D:\Python\python.exe scripts/trace_run.py --cases eval_cases/case_matrix_v2.jsonl --limit 10 ^
+python scripts/trace_run.py --cases eval_cases/case_matrix_v2.jsonl --limit 10 ^
     --llm --yes --budget 0.2 --out reports/traces-llm-matrix.jsonl
 ```
 
@@ -880,14 +951,14 @@ pytest 能判「状态 / 意图 / 工具名 / 参数 / 错误码」，判不了�
 # L5 需要 Node；固定版本本地安装，不走 npx
 $env:PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD = '1'
 npm install --no-save --prefix .promptfoo promptfoo@0.121.3
-D:\Python\python.exe scripts\judge_l5_promptfoo.py
+python scripts/judge_l5_promptfoo.py
 
 # 三层报告对比入库基线；再把失败/通过样本抽成人工回填表
-D:\Python\python.exe scripts\judge_gate.py --l3 reports/l3-ragas.json --l4 reports/l4-deepeval.json --l5 reports/l5-promptfoo.json
-D:\Python\python.exe scripts/review_sheet.py --n 20 --write-template
+python scripts/judge_gate.py --l3 reports/l3-ragas.json --l4 reports/l4-deepeval.json --l5 reports/l5-promptfoo.json
+python scripts/review_sheet.py --n 20 --write-template
 
 # M9 实际执行的正式冻结（已完成）：trace + 三层判分报告 + 人工抽检摘要一起进 releases/<tag>/
-D:\Python\python.exe scripts/freeze_release.py --tag v0.9.0 --gate-against releases/v0.8.0
+python scripts/freeze_release.py --tag v0.9.0 --gate-against releases/v0.8.0
 ```
 
 GitHub Actions 首次真实运行（2026-10-19，[run 39231090257](https://github.com/lixincilee/AgentEvalOps/actions/runs/39231090257)）：`test` / `gate` / `judge-l5` 全绿。付费链路随后在 [run 39251627592](https://github.com/lixincilee/AgentEvalOps/actions/runs/39251627592) 跑通：`nightly-real`（真实对比 + 压测）与 `judge-real`（L3 64.5% / L4 95.8% / 门禁 8 项全过）均成功，合计 CNY 0.7163（证据 §18.8）。
@@ -912,7 +983,7 @@ L3 总额 1.7245 = 判分 1.5248 + 合成回答 0.1997；L4 总额 0.4885 = 判�
 | 阶段 | 目标 | 关键产出 |
 | --- | --- | --- |
 | **阶段一（已完成）** | 确定性 Agent + 工具契约 + 测试基线 + JSONL 场景表 | `AuditRecord` 契约、138 个测试项、19 条场景 |
-| **阶段二（进行中）** | 接入 DeepSeek；建立版本 / 运行 / 指标数据模型；用 `LLMPlanner` 替换 `classify_intent` 与槽位抽取（**保持 `AuditRecord` 契约不变**） | `VersionManifest`、`Run`/`RunMetrics`、成本核算与预算熔断、**240 条用例集**、**v1 vs v2 真实对比报告**（`docs/stage2-evidence.md`）、tag `v0.3.0` |
+| **阶段二（已完成）** | 接入 DeepSeek；建立版本 / 运行 / 指标数据模型；用 `LLMPlanner` 替换 `classify_intent` 与槽位抽取（**保持 `AuditRecord` 契约不变**） | `VersionManifest`、`Run`/`RunMetrics`、成本核算与预算熔断、**322 条版本化用例集**、**v1 vs v2 真实对比报告**（`docs/stage2-evidence.md`）、tag `v0.3.0` |
 | **阶段二 M3（已完成，tag `v0.5.0` / `v0.5.1`）** | 接 RAG 检索 + 多轮会话 + LangGraph 编排，产出 **v3**；规格升到 v1.2；用真实模型跑四方对比 | 第 4 个工具 `search_knowledge_base`、意图 `policy_qa`、错误码 `NO_KNOWLEDGE`、`RetrievalRecord` / `SlotRecord`、M3 用例集、四个批次锚定的 v1/v2/v3/v3-rules 对比报告、`v0.5.1` 修掉 v3 兜底路径缺陷 |
 | **阶段二 M4（已完成，tag `v0.6.0`）** | 故障注入用例 + 并发压测 | 规格 v1.3 的 6 条故障条款（SPEC-FAULT-1..6）、**25 条**故障用例（工具超时 / 5xx / 空检索 / 模型限流）、`faults.py` 注入脚手架、可压测 HTTP 服务 `service.py`、Locust 的 P95 / 吞吐 / 错误率与**单次成功任务成本**、CI 双线门禁 |
 | **阶段二 M5（已完成，tag `v0.7.0`）** | CI 回归门禁 + 发布冻结 | `regression_gate.py`（8 项指标，绝对下限 + 相对退化两条判据）、`freeze_release.py`（五项检查 → `releases/<tag>/`）、GitHub Actions 三 job（test / gate / nightly-real）、首个冻结基线 `releases/v0.7.0`、注入回归实测被拦下 4 条 |
@@ -922,9 +993,9 @@ L3 总额 1.7245 = 判分 1.5248 + 合成回答 0.1997；L4 总额 0.4885 = 判�
 | **阶段二 M9（已完成，tag `v0.9.0`）** | 判分分层 + 方差 + 门禁 + 把 trace 纳入发布冻结 | L3/L4 `--repeat 3` 方差、`judge_gate.py` 基线门禁、20 条人工抽检（一致率 95%，kappa 0.875）、CI 五 job（L5 阻塞 PR，L3/L4 夜间；证据 §18）、`freeze_release.py` 七项检查（原五项 + trace + judge）、发布冻结 `releases/v0.9.0/`（310 条 trace / L3 65.8% / L4 95.8% / L5 100%） |
 | **阶段二 M10（已完成）** | 付费链路实跑：真实模型判分 + 真实并发 | `DEEPSEEK_API_KEY` secret、`DEEPSEEK_MODEL=deepseek-flash`、`paid_target=both` 手动触发、L3/L4 测量层 `--allow-failures`（PR #5）；run 39251627592：真实对比四臂、133 请求 / P95 1300ms / RPS 4.79 / 成功率 100% / 单次成功 CNY 0.000625、L3 64.5% / L4 95.8% / 门禁 8 项全过，合计 CNY 0.7163（证据 §18.8） |
 | **阶段二 M11（已完成，tag `v1.0.0`）** | 发布冻结：把真实运行证据锚定到版本 | `releases/v1.0.0/`（七项离线检查全过，对 `v0.9.0` 门禁全绿）、`real-run/`（付费 run 原始报告 + `EVIDENCE.md` / `evidence.json`）、3 条 Langfuse trace 链接与 span 树；CI 执法基线升到 `v1.0.0`（证据 §18.9） |
-| **阶段二 M12（已完成，待冻结）** | 真实模型失败定位 + 多轮 trace | 213 条主矩阵 + 72 条多轮等共 310 条模型 trace；3 条真实失败分别定位到推理/检索/状态层；工具层用合成探针验证；24/279 个模型调用 turn 降级为 `llm-fallback`；证据 §16.11 |
-| **阶段二 M13（已完成，待冻结）** | 真实模型重复运行方差 | 60 条四类分层切片 × v2/v3 × 3 次：两列 98.3%，极差 0.0pp，墙头草 0，失败固定 `v2_err_unsupported_04`；v2/v3 延迟相对极差 12.67% / 5.15%；合计 CNY 0.129874；证据 §16.12 |
-| **阶段二 M14（已完成，待冻结）** | RAG 48 + 故障 25 全量模型臂 | RAG 48/48、gold 38/38、Top-1 28/28、过期标记 13/13；故障 25/25（19 llm + 6 llm-fallback）；Langfuse 73/73、树 73/73、成功生成 Prompt/输出/usage 67/67；新增 CNY 0.0246；证据 §16.13 |
+| **阶段二 M12（已完成）** | 真实模型失败定位 + 多轮 trace | 213 条主矩阵 + 72 条多轮等共 310 条模型 trace；3 条真实失败分别定位到推理/检索/状态层；工具层用合成探针验证；24/279 个模型调用 turn 降级为 `llm-fallback`；证据归档于 `releases/v1.0.0/real-run/` |
+| **阶段二 M13（已完成）** | 真实模型重复运行方差 | 60 条四类分层切片 × v2/v3 × 3 次：两列 98.3%，极差 0.0pp，墙头草 0，失败固定 `v2_err_unsupported_04`；v2/v3 延迟相对极差 12.67% / 5.15%；合计 CNY 0.129874；证据归档于 `releases/v1.0.0/real-run/` |
+| **阶段二 M14（已完成）** | RAG 48 + 故障 25 全量模型臂 | RAG 48/48、gold 38/38、Top-1 28/28、过期标记 13/13；故障 25/25（19 llm + 6 llm-fallback）；Langfuse 73/73、树 73/73、成功生成 Prompt/输出/usage 67/67；新增 CNY 0.0246；证据归档于 `releases/v1.0.0/real-run/` |
 
 ### 评测指标（阶段五要算的东西，现在就能算前六项）
 
