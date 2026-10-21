@@ -4,12 +4,12 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "agentevalops"
-version = "0.1.0"
-description = "Deterministic e-commerce support agent for evaluation engineering practice"
+version = "1.0.0"
+description = "Evaluation platform for a RAG tool-using e-commerce support agent: versioned cases, traces, judges, and regression gates"
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
-authors = [{ name = "AgentEvalOps contributors" }]
+authors = [{ name = "lixincilee" }]
 # M3 起 v3 的编排层用 LangGraph。它是运行期依赖，不是可选项：
 # pipeline.py 一旦导入失败，v3 的所有用例都会变成「测试环境问题」，分数没有意义。
 dependencies = ["langgraph>=1.0"]
