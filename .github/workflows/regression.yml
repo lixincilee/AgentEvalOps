@@ -25,9 +25,10 @@ on:
           - judge
           - nightly
         default: none
-  schedule:
-    # GitHub 的 cron 只认 UTC：UTC 18:00 = 北京时间次日 02:00。
-    - cron: "0 18 * * *"
+  # 暂停夜间定时任务；投递前恢复。
+  # schedule:
+  #   # GitHub 的 cron 只认 UTC：UTC 18:00 = 北京时间次日 02:00。
+  #   - cron: "0 18 * * *"
 
 # 最小权限：CI 只需要读仓库。
 permissions:
